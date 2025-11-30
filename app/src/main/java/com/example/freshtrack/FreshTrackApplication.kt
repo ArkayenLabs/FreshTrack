@@ -3,6 +3,7 @@ package com.example.freshtrack
 import android.app.Application
 import com.example.freshtrack.di.appModules
 import org.koin.android.ext.koin.androidContext
+import com.example.freshtrack.data.notification.NotificationScheduler
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
@@ -30,6 +31,10 @@ class FreshTrackApplication : Application() {
 
         // Initialize notification channels
         createNotificationChannels()
+
+        // Schedule daily expiry checks
+        NotificationScheduler.scheduleDailyExpiryCheck(this)
+
     }
 
     /**

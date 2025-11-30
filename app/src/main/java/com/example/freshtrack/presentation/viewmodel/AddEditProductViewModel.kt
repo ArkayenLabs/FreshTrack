@@ -62,12 +62,24 @@ class AddEditProductViewModel(
         }
     }
 
+    /**
+     * Set barcode from scanner
+     */
+    fun setBarcodeFromScanner(barcode: String?) {
+        barcode?.let {
+            _uiState.update { state -> state.copy(barcode = it) }
+        }
+    }
+
     fun updateName(name: String) {
         _uiState.update { it.copy(name = name) }
     }
 
     fun updateBarcode(barcode: String) {
+        android.util.Log.d("AddEditProductViewModel", "updateBarcode called with: $barcode")
+        android.util.Log.d("AddEditProductViewModel", "Current state barcode before update: ${_uiState.value.barcode}")
         _uiState.update { it.copy(barcode = barcode) }
+        android.util.Log.d("AddEditProductViewModel", "Current state barcode after update: ${_uiState.value.barcode}")
     }
 
     fun updateCategory(category: String) {

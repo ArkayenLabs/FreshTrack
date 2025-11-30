@@ -1,7 +1,10 @@
 package com.example.freshtrack.presentation.navigation
 
-
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,6 +15,7 @@ import com.example.freshtrack.presentation.screen.productlist.ProductListScreen
 import com.example.freshtrack.presentation.screen.addproduct.AddEditProductScreen
 import com.example.freshtrack.presentation.screen.productdetails.ProductDetailsScreen
 import com.example.freshtrack.presentation.screen.settings.SettingsScreen
+import com.example.freshtrack.presentation.screen.scanner.BarcodeScannerScreen
 
 /**
  * Navigation routes for the app
@@ -29,6 +33,24 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object BarcodeScanner : Screen("barcode_scanner")
 }
+/**
+ * Shared state for barcode scanning result
+ */
+class ScannerState {
+    var scannedBarcode by mutableStateOf<String?>(null)
+        private set
+
+    fun setBarcode(barcode: String) {
+        android.util.Log.d("ScannerState", "Setting barcode: $barcode")
+        scannedBarcode = barcode
+        android.util.Log.d("ScannerState", "Barcode set to: $scannedBarcode")
+    }
+
+    fun clear() {
+        android.util.Log.d("ScannerState", "Clearing barcode. Was: $scannedBarcode")
+        scannedBarcode = null
+    }
+}
 
 /**
  * Main navigation graph for FreshTrack
@@ -38,6 +60,9 @@ fun FreshTrackNavGraph(
     navController: NavHostController,
     startDestination: String = Screen.Dashboard.route
 ) {
+    // Shared scanner state
+    val scannerState = remember { ScannerState() }
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -49,6 +74,7 @@ fun FreshTrackNavGraph(
                     navController.navigate(Screen.ProductList.route)
                 },
                 onNavigateToAddProduct = {
+                    scannerState.clear()
                     navController.navigate(Screen.AddProduct.route)
                 },
                 onNavigateToProductDetails = { productId ->
@@ -67,6 +93,7 @@ fun FreshTrackNavGraph(
                     navController.navigateUp()
                 },
                 onNavigateToAddProduct = {
+                    scannerState.clear()
                     navController.navigate(Screen.AddProduct.route)
                 },
                 onNavigateToProductDetails = { productId ->
@@ -77,9 +104,16 @@ fun FreshTrackNavGraph(
 
         // Add Product Screen
         composable(Screen.AddProduct.route) {
+            // Get scanned barcode if available
+            val scannedBarcode = scannerState.scannedBarcode
+            android.util.Log.d("Navigation", "AddProduct composable - scannedBarcode: $scannedBarcode")
+
+
             AddEditProductScreen(
                 productId = null,
+                scannedBarcode = scannedBarcode,
                 onNavigateBack = {
+                    scannerState.clear()
                     navController.navigateUp()
                 },
                 onNavigateToScanner = {
@@ -96,9 +130,14 @@ fun FreshTrackNavGraph(
             )
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId")
+            // Get scanned barcode if available
+            val scannedBarcode = scannerState.scannedBarcode
+
             AddEditProductScreen(
                 productId = productId,
+                scannedBarcode = scannedBarcode,
                 onNavigateBack = {
+                    scannerState.clear()
                     navController.navigateUp()
                 },
                 onNavigateToScanner = {
@@ -135,11 +174,20 @@ fun FreshTrackNavGraph(
             )
         }
 
-        // Barcode Scanner Screen (placeholder for now)
+        // Barcode Scanner Screen
         composable(Screen.BarcodeScanner.route) {
-            // BarcodeScannerScreen - Will implement in Phase 2
-            // For now, just navigate back
-            navController.navigateUp()
+            BarcodeScannerScreen(
+                onBarcodeScanned = { barcode ->
+                    android.util.Log.d("Navigation", "Barcode scanned callback: $barcode")
+                    // Store barcode in shared state
+                    scannerState.setBarcode(barcode)
+                    android.util.Log.d("Navigation", "About to navigate back")
+                    navController.navigateUp()
+                },
+                onNavigateBack = {
+                    navController.navigateUp()
+                }
+            )
         }
     }
 }

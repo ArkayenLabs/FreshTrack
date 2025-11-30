@@ -57,6 +57,7 @@ fun ProductListScreen(
                             text = { Text("All Products") },
                             onClick = {
                                 viewModel.setFilter(ProductFilter.ALL)
+                                viewModel.selectCategory(null)
                                 showFilterMenu = false
                             }
                         )
@@ -64,6 +65,7 @@ fun ProductListScreen(
                             text = { Text("Expiring Soon") },
                             onClick = {
                                 viewModel.setFilter(ProductFilter.EXPIRING_SOON)
+                                viewModel.selectCategory(null)
                                 showFilterMenu = false
                             }
                         )
@@ -71,6 +73,7 @@ fun ProductListScreen(
                             text = { Text("Expired") },
                             onClick = {
                                 viewModel.setFilter(ProductFilter.EXPIRED)
+                                viewModel.selectCategory(null)
                                 showFilterMenu = false
                             }
                         )
@@ -112,91 +115,117 @@ fun ProductListScreen(
             }
         }
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                LoadingState("Loading products...")
-            }
-        } else if (uiState.products.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                EmptyState(
-                    title = "No Products Found",
-                    message = "Add your first product to start tracking",
-                    actionButton = {
-                        Button(onClick = onNavigateToAddProduct) {
-                            Icon(Icons.Default.Add, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Add Product")
-                        }
-                    }
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Category Filter Chips
-                item {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
-                        uiState.categories.forEach { category ->
-                            FilterChip(
-                                selected = false,
-                                onClick = { viewModel.selectCategory(category.name) },
-                                label = { Text(category.name) }
-                            )
-                        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Category Filter Chips - ALWAYS VISIBLE
+            if (uiState.categories.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .fillMaxWidth()
+                ) {
+                    uiState.categories.forEach { category ->
+                        FilterChip(
+                            selected = false,
+                            onClick = {
+                                viewModel.selectCategory(category.name)
+                            },
+                            label = { Text(category.name) }
+                        )
                     }
                 }
 
-                // Product List
-                items(
-                    items = uiState.products,
-                    key = { it.id }
-                ) { product ->
-                    ProductCard(
-                        product = product,
-                        onClick = { onNavigateToProductDetails(product.id) }
+                HorizontalDivider()
+            }
+            //Content Area
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LoadingState("Loading products...")
+                }
+            } else if (uiState.products.isEmpty()) {
+                // Empty state - ALWAYS SHOW WITH ADD BUTTON
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize())
+                {
+                    EmptyState(
+                        title = "No Products Found",
+                        message = "Add your first product to start tracking",
+                        actionButton = {
+                            Button(onClick = onNavigateToAddProduct) {
+                                Icon(Icons.Default.Add, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Add Product")
+                            }
+                        }
                     )
+                }
+            } else {
+                //Product List
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Category Filter Chips
+//                    item {
+//                        Row(
+//                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+//                            modifier = Modifier.padding(bottom = 8.dp)
+//                        ) {
+//                            uiState.categories.forEach { category ->
+//                                FilterChip(
+//                                    selected = false,
+//                                    onClick = { viewModel.selectCategory(category.name) },
+//                                    label = { Text(category.name) }
+//                                )
+//                            }
+//                        }
+//                    }
+
+                    // Product List
+                    items(
+                        items = uiState.products,
+                        key = { it.id }
+                    ) { product ->
+                        ProductCard(
+                            product = product,
+                            onClick = { onNavigateToProductDetails(product.id) }
+                        )
+                    }
                 }
             }
         }
-    }
 
-    // Delete Confirmation Dialog
-    showDeleteDialog?.let { productId ->
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Product") },
-            text = { Text("Are you sure you want to delete this product?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteProduct(productId)
-                        showDeleteDialog = null
+        // Delete Confirmation Dialog
+        showDeleteDialog?.let { productId ->
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = null },
+                title = { Text("Delete Product") },
+                text = { Text("Are you sure you want to delete this product?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteProduct(productId)
+                            showDeleteDialog = null
+                        }
+                    ) {
+                        Text("Delete")
                     }
-                ) {
-                    Text("Delete")
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = null }) {
+                        Text("Cancel")
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
+            )
+        }
     }
 }

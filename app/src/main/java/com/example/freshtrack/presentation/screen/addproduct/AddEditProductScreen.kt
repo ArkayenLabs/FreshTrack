@@ -20,6 +20,7 @@ import java.util.*
 @Composable
 fun AddEditProductScreen(
     productId: String?,
+    scannedBarcode: String? = null,
     onNavigateBack: () -> Unit,
     onNavigateToScanner: () -> Unit,
     viewModel: AddEditProductViewModel = koinViewModel()
@@ -32,6 +33,17 @@ fun AddEditProductScreen(
         productId?.let { viewModel.loadProduct(it) }
     }
 
+//    // Handle scanned barcode
+//    LaunchedEffect(scannedBarcode) {
+//        android.util.Log.d("AddEditProductScreen", "LaunchedEffect triggered with barcode: $scannedBarcode")
+//        scannedBarcode?.let {
+//            android.util.Log.d("AddEditProductScreen", "Setting barcode in ViewModel: $it")
+//            viewModel.updateBarcode(it)
+//            // Log the state after update
+//            android.util.Log.d("AddEditProductScreen", "Current barcode in UI state: ${viewModel.uiState.value.barcode}")
+//        }
+//    }
+
     // Show error snackbar
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(uiState.error) {
@@ -40,6 +52,11 @@ fun AddEditProductScreen(
             viewModel.clearError()
         }
     }
+
+//    // Debug: Log UI state changes
+//    LaunchedEffect(uiState.barcode) {
+//        android.util.Log.d("AddEditProductScreen", "UI State barcode changed to: ${uiState.barcode}")
+//    }
 
     Scaffold(
         topBar = {
@@ -72,25 +89,25 @@ fun AddEditProductScreen(
             )
 
             // Barcode with Scanner Button
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = uiState.barcode ?: "",
-                    onValueChange = { viewModel.updateBarcode(it) },
-                    label = { Text("Barcode (Optional)") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-
-                OutlinedButton(
-                    onClick = onNavigateToScanner,
-                    modifier = Modifier.height(56.dp)
-                ) {
-                    Icon(Icons.Default.QrCodeScanner, "Scan")
-                }
-            }
+//            Row(
+//                horizontalArrangement = Arrangement.spacedBy(8.dp)
+//            ) {
+//                OutlinedTextField(
+//                    value = uiState.barcode ?: "",
+//                    onValueChange = { viewModel.updateBarcode(it) },
+//                    label = { Text("Barcode (Optional)") },
+//                    modifier = Modifier.weight(1f),
+//                    singleLine = true,
+//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+//                )
+//
+//                FilledTonalButton(
+//                    onClick = onNavigateToScanner,
+//                    modifier = Modifier.height(56.dp)
+//                ) {
+//                    Icon(Icons.Default.QrCodeScanner, "Scan")
+//                }
+//            }
 
             // Category Dropdown
             var expandedCategory by remember { mutableStateOf(false) }
