@@ -1,5 +1,6 @@
 package com.example.freshtrack.presentation.screen.addproduct
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -20,8 +21,8 @@ import java.util.*
 @Composable
 fun AddEditProductScreen(
     productId: String?,
-    scannedBarcode: String? = null,
     onNavigateBack: () -> Unit,
+    scannedBarcode: String? = null,
     onNavigateToScanner: () -> Unit,
     viewModel: AddEditProductViewModel = koinViewModel()
 ) {
@@ -33,17 +34,6 @@ fun AddEditProductScreen(
         productId?.let { viewModel.loadProduct(it) }
     }
 
-//    // Handle scanned barcode
-//    LaunchedEffect(scannedBarcode) {
-//        android.util.Log.d("AddEditProductScreen", "LaunchedEffect triggered with barcode: $scannedBarcode")
-//        scannedBarcode?.let {
-//            android.util.Log.d("AddEditProductScreen", "Setting barcode in ViewModel: $it")
-//            viewModel.updateBarcode(it)
-//            // Log the state after update
-//            android.util.Log.d("AddEditProductScreen", "Current barcode in UI state: ${viewModel.uiState.value.barcode}")
-//        }
-//    }
-
     // Show error snackbar
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(uiState.error) {
@@ -52,11 +42,6 @@ fun AddEditProductScreen(
             viewModel.clearError()
         }
     }
-
-//    // Debug: Log UI state changes
-//    LaunchedEffect(uiState.barcode) {
-//        android.util.Log.d("AddEditProductScreen", "UI State barcode changed to: ${uiState.barcode}")
-//    }
 
     Scaffold(
         topBar = {
@@ -89,25 +74,25 @@ fun AddEditProductScreen(
             )
 
             // Barcode with Scanner Button
-//            Row(
-//                horizontalArrangement = Arrangement.spacedBy(8.dp)
-//            ) {
-//                OutlinedTextField(
-//                    value = uiState.barcode ?: "",
-//                    onValueChange = { viewModel.updateBarcode(it) },
-//                    label = { Text("Barcode (Optional)") },
-//                    modifier = Modifier.weight(1f),
-//                    singleLine = true,
-//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-//                )
-//
-//                FilledTonalButton(
-//                    onClick = onNavigateToScanner,
-//                    modifier = Modifier.height(56.dp)
-//                ) {
-//                    Icon(Icons.Default.QrCodeScanner, "Scan")
-//                }
-//            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = uiState.barcode ?: "",
+                    onValueChange = { viewModel.updateBarcode(it) },
+                    label = { Text("Barcode (Optional)") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                OutlinedButton(
+                    onClick = onNavigateToScanner,
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Icon(Icons.Default.QrCodeScanner, "Scan")
+                }
+            }
 
             // Category Dropdown
             var expandedCategory by remember { mutableStateOf(false) }
@@ -153,12 +138,15 @@ fun AddEditProductScreen(
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Expiry Date *") },
+                placeholder = { Text("Select expiry date") },
                 trailingIcon = {
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(Icons.Default.CalendarToday, "Pick Date")
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true }
             )
 
             if (showDatePicker) {
@@ -188,13 +176,14 @@ fun AddEditProductScreen(
 
             // Quantity
             OutlinedTextField(
-                value = uiState.quantity.toString(),
-                onValueChange = {
-                    it.toIntOrNull()?.let { qty -> viewModel.updateQuantity(qty) }
-                },
+                value = uiState.quantity,
+                onValueChange = { viewModel.updateQuantity(it) },
                 label = { Text("Quantity") },
+                placeholder = {Text("Enter quantity")},
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                supportingText = {Text("Minimum: 1", style = MaterialTheme.typography.bodySmall)}
             )
 
             // Notes

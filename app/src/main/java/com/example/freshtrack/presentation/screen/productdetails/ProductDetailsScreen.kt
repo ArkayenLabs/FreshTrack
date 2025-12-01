@@ -87,7 +87,7 @@ fun ProductDetailsScreen(
                         modifier = Modifier.align(Alignment.Start)
                     )
 
-                    HorizontalDivider()
+                    Divider()
 
                     // Details Card
                     Card(

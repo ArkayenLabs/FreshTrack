@@ -51,7 +51,7 @@ class AddEditProductViewModel(
                         barcode = it.barcode,
                         selectedCategory = it.category,
                         expiryDate = it.expiryDate,
-                        quantity = it.quantity,
+                        quantity = it.quantity.toString(),  // Convert Int to String
                         notes = it.notes ?: "",
                         imageUri = it.imageUri,
                         notificationEnabled = it.notificationEnabled,
@@ -90,8 +90,11 @@ class AddEditProductViewModel(
         _uiState.update { it.copy(expiryDate = timestamp) }
     }
 
-    fun updateQuantity(quantity: Int) {
-        _uiState.update { it.copy(quantity = quantity.coerceAtLeast(1)) }
+    fun updateQuantity(quantity: String) {
+        // Only allow numbers
+        if (quantity.isEmpty() || quantity.all { it.isDigit() }) {
+            _uiState.update { it.copy(quantity = quantity) }
+        }
     }
 
     fun updateNotes(notes: String) {
@@ -123,6 +126,13 @@ class AddEditProductViewModel(
             return
         }
 
+        // Validate quantity
+        val quantityInt = state.quantity.toIntOrNull()
+        if (quantityInt == null || quantityInt < 1) {
+            _uiState.update { it.copy(error = "Please enter a valid quantity (minimum 1)") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
 
@@ -134,7 +144,7 @@ class AddEditProductViewModel(
                     category = state.selectedCategory,
                     expiryDate = state.expiryDate,
                     addedDate = System.currentTimeMillis(),
-                    quantity = state.quantity,
+                    quantity = quantityInt,  // Use validated quantity
                     notes = state.notes.takeIf { it.isNotBlank() },
                     imageUri = state.imageUri,
                     notificationEnabled = state.notificationEnabled,
@@ -175,7 +185,7 @@ data class AddEditProductUiState(
     val selectedCategory: String = "Food",
     val availableCategories: List<Category> = emptyList(),
     val expiryDate: Long = 0L,
-    val quantity: Int = 1,
+    val quantity: String = "",  // Changed from Int to String, default empty
     val notes: String = "",
     val imageUri: String? = null,
     val notificationEnabled: Boolean = true,

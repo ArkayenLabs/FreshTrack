@@ -2,6 +2,7 @@ package com.example.freshtrack.presentation.screen.productlist
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -120,15 +121,15 @@ fun ProductListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Category Filter Chips - ALWAYS VISIBLE
+            // Category Filter Chips - ALWAYS VISIBLE with horizontal scroll
             if (uiState.categories.isNotEmpty()) {
-                Row(
+                LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .fillMaxWidth()
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    uiState.categories.forEach { category ->
+                    items(uiState.categories.size) { index ->
+                        val category = uiState.categories[index]
                         FilterChip(
                             selected = false,
                             onClick = {
@@ -139,20 +140,17 @@ fun ProductListScreen(
                     }
                 }
 
-                HorizontalDivider()
+                HorizontalDivider(thickness = 1.dp)
             }
-            //Content Area
+
+            // Content Area
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     LoadingState("Loading products...")
                 }
             } else if (uiState.products.isEmpty()) {
                 // Empty state - ALWAYS SHOW WITH ADD BUTTON
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize())
-                {
+                Box(modifier = Modifier.fillMaxSize()) {
                     EmptyState(
                         title = "No Products Found",
                         message = "Add your first product to start tracking",
@@ -166,31 +164,12 @@ fun ProductListScreen(
                     )
                 }
             } else {
-                //Product List
+                // Product List
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Category Filter Chips
-//                    item {
-//                        Row(
-//                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-//                            modifier = Modifier.padding(bottom = 8.dp)
-//                        ) {
-//                            uiState.categories.forEach { category ->
-//                                FilterChip(
-//                                    selected = false,
-//                                    onClick = { viewModel.selectCategory(category.name) },
-//                                    label = { Text(category.name) }
-//                                )
-//                            }
-//                        }
-//                    }
-
-                    // Product List
                     items(
                         items = uiState.products,
                         key = { it.id }
@@ -203,29 +182,29 @@ fun ProductListScreen(
                 }
             }
         }
+    }
 
-        // Delete Confirmation Dialog
-        showDeleteDialog?.let { productId ->
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = null },
-                title = { Text("Delete Product") },
-                text = { Text("Are you sure you want to delete this product?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.deleteProduct(productId)
-                            showDeleteDialog = null
-                        }
-                    ) {
-                        Text("Delete")
+    // Delete Confirmation Dialog
+    showDeleteDialog?.let { productId ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text("Delete Product") },
+            text = { Text("Are you sure you want to delete this product?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteProduct(productId)
+                        showDeleteDialog = null
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = null }) {
-                        Text("Cancel")
-                    }
+                ) {
+                    Text("Delete")
                 }
-            )
-        }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
