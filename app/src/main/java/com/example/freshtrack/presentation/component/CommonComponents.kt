@@ -1,8 +1,16 @@
 package com.example.freshtrack.presentation.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -22,8 +31,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Product Card Component
- * Displays product information with expiry badge
+ * Modern Product Card with icon-first design
+ * Minimalist, clean, with subtle elevation
  */
 @Composable
 fun ProductCard(
@@ -38,7 +47,8 @@ fun ProductCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        shape = RoundedCornerShape(16.dp) // More rounded for modern look
     ) {
         Row(
             modifier = Modifier
@@ -47,46 +57,87 @@ fun ProductCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Product Info
-            Column(
-                modifier = Modifier.weight(1f)
+            // Icon + Info Section (60% width)
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Category Icon with colored background
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(getCategoryColor(product.category).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Category chip
-                    CategoryChip(category = product.category)
-
-                    // Quantity
-                    Text(
-                        text = "Qty: ${product.quantity}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Icon(
+                        imageVector = getCategoryIcon(product.category),
+                        contentDescription = product.category,
+                        tint = getCategoryColor(product.category),
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                // Product Info
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = product.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
 
-                // Expiry date
-                Text(
-                    text = "Expires: ${formatDate(product.expiryDate)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Quantity with icon
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Inventory2,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${product.quantity}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                        // Expiry date with icon
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = formatDateShort(product.expiryDate),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
 
-            // Expiry urgency badge
+            // Expiry Badge (10% width - accent color)
             ExpiryBadge(
                 daysRemaining = product.daysUntilExpiry(),
                 urgency = product.getUrgency()
@@ -96,8 +147,7 @@ fun ProductCard(
 }
 
 /**
- * Expiry Badge Component
- * Color-coded badge showing days until expiry
+ * Modern Expiry Badge - Compact and colorful
  */
 @Composable
 fun ExpiryBadge(
@@ -105,71 +155,74 @@ fun ExpiryBadge(
     urgency: ExpiryUrgency,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = when (urgency) {
-        ExpiryUrgency.SAFE -> UrgencySafe
-        ExpiryUrgency.WARNING -> UrgencyWarning
-        ExpiryUrgency.CRITICAL -> UrgencyCritical
-        ExpiryUrgency.EXPIRED -> UrgencyExpired
+    val (backgroundColor, textColor) = when (urgency) {
+        ExpiryUrgency.SAFE -> UrgencySafe to Color.White
+        ExpiryUrgency.WARNING -> UrgencyWarning to Color.White
+        ExpiryUrgency.CRITICAL -> UrgencyCritical to Color.White
+        ExpiryUrgency.EXPIRED -> UrgencyExpired to Color.White
     }
 
     val text = when {
-        daysRemaining < 0 -> "Expired"
-        daysRemaining == 0L -> "Today"
-        daysRemaining == 1L -> "1 day"
-        else -> "$daysRemaining days"
+        daysRemaining < 0 -> "!"
+        daysRemaining == 0L -> "0d"
+        daysRemaining < 10 -> "${daysRemaining}d"
+        else -> "9+"
     }
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(backgroundColor.copy(alpha = 0.15f))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(backgroundColor),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = backgroundColor
+            color = textColor
         )
     }
 }
 
 /**
- * Category Chip Component
- * Small colored chip for product category
+ * Minimalist Category Chip
  */
 @Composable
 fun CategoryChip(
     category: String,
     modifier: Modifier = Modifier
 ) {
-    val categoryColor = when (category.lowercase()) {
-        "food" -> CategoryFood
-        "medicine" -> CategoryMedicine
-        "cosmetics" -> CategoryCosmetics
-        "beverages" -> CategoryBeverages
-        else -> CategoryOther
-    }
+    val categoryColor = getCategoryColor(category)
 
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(4.dp),
+        shape = RoundedCornerShape(8.dp),
         color = categoryColor.copy(alpha = 0.15f)
     ) {
-        Text(
-            text = category,
-            style = MaterialTheme.typography.labelSmall,
-            color = categoryColor,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = getCategoryIcon(category),
+                contentDescription = null,
+                tint = categoryColor,
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = category,
+                style = MaterialTheme.typography.labelSmall,
+                color = categoryColor,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 }
 
 /**
- * Empty State Component
- * Shown when there are no items to display
+ * Modern Empty State with icon
  */
 @Composable
 fun EmptyState(
@@ -177,10 +230,10 @@ fun EmptyState(
     message: String,
     icon: @Composable () -> Unit = {
         Icon(
-            imageVector = Icons.Default.ShoppingCart,
+            imageVector = Icons.Default.Inventory2,
             contentDescription = null,
             modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
         )
     },
     actionButton: (@Composable () -> Unit)? = null,
@@ -189,18 +242,19 @@ fun EmptyState(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(32.dp),
+            .padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         icon()
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -219,8 +273,7 @@ fun EmptyState(
 }
 
 /**
- * Loading State Component
- * Shown while data is loading
+ * Clean Loading State
  */
 @Composable
 fun LoadingState(
@@ -230,11 +283,13 @@ fun LoadingState(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(32.dp),
+            .padding(48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(
+            color = MaterialTheme.colorScheme.primary
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -247,14 +302,13 @@ fun LoadingState(
 }
 
 /**
- * Stat Card Component
- * For dashboard statistics
+ * Modern Stat Card with icon - Icon first design
  */
 @Composable
 fun StatCard(
     title: String,
     value: String,
-    icon: @Composable () -> Unit,
+    icon: ImageVector,
     backgroundColor: Color,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -262,42 +316,79 @@ fun StatCard(
     Card(
         modifier = modifier.clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = backgroundColor.copy(alpha = 0.1f)
+            containerColor = backgroundColor.copy(alpha = 0.12f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                icon()
-
                 Text(
                     text = value,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = backgroundColor
                 )
+
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(backgroundColor.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = backgroundColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }
 
-// Helper function to format date
+// Helper functions
+private fun getCategoryColor(category: String): Color {
+    return when (category.lowercase()) {
+        "food" -> CategoryFood
+        "medicine" -> CategoryMedicine
+        "cosmetics" -> CategoryCosmetics
+        "beverages" -> CategoryBeverages
+        else -> CategoryOther
+    }
+}
+
+private fun getCategoryIcon(category: String): ImageVector {
+    return when (category.lowercase()) {
+        "food" -> Icons.Default.Restaurant
+        "medicine" -> Icons.Default.MedicalServices
+        "cosmetics" -> Icons.Default.Face
+        "beverages" -> Icons.Default.LocalDrink
+        else -> Icons.Default.Category
+    }
+}
+
+private fun formatDateShort(timestamp: Long): String {
+    val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
+    return sdf.format(Date(timestamp))
+}
+
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     return sdf.format(Date(timestamp))
