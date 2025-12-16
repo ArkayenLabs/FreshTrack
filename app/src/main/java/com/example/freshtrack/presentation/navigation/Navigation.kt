@@ -10,17 +10,21 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.presentation.screen.dashboard.DashboardScreen
 import com.example.freshtrack.presentation.screen.productlist.ProductListScreen
 import com.example.freshtrack.presentation.screen.addproduct.AddEditProductScreen
 import com.example.freshtrack.presentation.screen.productdetails.ProductDetailsScreen
 import com.example.freshtrack.presentation.screen.settings.SettingsScreen
 import com.example.freshtrack.presentation.screen.scanner.BarcodeScannerScreen
+import com.example.freshtrack.presentation.screen.onboarding.OnboardingScreen
+import org.koin.compose.koinInject
 
 /**
  * Navigation routes for the app
  */
 sealed class Screen(val route: String) {
+    object Onboarding : Screen("onboarding")
     object Dashboard : Screen("dashboard")
     object ProductList : Screen("product_list")
     object AddProduct : Screen("add_product")
@@ -33,6 +37,7 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object BarcodeScanner : Screen("barcode_scanner")
 }
+
 /**
  * Shared state for barcode scanning result
  */
@@ -58,8 +63,15 @@ class ScannerState {
 @Composable
 fun FreshTrackNavGraph(
     navController: NavHostController,
-    startDestination: String = Screen.Dashboard.route
+    onboardingPreferences: OnboardingPreferences = koinInject()
 ) {
+    // Determine start destination based on onboarding status
+    val startDestination = if (onboardingPreferences.isOnboardingCompleted()) {
+        Screen.Dashboard.route
+    } else {
+        Screen.Onboarding.route
+    }
+
     // Shared scanner state
     val scannerState = remember { ScannerState() }
 
@@ -67,6 +79,21 @@ fun FreshTrackNavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
+        // Onboarding Screen
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onComplete = {
+                    // Mark onboarding as completed
+                    onboardingPreferences.setOnboardingCompleted()
+
+                    // Navigate to dashboard and remove onboarding from back stack
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Dashboard Screen
         composable(Screen.Dashboard.route) {
             DashboardScreen(
@@ -107,7 +134,6 @@ fun FreshTrackNavGraph(
             // Get scanned barcode if available
             val scannedBarcode = scannerState.scannedBarcode
             android.util.Log.d("Navigation", "AddProduct composable - scannedBarcode: $scannedBarcode")
-
 
             AddEditProductScreen(
                 productId = null,

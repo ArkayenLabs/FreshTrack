@@ -1,6 +1,7 @@
 package com.example.freshtrack.di
 
 import com.example.freshtrack.data.local.FreshTrackDatabase
+import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.data.repository.*
 import com.example.freshtrack.presentation.viewmodel.*
 import org.koin.android.ext.koin.androidContext
@@ -36,6 +37,16 @@ val repositoryModule = module {
     single<CategoryRepository> {
         CategoryRepositoryImpl(categoryDao = get())
     }
+}
+
+/**
+ * Koin module for preferences and settings
+ * Provides SharedPreferences-based managers
+ */
+val preferencesModule = module {
+
+    // Onboarding Preferences
+    single { OnboardingPreferences(androidContext()) }
 }
 
 /**
@@ -87,5 +98,6 @@ val viewModelModule = module {
 val appModules = listOf(
     databaseModule,
     repositoryModule,
+    preferencesModule,
     viewModelModule
 )
