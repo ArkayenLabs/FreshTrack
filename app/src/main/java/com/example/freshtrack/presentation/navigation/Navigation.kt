@@ -18,12 +18,14 @@ import com.example.freshtrack.presentation.screen.productdetails.ProductDetailsS
 import com.example.freshtrack.presentation.screen.settings.SettingsScreen
 import com.example.freshtrack.presentation.screen.scanner.BarcodeScannerScreen
 import com.example.freshtrack.presentation.screen.onboarding.OnboardingScreen
+import com.example.freshtrack.presentation.screen.splash.SplashScreen
 import org.koin.compose.koinInject
 
 /**
  * Navigation routes for the app
  */
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
     object Onboarding : Screen("onboarding")
     object Dashboard : Screen("dashboard")
     object ProductList : Screen("product_list")
@@ -65,20 +67,33 @@ fun FreshTrackNavGraph(
     navController: NavHostController,
     onboardingPreferences: OnboardingPreferences = koinInject()
 ) {
-    // Determine start destination based on onboarding status
-    val startDestination = if (onboardingPreferences.isOnboardingCompleted()) {
-        Screen.Dashboard.route
-    } else {
-        Screen.Onboarding.route
-    }
+
 
     // Shared scanner state
     val scannerState = remember { ScannerState() }
 
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = Screen.Splash.route
     ) {
+        // Onboarding Screen
+        composable(Screen.Splash.route) {
+            SplashScreen(
+                onSplashComplete = {
+                    val nextDestination = if(onboardingPreferences.isOnboardingCompleted()){
+                        Screen.Dashboard.route
+                    }else{
+                        Screen.Onboarding.route
+                    }
+
+                    // Navigate to dashboard and remove onboarding from back stack
+                    navController.navigate(nextDestination) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Onboarding Screen
         composable(Screen.Onboarding.route) {
             OnboardingScreen(

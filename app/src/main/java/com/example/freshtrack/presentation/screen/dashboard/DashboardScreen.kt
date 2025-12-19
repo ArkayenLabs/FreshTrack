@@ -4,12 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.presentation.component.*
 import com.example.freshtrack.presentation.theme.*
@@ -33,7 +36,7 @@ fun DashboardScreen(
                 title = {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.Eco,
@@ -76,31 +79,35 @@ fun DashboardScreen(
             )
         }
     ) { paddingValues ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                LoadingState(message = "Loading products...")
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LoadingState(message = "Loading products...")
+                }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // Statistics Cards (60% primary color usage)
-                item {
+
+            uiState.totalActiveProducts == 0 -> {
+                // Empty State - Separate layout
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    // Statistics Cards at top
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         StatCard(
                             title = "Products",
-                            value = uiState.totalActiveProducts.toString(),
+                            value = "0",
                             icon = Icons.Default.Inventory2,
                             backgroundColor = MaterialTheme.colorScheme.primary,
                             onClick = onNavigateToProductList,
@@ -109,101 +116,167 @@ fun DashboardScreen(
 
                         StatCard(
                             title = "Expiring",
-                            value = (uiState.expiringToday.size + uiState.expiringThisWeek.size).toString(),
+                            value = "0",
                             icon = Icons.Default.Warning,
                             backgroundColor = UrgencyWarning,
                             modifier = Modifier.weight(1f)
                         )
                     }
-                }
 
-                // Critical Items Section
-                if (uiState.expiringToday.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "Expiring Today",
-                            icon = Icons.Default.Error,
-                            color = UrgencyCritical,
-                            count = uiState.expiringToday.size
-                        )
-                    }
+                    // Centered empty state content
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Eco,
+                                contentDescription = null,
+                                modifier = Modifier.size(80.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            )
 
-                    items(uiState.expiringToday) { product ->
-                        ProductCard(
-                            product = product,
-                            onClick = { onNavigateToProductDetails(product.id) }
-                        )
-                    }
-                }
-
-                // Expiring This Week
-                if (uiState.expiringThisWeek.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "This Week",
-                            icon = Icons.Default.CalendarToday,
-                            color = UrgencyWarning,
-                            count = uiState.expiringThisWeek.size
-                        )
-                    }
-
-                    items(uiState.expiringThisWeek.take(5)) { product ->
-                        ProductCard(
-                            product = product,
-                            onClick = { onNavigateToProductDetails(product.id) }
-                        )
-                    }
-                }
-
-                // Expired Products
-                if (uiState.expiredProducts.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "Expired",
-                            icon = Icons.Default.Block,
-                            color = UrgencyExpired,
-                            count = uiState.expiredProducts.size
-                        )
-                    }
-
-                    items(uiState.expiredProducts.take(3)) { product ->
-                        ProductCard(
-                            product = product,
-                            onClick = { onNavigateToProductDetails(product.id) }
-                        )
-                    }
-                }
-
-                // Empty State
-                if (uiState.totalActiveProducts == 0) {
-                    item {
-                        EmptyState(
-                            title = "Start Tracking",
-                            message = "Add your first product to reduce food waste",
-                            icon = {
-                                Icon(
-                                    Icons.Default.Eco,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(80.dp),
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Start Tracking",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                            },
-                            actionButton = {
-                                FilledTonalButton(
-                                    onClick = onNavigateToAddProduct,
-                                    modifier = Modifier.fillMaxWidth(0.6f)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Add Product")
-                                }
+
+                                Text(
+                                    text = "Add your first product to reduce waste",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
                             }
-                        )
+
+                            Button(
+                                onClick = onNavigateToAddProduct,
+                                modifier = Modifier
+                                    .fillMaxWidth(0.7f)
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Add Product",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
                 }
+            }
 
-                // View All Button
-                if (uiState.totalActiveProducts > 0) {
+            else -> {
+                // Product List
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // Statistics Cards (60% primary color usage)
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            StatCard(
+                                title = "Products",
+                                value = uiState.totalActiveProducts.toString(),
+                                icon = Icons.Default.Inventory2,
+                                backgroundColor = MaterialTheme.colorScheme.primary,
+                                onClick = onNavigateToProductList,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            StatCard(
+                                title = "Expiring",
+                                value = (uiState.expiringToday.size + uiState.expiringThisWeek.size).toString(),
+                                icon = Icons.Default.Warning,
+                                backgroundColor = UrgencyWarning,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // Critical Items Section
+                    if (uiState.expiringToday.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "Expiring Today",
+                                icon = Icons.Default.Error,
+                                color = UrgencyCritical,
+                                count = uiState.expiringToday.size
+                            )
+                        }
+
+                        items(uiState.expiringToday) { product ->
+                            ProductCard(
+                                product = product,
+                                onClick = { onNavigateToProductDetails(product.id) }
+                            )
+                        }
+                    }
+
+                    // Expiring This Week
+                    if (uiState.expiringThisWeek.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "This Week",
+                                icon = Icons.Default.CalendarToday,
+                                color = UrgencyWarning,
+                                count = uiState.expiringThisWeek.size
+                            )
+                        }
+
+                        items(uiState.expiringThisWeek.take(5)) { product ->
+                            ProductCard(
+                                product = product,
+                                onClick = { onNavigateToProductDetails(product.id) }
+                            )
+                        }
+                    }
+
+                    // Expired Products
+                    if (uiState.expiredProducts.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "Expired",
+                                icon = Icons.Default.Block,
+                                color = UrgencyExpired,
+                                count = uiState.expiredProducts.size
+                            )
+                        }
+
+                        items(uiState.expiredProducts.take(3)) { product ->
+                            ProductCard(
+                                product = product,
+                                onClick = { onNavigateToProductDetails(product.id) }
+                            )
+                        }
+                    }
+
+                    // View All Button
                     item {
                         OutlinedButton(
                             onClick = onNavigateToProductList,
@@ -233,7 +306,7 @@ private fun SectionHeader(
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
@@ -242,7 +315,7 @@ private fun SectionHeader(
                     color.copy(alpha = 0.15f),
                     shape = androidx.compose.foundation.shape.CircleShape
                 ),
-            contentAlignment = androidx.compose.ui.Alignment.Center
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
