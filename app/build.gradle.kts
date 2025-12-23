@@ -77,6 +77,8 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     ksp("androidx.room:room-compiler:2.6.1")
 
+    implementation("com.google.android.gms:play-services-oss-licenses:17.0.1")
+
     // Camera & Barcode
     implementation("androidx.camera:camera-camera2:1.5.1")
     implementation("androidx.camera:camera-lifecycle:1.5.1")
