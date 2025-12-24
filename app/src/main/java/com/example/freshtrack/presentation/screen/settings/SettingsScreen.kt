@@ -1,5 +1,6 @@
 package com.example.freshtrack.presentation.screen.settings
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,19 +17,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.freshtrack.presentation.navigation.Screen
 import com.example.freshtrack.presentation.viewmodel.SettingsViewModel
+import com.google.android.gms.oss.licenses.OssLicensesMenuActivity
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToLicenses: () -> Unit,
+
     viewModel: SettingsViewModel = koinViewModel()
+
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDaysDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -131,7 +139,7 @@ fun SettingsScreen(
                     icon = Icons.Outlined.Code,
                     title = "Open Source Licenses",
                     description = "View third-party licenses",
-                    onClick = { /* TODO: Show OSS.  licenses */ }
+                    onClick = onNavigateToLicenses
                 )
 
                 SettingsItemCard(

@@ -14,6 +14,7 @@ import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.presentation.screen.dashboard.DashboardScreen
 import com.example.freshtrack.presentation.screen.productlist.ProductListScreen
 import com.example.freshtrack.presentation.screen.addproduct.AddEditProductScreen
+import com.example.freshtrack.presentation.screen.licenses.CustomOSSLicensesScreen
 import com.example.freshtrack.presentation.screen.productdetails.ProductDetailsScreen
 import com.example.freshtrack.presentation.screen.settings.SettingsScreen
 import com.example.freshtrack.presentation.screen.scanner.BarcodeScannerScreen
@@ -30,6 +31,8 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object ProductList : Screen("product_list")
     object AddProduct : Screen("add_product")
+    object OpenSourceLicenses : Screen("oss_licenses")
+
     object EditProduct : Screen("edit_product/{productId}") {
         fun createRoute(productId: String) = "edit_product/$productId"
     }
@@ -186,6 +189,22 @@ fun FreshTrackNavGraph(
                 }
             )
         }
+        // Settings Screen
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = {
+                    navController.navigateUp()
+                },
+                onNavigateToLicenses = {
+                    navController.navigate(Screen.OpenSourceLicenses.route)
+                }
+            )
+        }
+        composable(Screen.OpenSourceLicenses.route) {
+            CustomOSSLicensesScreen(
+                onNavigateBack = { navController.navigateUp() }
+            )
+        }
 
         // Product Details Screen
         composable(
@@ -206,14 +225,7 @@ fun FreshTrackNavGraph(
             )
         }
 
-        // Settings Screen
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateBack = {
-                    navController.navigateUp()
-                }
-            )
-        }
+
 
         // Barcode Scanner Screen
         composable(Screen.BarcodeScanner.route) {

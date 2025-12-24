@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)          // ← replace the old id("com.google.devtools.ksp") version "2.3.2"
-
+    alias(libs.plugins.gms.oss.licenses)
 }
 
 android {
@@ -77,7 +77,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     ksp("androidx.room:room-compiler:2.6.1")
 
-    implementation("com.google.android.gms:play-services-oss-licenses:17.0.1")
+    implementation("com.google.android.gms:play-services-oss-licenses:17.1.0")
 
     // Camera & Barcode
     implementation("androidx.camera:camera-camera2:1.5.1")
