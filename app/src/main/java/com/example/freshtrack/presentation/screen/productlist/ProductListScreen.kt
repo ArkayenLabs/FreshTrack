@@ -160,12 +160,8 @@ fun ProductListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Category Filter Chips - Enhanced Design
             if (uiState.categories.isNotEmpty()) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 1.dp
-                ) {
+
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
@@ -176,13 +172,14 @@ fun ProductListScreen(
 
                             EnhancedCategoryChip(
                                 category = category.name,
-                                isSelected = false,
+                                isSelected = uiState.selectedCategory == category.name,
                                 onClick = {
+                                    val newSelection = if (uiState.selectedCategory == category.name) null else category.name
                                     viewModel.selectCategory(category.name)
                                 }
                             )
                         }
-                    }
+
                 }
 
                 HorizontalDivider(

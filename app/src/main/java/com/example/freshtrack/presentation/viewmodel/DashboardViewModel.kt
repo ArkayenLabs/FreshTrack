@@ -165,6 +165,7 @@ class ProductListViewModel(
 
     fun selectCategory(category: String?) {
         _selectedCategory.value = category
+        _uiState.update { it.copy(selectedCategory = category) }
         if (category != null) {
             _currentFilter.value = ProductFilter.BY_CATEGORY
         }
@@ -195,6 +196,7 @@ class ProductListViewModel(
 data class ProductListUiState(
     val products: List<Product> = emptyList(),
     val categories: List<Category> = emptyList(),
+    val selectedCategory: String? = null, // <-- Add this line
     val isLoading: Boolean = true,
     val error: String? = null
 )

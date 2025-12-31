@@ -28,6 +28,7 @@ fun DashboardScreen(
     onNavigateToSettings: () -> Unit,
     viewModel: DashboardViewModel = koinViewModel()
 ) {
+    RequestNotificationPermissionSimple()
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(

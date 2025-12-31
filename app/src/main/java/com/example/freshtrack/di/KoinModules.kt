@@ -47,6 +47,9 @@ val preferencesModule = module {
 
     // Onboarding Preferences
     single { OnboardingPreferences(androidContext()) }
+
+    // Theme Manager
+    single { ThemeManager(androidContext()) }
 }
 
 /**
