@@ -1,6 +1,7 @@
 package com.example.freshtrack.presentation.screen.settings
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -146,7 +147,10 @@ fun SettingsScreen(
                     icon = Icons.Outlined.PrivacyTip,
                     title = "Privacy Policy",
                     description = "How we handle your data",
-                    onClick = { /* TODO: Open privacy policy */ }
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://balajireddy1.github.io/freshtrack-privacy-policy/"))
+                        context.startActivity(intent)
+                    }
                 )
 
                 SettingsItemCard(
