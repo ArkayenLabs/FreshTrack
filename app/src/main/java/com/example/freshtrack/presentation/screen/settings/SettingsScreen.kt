@@ -2,6 +2,7 @@ package com.example.freshtrack.presentation.screen.settings
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,10 +22,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.freshtrack.presentation.navigation.Screen
+import com.example.freshtrack.data.export.CsvExporter
+import com.example.freshtrack.data.repository.ProductRepository
 import com.example.freshtrack.presentation.viewmodel.SettingsViewModel
-import com.google.android.gms.oss.licenses.OssLicensesMenuActivity
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +41,10 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDaysDialog by remember { mutableStateOf(false) }
+    var isExporting by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val productRepository: ProductRepository = koinInject()
 
     Scaffold(
         topBar = {
@@ -90,19 +97,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Appearance Section (Future feature)
-            SettingsSection(
-                title = "Appearance",
-                icon = Icons.Outlined.Palette
-            ) {
-                SettingsItemCard(
-                    icon = Icons.Outlined.DarkMode,
-                    title = "Theme",
-                    description = "System default",
-                    onClick = { /* TODO: Theme selector */ }
-                )
-            }
-
             // Data & Storage Section
             SettingsSection(
                 title = "Data & Storage",
@@ -110,9 +104,32 @@ fun SettingsScreen(
             ) {
                 SettingsItemCard(
                     icon = Icons.Outlined.Download,
-                    title = "Export Data",
+                    title = if (isExporting) "Exporting..." else "Export Data",
                     description = "Export products to CSV",
-                    onClick = { /* TODO: Export functionality */ }
+                    onClick = {
+                        if (!isExporting) {
+                            isExporting = true
+                            scope.launch {
+                                try {
+                                    val products = productRepository.getAllProducts().first()
+                                    if (products.isEmpty()) {
+                                        Toast.makeText(context, "No products to export", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        val shareIntent = CsvExporter.exportToCSV(context, products)
+                                        if (shareIntent != null) {
+                                            context.startActivity(Intent.createChooser(shareIntent, "Export Products"))
+                                        } else {
+                                            Toast.makeText(context, "Failed to create export file", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                } finally {
+                                    isExporting = false
+                                }
+                            }
+                        }
+                    }
                 )
 
                 SettingsItemCard(
@@ -132,8 +149,9 @@ fun SettingsScreen(
                 SettingsItemCard(
                     icon = Icons.Outlined.AppSettingsAlt,
                     title = "App Version",
-                    description = "1.0.0 (Beta)",
-                    onClick = { }
+                    description = "1.0.0",
+                    onClick = { },
+                    enabled = false
                 )
 
                 SettingsItemCard(
@@ -157,7 +175,20 @@ fun SettingsScreen(
                     icon = Icons.Outlined.Feedback,
                     title = "Send Feedback",
                     description = "Help us improve FreshTrack",
-                    onClick = { /* TODO: Feedback form */ }
+                    onClick = {
+                        val deviceInfo = "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}\nApp Version: 1.0.0"
+                        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:")
+                            putExtra(Intent.EXTRA_EMAIL, arrayOf("arkayenlabs@gmail.com"))
+                            putExtra(Intent.EXTRA_SUBJECT, "[FreshTrack] App Feedback")
+                            putExtra(Intent.EXTRA_TEXT, "\n\n---\n$deviceInfo")
+                        }
+                        try {
+                            context.startActivity(Intent.createChooser(emailIntent, "Send Feedback"))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 )
             }
 

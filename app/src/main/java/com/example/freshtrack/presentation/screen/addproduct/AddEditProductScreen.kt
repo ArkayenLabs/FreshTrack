@@ -49,6 +49,11 @@ fun AddEditProductScreen(
         productId?.let { viewModel.loadProduct(it) }
     }
 
+    // Update barcode from scanner
+    LaunchedEffect(scannedBarcode) {
+        scannedBarcode?.let { viewModel.updateBarcode(it) }
+    }
+
     // Show error snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -155,7 +160,7 @@ fun AddEditProductScreen(
                     // Barcode with Scanner
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.Top
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
                             value = uiState.barcode ?: "",

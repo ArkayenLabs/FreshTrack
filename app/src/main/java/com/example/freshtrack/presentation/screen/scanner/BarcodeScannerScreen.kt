@@ -98,16 +98,11 @@ fun BarcodeScannerScreen(
             if (hasCameraPermission) {
                 CameraPreview(
                     onBarcodeScanned = { barcode ->
-                        android.util.Log.d("BarcodeScannerScreen", "Barcode scanned: $barcode")
                         kotlinx.coroutines.MainScope().launch {
                             snackbarHostState.showSnackbar("Barcode: $barcode")
                         }
+                        // Navigation is handled by onBarcodeScanned callback in Navigation.kt
                         onBarcodeScanned(barcode)
-                        // Delay before navigating back to show snackbar
-                        kotlinx.coroutines.MainScope().launch {
-                            kotlinx.coroutines.delay(500)
-                            onNavigateBack()
-                        }
                     },
                     onCameraControlReady = { control ->
                         cameraControl = control
@@ -277,17 +272,15 @@ private fun processImageProxy(
 
         barcodeScanner.process(image)
             .addOnSuccessListener { barcodes ->
-                android.util.Log.d("BarcodeScanner", "Barcodes detected: ${barcodes.size}")
                 for (barcode in barcodes) {
                     barcode.rawValue?.let { value ->
-                        android.util.Log.d("BarcodeScanner", "Barcode found: $value")
                         onBarcodeDetected(value)
                         return@addOnSuccessListener
                     }
                 }
             }
             .addOnFailureListener { e ->
-                android.util.Log.e("BarcodeScanner", "Barcode detection failed", e)
+                e.printStackTrace()
             }
             .addOnCompleteListener {
                 imageProxy.close()

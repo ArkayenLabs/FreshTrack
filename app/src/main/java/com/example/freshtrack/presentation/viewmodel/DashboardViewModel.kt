@@ -38,6 +38,9 @@ class DashboardViewModel(
                 val expiringThisWeek = allProducts.filter {
                     it.daysUntilExpiry() in 1..7
                 }
+                val safeProducts = allProducts.filter {
+                    it.daysUntilExpiry() > 7
+                }
                 val criticalItems = allProducts.filter {
                     it.getUrgency() == ExpiryUrgency.CRITICAL
                 }
@@ -46,6 +49,7 @@ class DashboardViewModel(
                     totalActiveProducts = activeCount,
                     expiringToday = expiringToday,
                     expiringThisWeek = expiringThisWeek,
+                    safeProducts = safeProducts,
                     expiredProducts = expiredProducts,
                     criticalItems = criticalItems,
                     isLoading = false
@@ -76,6 +80,7 @@ data class DashboardUiState(
     val totalActiveProducts: Int = 0,
     val expiringToday: List<Product> = emptyList(),
     val expiringThisWeek: List<Product> = emptyList(),
+    val safeProducts: List<Product> = emptyList(),
     val expiredProducts: List<Product> = emptyList(),
     val criticalItems: List<Product> = emptyList(),
     val isLoading: Boolean = true,

@@ -48,8 +48,6 @@ val preferencesModule = module {
     // Onboarding Preferences
     single { OnboardingPreferences(androidContext()) }
 
-    // Theme Manager
-    single { ThemeManager(androidContext()) }
 }
 
 /**
@@ -59,7 +57,7 @@ val preferencesModule = module {
 val viewModelModule = module {
 
     // Dashboard ViewModel
-    viewModel {
+    viewModel < DashboardViewModel>{
         DashboardViewModel(
             productRepository = get(),
             categoryRepository = get()
@@ -67,7 +65,7 @@ val viewModelModule = module {
     }
 
     // Product List ViewModel
-    viewModel {
+    viewModel<ProductListViewModel> {
         ProductListViewModel(
             productRepository = get(),
             categoryRepository = get()
@@ -75,7 +73,7 @@ val viewModelModule = module {
     }
 
     // Add/Edit Product ViewModel
-    viewModel {
+    viewModel<AddEditProductViewModel> {
         AddEditProductViewModel(
             productRepository = get(),
             categoryRepository = get()
@@ -83,14 +81,14 @@ val viewModelModule = module {
     }
 
     // Product Details ViewModel
-    viewModel {
+    viewModel<ProductDetailsViewModel> {
         ProductDetailsViewModel(
             productRepository = get()
         )
     }
 
     // Settings ViewModel
-    viewModel {
+    viewModel <SettingsViewModel>{
         SettingsViewModel()
     }
 }

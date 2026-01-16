@@ -76,10 +76,7 @@ class AddEditProductViewModel(
     }
 
     fun updateBarcode(barcode: String) {
-        android.util.Log.d("AddEditProductViewModel", "updateBarcode called with: $barcode")
-        android.util.Log.d("AddEditProductViewModel", "Current state barcode before update: ${_uiState.value.barcode}")
         _uiState.update { it.copy(barcode = barcode) }
-        android.util.Log.d("AddEditProductViewModel", "Current state barcode after update: ${_uiState.value.barcode}")
     }
 
     fun updateCategory(category: String) {

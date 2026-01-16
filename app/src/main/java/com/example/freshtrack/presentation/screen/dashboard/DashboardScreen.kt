@@ -250,7 +250,7 @@ fun DashboardScreen(
                             )
                         }
 
-                        items(uiState.expiringThisWeek.take(5)) { product ->
+                        items(uiState.expiringThisWeek.take(6)) { product ->
                             ProductCard(
                                 product = product,
                                 onClick = { onNavigateToProductDetails(product.id) }
@@ -269,7 +269,26 @@ fun DashboardScreen(
                             )
                         }
 
-                        items(uiState.expiredProducts.take(3)) { product ->
+                        items(uiState.expiredProducts.take(4)) { product ->
+                            ProductCard(
+                                product = product,
+                                onClick = { onNavigateToProductDetails(product.id) }
+                            )
+                        }
+                    }
+
+                    // Safe Products (expiring later than 7 days)
+                    if (uiState.safeProducts.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "Later",
+                                icon = Icons.Default.CheckCircle,
+                                color = UrgencySafe,
+                                count = uiState.safeProducts.size
+                            )
+                        }
+
+                        items(uiState.safeProducts.take(4)) { product ->
                             ProductCard(
                                 product = product,
                                 onClick = { onNavigateToProductDetails(product.id) }

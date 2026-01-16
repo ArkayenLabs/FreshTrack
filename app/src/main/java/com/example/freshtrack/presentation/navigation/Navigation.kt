@@ -51,13 +51,10 @@ class ScannerState {
         private set
 
     fun setBarcode(barcode: String) {
-        android.util.Log.d("ScannerState", "Setting barcode: $barcode")
         scannedBarcode = barcode
-        android.util.Log.d("ScannerState", "Barcode set to: $scannedBarcode")
     }
 
     fun clear() {
-        android.util.Log.d("ScannerState", "Clearing barcode. Was: $scannedBarcode")
         scannedBarcode = null
     }
 }
@@ -151,7 +148,6 @@ fun FreshTrackNavGraph(
         composable(Screen.AddProduct.route) {
             // Get scanned barcode if available
             val scannedBarcode = scannerState.scannedBarcode
-            android.util.Log.d("Navigation", "AddProduct composable - scannedBarcode: $scannedBarcode")
 
             AddEditProductScreen(
                 productId = null,
@@ -231,10 +227,8 @@ fun FreshTrackNavGraph(
         composable(Screen.BarcodeScanner.route) {
             BarcodeScannerScreen(
                 onBarcodeScanned = { barcode ->
-                    android.util.Log.d("Navigation", "Barcode scanned callback: $barcode")
                     // Store barcode in shared state
                     scannerState.setBarcode(barcode)
-                    android.util.Log.d("Navigation", "About to navigate back")
                     navController.navigateUp()
                 },
                 onNavigateBack = {
