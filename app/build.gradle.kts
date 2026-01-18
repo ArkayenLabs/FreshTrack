@@ -102,6 +102,10 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
+    // In-App Updates
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
+
     // Testing - Using version catalog
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

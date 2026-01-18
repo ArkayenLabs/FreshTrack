@@ -16,6 +16,9 @@ gradle-app.setting
 !.idea/codeStyles
 !.idea/runConfigurations
 
+# === VS Code ===
+.vscode/
+
 # === Kotlin / KSP Generated ===
 # Ignore generated code, but keep Room schemas
 app/build/
