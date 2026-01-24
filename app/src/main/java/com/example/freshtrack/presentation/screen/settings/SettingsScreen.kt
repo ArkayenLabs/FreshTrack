@@ -166,7 +166,7 @@ fun SettingsScreen(
                     title = "Privacy Policy",
                     description = "How we handle your data",
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://balajireddy1.github.io/freshtrack-privacy-policy/"))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.arkayenlabs.com/privacy/freshtrack"))
                         context.startActivity(intent)
                     }
                 )
@@ -179,7 +179,7 @@ fun SettingsScreen(
                         val deviceInfo = "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}\nApp Version: 1.0.0"
                         val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("mailto:")
-                            putExtra(Intent.EXTRA_EMAIL, arrayOf("arkayenlabs@gmail.com"))
+                            putExtra(Intent.EXTRA_EMAIL, arrayOf("hello@arkayenlabs.com"))
                             putExtra(Intent.EXTRA_SUBJECT, "[FreshTrack] App Feedback")
                             putExtra(Intent.EXTRA_TEXT, "\n\n---\n$deviceInfo")
                         }

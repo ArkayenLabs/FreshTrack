@@ -52,9 +52,7 @@ class InAppUpdateManager(private val activity: Activity) {
             UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS -> {
                 startUpdate(appUpdateInfo, AppUpdateType.IMMEDIATE)
             }
-            else -> {
-                Log.d(TAG, "No update available")
-            }
+            else -> {}
         }
     }
 

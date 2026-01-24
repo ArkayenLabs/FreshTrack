@@ -14,8 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.net.Uri
 
 data class License(
     val library: String,
@@ -158,6 +161,7 @@ fun CustomOSSLicensesScreen(
 
             // License items
             items(licenses) { license ->
+                val context = LocalContext.current
                 LicenseCard(
                     license = license,
                     isExpanded = expandedLicense == license.library,
@@ -167,6 +171,10 @@ fun CustomOSSLicensesScreen(
                         } else {
                             license.library
                         }
+                    },
+                    onOpenUrl = { url ->
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(intent)
                     }
                 )
             }
@@ -189,7 +197,8 @@ fun CustomOSSLicensesScreen(
 fun LicenseCard(
     license: License,
     isExpanded: Boolean,
-    onToggleExpand: () -> Unit
+    onToggleExpand: () -> Unit,
+    onOpenUrl: (String) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -263,7 +272,7 @@ fun LicenseCard(
                 )
                 Spacer(Modifier.height(12.dp))
                 TextButton(
-                    onClick = { /* TODO: Open URL */ },
+                    onClick = { onOpenUrl(license.url) },
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("View Full License")
