@@ -10,43 +10,53 @@ class CrashLoopDetector(private val context: Context) {
         private const val PREFS_NAME = "crash_loop_detector"
         private const val KEY_CRASH_COUNT = "crash_count"
         private const val KEY_APP_RESET = "app_was_reset"
+        private const val KEY_APP_RUNNING = "app_is_running"
+        private const val KEY_LAST_CRASH_TIME = "last_crash_time"
         private const val MAX_CRASHES_BEFORE_RESET = 3
-        private const val STARTUP_GRACE_PERIOD_MS = 5000L
+        private const val CRASH_WINDOW_MS = 60000L
     }
 
     private val prefs: SharedPreferences by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    private var startupTimestamp: Long = 0
-
     fun onAppStarting(): Boolean {
-        startupTimestamp = System.currentTimeMillis()
+        val wasRunning = prefs.getBoolean(KEY_APP_RUNNING, false)
+        val currentTime = System.currentTimeMillis()
+        val lastCrashTime = prefs.getLong(KEY_LAST_CRASH_TIME, 0)
         
-        val crashCount = prefs.getInt(KEY_CRASH_COUNT, 0) + 1
-        prefs.edit().putInt(KEY_CRASH_COUNT, crashCount).apply()
+        prefs.edit().putBoolean(KEY_APP_RUNNING, true).apply()
         
-        if (crashCount >= MAX_CRASHES_BEFORE_RESET) {
-            performEmergencyReset()
-            return true
+        if (wasRunning) {
+            val timeSinceLastCrash = currentTime - lastCrashTime
+            if (timeSinceLastCrash > CRASH_WINDOW_MS) {
+                prefs.edit().putInt(KEY_CRASH_COUNT, 0).apply()
+            }
+            
+            val crashCount = prefs.getInt(KEY_CRASH_COUNT, 0) + 1
+            prefs.edit()
+                .putInt(KEY_CRASH_COUNT, crashCount)
+                .putLong(KEY_LAST_CRASH_TIME, currentTime)
+                .apply()
+            
+            if (crashCount >= MAX_CRASHES_BEFORE_RESET) {
+                performEmergencyReset()
+                return true
+            }
         }
         
         return false
     }
 
-    fun onAppStartupComplete() {
-        val elapsedTime = System.currentTimeMillis() - startupTimestamp
-        if (elapsedTime >= STARTUP_GRACE_PERIOD_MS) {
-            resetCrashCount()
-        } else {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                resetCrashCount()
-            }, STARTUP_GRACE_PERIOD_MS - elapsedTime)
-        }
+    fun onAppRunningStable() {
+        prefs.edit()
+            .putInt(KEY_CRASH_COUNT, 0)
+            .putLong(KEY_LAST_CRASH_TIME, 0)
+            .apply()
     }
 
-    private fun resetCrashCount() {
-        prefs.edit().putInt(KEY_CRASH_COUNT, 0).apply()
+    fun onAppExitCleanly() {
+        prefs.edit().putBoolean(KEY_APP_RUNNING, false).apply()
     }
 
     fun wasAppReset(): Boolean {
@@ -62,6 +72,8 @@ class CrashLoopDetector(private val context: Context) {
         prefs.edit()
             .putInt(KEY_CRASH_COUNT, 0)
             .putBoolean(KEY_APP_RESET, true)
+            .putBoolean(KEY_APP_RUNNING, false)
+            .putLong(KEY_LAST_CRASH_TIME, 0)
             .apply()
     }
 
