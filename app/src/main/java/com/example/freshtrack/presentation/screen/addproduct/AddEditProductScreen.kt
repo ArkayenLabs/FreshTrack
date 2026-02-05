@@ -223,7 +223,7 @@ fun AddEditProductScreen(
                         singleLine = true,
                         supportingText = {
                             Text(
-                                "Minimum: 1",
+                                "Range: 1-999",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -399,8 +399,25 @@ fun ExpiryDatePicker(
     expiryDate: Long,
     onDateSelected: (Long) -> Unit
 ) {
+    val todayMillis = remember {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        calendar.timeInMillis
+    }
+    
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = if (expiryDate > 0) expiryDate else System.currentTimeMillis()
+        initialSelectedDateMillis = if (expiryDate > 0) expiryDate else System.currentTimeMillis(),
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                return utcTimeMillis >= todayMillis
+            }
+            override fun isSelectableYear(year: Int): Boolean {
+                return year >= Calendar.getInstance().get(Calendar.YEAR)
+            }
+        }
     )
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -477,8 +494,22 @@ fun ExpiryDatePicker(
 
 @Composable
 fun ExpiryStatusIndicator(expiryDate: Long) {
-    val currentTime = System.currentTimeMillis()
-    val daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(expiryDate - currentTime)
+    // Calculate days using calendar dates (not raw time difference)
+    val calendar = java.util.Calendar.getInstance()
+    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    calendar.set(java.util.Calendar.MINUTE, 0)
+    calendar.set(java.util.Calendar.SECOND, 0)
+    calendar.set(java.util.Calendar.MILLISECOND, 0)
+    val todayMidnight = calendar.timeInMillis
+    
+    calendar.timeInMillis = expiryDate
+    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    calendar.set(java.util.Calendar.MINUTE, 0)
+    calendar.set(java.util.Calendar.SECOND, 0)
+    calendar.set(java.util.Calendar.MILLISECOND, 0)
+    val expiryMidnight = calendar.timeInMillis
+    
+    val daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(expiryMidnight - todayMidnight)
 
     val (status, color, icon) = when {
         daysUntilExpiry < 0 -> Triple("Expired", MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.presentation.component.LoadingState
 import com.example.freshtrack.presentation.viewmodel.ProductDetailsViewModel
@@ -400,8 +402,22 @@ fun ProductDetailsScreen(
 
 @Composable
 fun ExpiryStatusBadge(expiryDate: Long) {
-    val currentTime = System.currentTimeMillis()
-    val daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(expiryDate - currentTime)
+    // Calculate days using calendar dates (not raw time difference)
+    val calendar = java.util.Calendar.getInstance()
+    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    calendar.set(java.util.Calendar.MINUTE, 0)
+    calendar.set(java.util.Calendar.SECOND, 0)
+    calendar.set(java.util.Calendar.MILLISECOND, 0)
+    val todayMidnight = calendar.timeInMillis
+    
+    calendar.timeInMillis = expiryDate
+    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+    calendar.set(java.util.Calendar.MINUTE, 0)
+    calendar.set(java.util.Calendar.SECOND, 0)
+    calendar.set(java.util.Calendar.MILLISECOND, 0)
+    val expiryMidnight = calendar.timeInMillis
+    
+    val daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(expiryMidnight - todayMidnight)
 
     val (status, color, icon) = when {
         daysUntilExpiry < 0 -> Triple("Expired", MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)
@@ -557,6 +573,32 @@ fun QuantityPickerDialog(
     icon: ImageVector,
     iconTint: androidx.compose.ui.graphics.Color
 ) {
+    var textValue by remember { mutableStateOf(selectedQuantity.toString()) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun validateAndUpdate(input: String) {
+        textValue = input
+        val qty = input.toIntOrNull()
+        when {
+            input.isEmpty() -> {
+                errorMessage = null
+            }
+            qty == null -> {
+                errorMessage = "Enter a valid number"
+            }
+            qty < 1 -> {
+                errorMessage = "Minimum is 1"
+            }
+            qty > maxQuantity -> {
+                errorMessage = "Maximum is $maxQuantity"
+            }
+            else -> {
+                errorMessage = null
+                onQuantityChange(qty)
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
@@ -587,40 +629,59 @@ fun QuantityPickerDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    "Select quantity (1-$maxQuantity):",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                OutlinedTextField(
+                    value = textValue,
+                    onValueChange = { validateAndUpdate(it) },
+                    label = { Text("Quantity") },
+                    placeholder = { Text("1-$maxQuantity") },
+                    isError = errorMessage != null,
+                    supportingText = {
+                        if (errorMessage != null) {
+                            Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
+                        } else {
+                            Text("Available: $maxQuantity")
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
                 )
 
+                // Quick action buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    IconButton(
-                        onClick = { if (selectedQuantity > 1) onQuantityChange(selectedQuantity - 1) },
-                        enabled = selectedQuantity > 1
-                    ) {
-                        Icon(Icons.Default.Remove, "Decrease")
+                    if (maxQuantity > 1) {
+                        FilterChip(
+                            selected = textValue == "1",
+                            onClick = { validateAndUpdate("1") },
+                            label = { Text("1") }
+                        )
                     }
-
-                    Text(
-                        text = selectedQuantity.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 24.dp)
+                    if (maxQuantity >= 5) {
+                        FilterChip(
+                            selected = textValue == "5",
+                            onClick = { validateAndUpdate("5") },
+                            label = { Text("5") }
+                        )
+                    }
+                    if (maxQuantity >= 10) {
+                        FilterChip(
+                            selected = textValue == "10",
+                            onClick = { validateAndUpdate("10") },
+                            label = { Text("10") }
+                        )
+                    }
+                    FilterChip(
+                        selected = textValue == maxQuantity.toString(),
+                        onClick = { validateAndUpdate(maxQuantity.toString()) },
+                        label = { Text("All") }
                     )
-
-                    IconButton(
-                        onClick = { if (selectedQuantity < maxQuantity) onQuantityChange(selectedQuantity + 1) },
-                        enabled = selectedQuantity < maxQuantity
-                    ) {
-                        Icon(Icons.Default.Add, "Increase")
-                    }
                 }
 
-                if (selectedQuantity == maxQuantity) {
+                if (textValue == maxQuantity.toString() && errorMessage == null) {
                     Text(
                         "This will remove the product completely",
                         style = MaterialTheme.typography.bodySmall,
@@ -634,6 +695,7 @@ fun QuantityPickerDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
+                enabled = errorMessage == null && textValue.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = iconTint
                 ),

@@ -23,19 +23,35 @@ data class Product(
     val isDiscarded: Boolean
 ) {
     /**
-     * Calculate days until expiry
+     * Calculate days until expiry based on calendar dates
      * @return Days remaining (negative if expired)
      */
     fun daysUntilExpiry(): Long {
-        val currentTime = System.currentTimeMillis()
-        val difference = expiryDate - currentTime
-        return TimeUnit.MILLISECONDS.toDays(difference)
+        val calendar = java.util.Calendar.getInstance()
+        
+        // Get today at midnight
+        calendar.timeInMillis = System.currentTimeMillis()
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val todayMidnight = calendar.timeInMillis
+        
+        // Get expiry date at midnight
+        calendar.timeInMillis = expiryDate
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val expiryMidnight = calendar.timeInMillis
+        
+        return TimeUnit.MILLISECONDS.toDays(expiryMidnight - todayMidnight)
     }
 
     /**
-     * Check if product is expired
+     * Check if product is expired (based on calendar date)
      */
-    fun isExpired(): Boolean = System.currentTimeMillis() > expiryDate
+    fun isExpired(): Boolean = daysUntilExpiry() < 0
 
     /**
      * Get urgency level for color coding
