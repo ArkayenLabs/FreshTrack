@@ -34,6 +34,9 @@ fun ProductDetailsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showConsumeDialog by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    var selectedQuantity by remember { mutableIntStateOf(1) }
 
     LaunchedEffect(productId) {
         viewModel.loadProduct(productId)
@@ -229,7 +232,12 @@ fun ProductDetailsScreen(
                     ) {
                         FilledTonalButton(
                             onClick = {
-                                viewModel.markAsConsumed(onSuccess = onNavigateBack)
+                                if (product.quantity > 1) {
+                                    selectedQuantity = 1
+                                    showConsumeDialog = true
+                                } else {
+                                    viewModel.markAsConsumed(onSuccess = onNavigateBack)
+                                }
                             },
                             modifier = Modifier
                                 .weight(1f)
@@ -251,7 +259,12 @@ fun ProductDetailsScreen(
 
                         OutlinedButton(
                             onClick = {
-                                viewModel.markAsDiscarded(onSuccess = onNavigateBack)
+                                if (product.quantity > 1) {
+                                    selectedQuantity = 1
+                                    showDiscardDialog = true
+                                } else {
+                                    viewModel.markAsDiscarded(onSuccess = onNavigateBack)
+                                }
                             },
                             modifier = Modifier
                                 .weight(1f)
@@ -343,6 +356,44 @@ fun ProductDetailsScreen(
             shape = RoundedCornerShape(28.dp),
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
+        )
+    }
+
+    // Consume Quantity Dialog
+    if (showConsumeDialog) {
+        val maxQty = uiState.product?.quantity ?: 1
+        QuantityPickerDialog(
+            title = "Consume How Many?",
+            maxQuantity = maxQty,
+            selectedQuantity = selectedQuantity,
+            onQuantityChange = { selectedQuantity = it },
+            onConfirm = {
+                viewModel.consumeQuantity(selectedQuantity, onSuccess = onNavigateBack)
+                showConsumeDialog = false
+            },
+            onDismiss = { showConsumeDialog = false },
+            confirmText = "Consume",
+            icon = Icons.Default.CheckCircle,
+            iconTint = MaterialTheme.colorScheme.primary
+        )
+    }
+
+    // Discard Quantity Dialog
+    if (showDiscardDialog) {
+        val maxQty = uiState.product?.quantity ?: 1
+        QuantityPickerDialog(
+            title = "Discard How Many?",
+            maxQuantity = maxQty,
+            selectedQuantity = selectedQuantity,
+            onQuantityChange = { selectedQuantity = it },
+            onConfirm = {
+                viewModel.discardQuantity(selectedQuantity, onSuccess = onNavigateBack)
+                showDiscardDialog = false
+            },
+            onDismiss = { showDiscardDialog = false },
+            confirmText = "Discard",
+            icon = Icons.Outlined.Delete,
+            iconTint = MaterialTheme.colorScheme.error
         )
     }
 }
@@ -492,4 +543,115 @@ fun CategoryChipCompact(category: String) {
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+@Composable
+fun QuantityPickerDialog(
+    title: String,
+    maxQuantity: Int,
+    selectedQuantity: Int,
+    onQuantityChange: (Int) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    confirmText: String,
+    icon: ImageVector,
+    iconTint: androidx.compose.ui.graphics.Color
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(iconTint.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        },
+        title = {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    "Select quantity (1-$maxQuantity):",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { if (selectedQuantity > 1) onQuantityChange(selectedQuantity - 1) },
+                        enabled = selectedQuantity > 1
+                    ) {
+                        Icon(Icons.Default.Remove, "Decrease")
+                    }
+
+                    Text(
+                        text = selectedQuantity.toString(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+
+                    IconButton(
+                        onClick = { if (selectedQuantity < maxQuantity) onQuantityChange(selectedQuantity + 1) },
+                        enabled = selectedQuantity < maxQuantity
+                    ) {
+                        Icon(Icons.Default.Add, "Increase")
+                    }
+                }
+
+                if (selectedQuantity == maxQuantity) {
+                    Text(
+                        "This will remove the product completely",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = iconTint
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(confirmText, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.SemiBold)
+            }
+        },
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 6.dp
+    )
 }

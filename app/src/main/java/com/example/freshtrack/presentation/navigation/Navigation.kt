@@ -29,7 +29,9 @@ sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Onboarding : Screen("onboarding")
     object Dashboard : Screen("dashboard")
-    object ProductList : Screen("product_list")
+    object ProductList : Screen("product_list?filter={filter}") {
+        fun createRoute(filter: String? = null) = if (filter != null) "product_list?filter=$filter" else "product_list"
+    }
     object AddProduct : Screen("add_product")
     object OpenSourceLicenses : Screen("oss_licenses")
 
@@ -113,7 +115,10 @@ fun FreshTrackNavGraph(
         composable(Screen.Dashboard.route) {
             DashboardScreen(
                 onNavigateToProductList = {
-                    navController.navigate(Screen.ProductList.route)
+                    navController.navigate(Screen.ProductList.createRoute())
+                },
+                onNavigateToExpiringProducts = {
+                    navController.navigate(Screen.ProductList.createRoute("expiring"))
                 },
                 onNavigateToAddProduct = {
                     scannerState.clear()
@@ -129,7 +134,17 @@ fun FreshTrackNavGraph(
         }
 
         // Product List Screen
-        composable(Screen.ProductList.route) {
+        composable(
+            route = Screen.ProductList.route,
+            arguments = listOf(
+                navArgument("filter") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val filter = backStackEntry.arguments?.getString("filter")
             ProductListScreen(
                 onNavigateBack = {
                     navController.navigateUp()
@@ -140,7 +155,8 @@ fun FreshTrackNavGraph(
                 },
                 onNavigateToProductDetails = { productId ->
                     navController.navigate(Screen.ProductDetails.createRoute(productId))
-                }
+                },
+                initialFilter = filter
             )
         }
 

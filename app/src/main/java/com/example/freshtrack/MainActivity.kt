@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
             var showResetDialog by remember { mutableStateOf(wasReset) }
             
             LaunchedEffect(Unit) {
-                app.crashLoopDetector.onAppStartupComplete()
+                app.crashLoopDetector.onAppRunningStable()
             }
             
             inAppUpdateManager = remember {

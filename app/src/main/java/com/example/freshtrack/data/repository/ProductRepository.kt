@@ -23,6 +23,7 @@ interface ProductRepository {
     suspend fun deleteProduct(productId: String)
     suspend fun markAsConsumed(productId: String)
     suspend fun markAsDiscarded(productId: String)
+    suspend fun updateProductQuantity(productId: String, newQuantity: Int)
     fun getActiveProductCount(): Flow<Int>
 }
 
@@ -102,6 +103,13 @@ class ProductRepositoryImpl(
 
     override suspend fun markAsDiscarded(productId: String) {
         productDao.markAsDiscarded(productId)
+    }
+
+    override suspend fun updateProductQuantity(productId: String, newQuantity: Int) {
+        val product = productDao.getProductByIdOnce(productId)
+        product?.let {
+            productDao.updateProduct(it.copy(quantity = newQuantity))
+        }
     }
 
     override fun getActiveProductCount(): Flow<Int> {

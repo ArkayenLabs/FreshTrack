@@ -149,7 +149,7 @@ fun SettingsScreen(
                 SettingsItemCard(
                     icon = Icons.Outlined.AppSettingsAlt,
                     title = "App Version",
-                    description = "1.0.0",
+                    description = "1.0.2",
                     onClick = { },
                     enabled = false
                 )
@@ -176,7 +176,7 @@ fun SettingsScreen(
                     title = "Send Feedback",
                     description = "Help us improve FreshTrack",
                     onClick = {
-                        val deviceInfo = "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}\nApp Version: 1.0.0"
+                        val deviceInfo = "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}\nApp Version: 1.0.2"
                         val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("mailto:")
                             putExtra(Intent.EXTRA_EMAIL, arrayOf("hello@arkayenlabs.com"))

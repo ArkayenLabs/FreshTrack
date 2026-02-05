@@ -236,6 +236,32 @@ class ProductDetailsViewModel(
             onSuccess()
         }
     }
+
+    fun consumeQuantity(amount: Int, onSuccess: () -> Unit) {
+        val product = _uiState.value.product ?: return
+        viewModelScope.launch {
+            val remaining = product.quantity - amount
+            if (remaining <= 0) {
+                productRepository.markAsConsumed(product.id)
+                onSuccess()
+            } else {
+                productRepository.updateProductQuantity(product.id, remaining)
+            }
+        }
+    }
+
+    fun discardQuantity(amount: Int, onSuccess: () -> Unit) {
+        val product = _uiState.value.product ?: return
+        viewModelScope.launch {
+            val remaining = product.quantity - amount
+            if (remaining <= 0) {
+                productRepository.markAsDiscarded(product.id)
+                onSuccess()
+            } else {
+                productRepository.updateProductQuantity(product.id, remaining)
+            }
+        }
+    }
 }
 
 /**

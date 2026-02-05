@@ -29,12 +29,20 @@ fun ProductListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAddProduct: () -> Unit,
     onNavigateToProductDetails: (String) -> Unit,
+    initialFilter: String? = null,
     viewModel: ProductListViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(initialFilter) {
+        when (initialFilter) {
+            "expiring" -> viewModel.setFilter(ProductFilter.EXPIRING_SOON)
+            "expired" -> viewModel.setFilter(ProductFilter.EXPIRED)
+        }
+    }
 
     Scaffold(
         topBar = {

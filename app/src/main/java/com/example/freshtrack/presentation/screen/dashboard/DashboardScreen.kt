@@ -23,6 +23,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun DashboardScreen(
     onNavigateToProductList: () -> Unit,
+    onNavigateToExpiringProducts: () -> Unit,
     onNavigateToAddProduct: () -> Unit,
     onNavigateToProductDetails: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -120,6 +121,7 @@ fun DashboardScreen(
                             value = "0",
                             icon = Icons.Default.Warning,
                             backgroundColor = UrgencyWarning,
+                            onClick = onNavigateToExpiringProducts,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -215,6 +217,7 @@ fun DashboardScreen(
                                 value = (uiState.expiringToday.size + uiState.expiringThisWeek.size).toString(),
                                 icon = Icons.Default.Warning,
                                 backgroundColor = UrgencyWarning,
+                                onClick = onNavigateToExpiringProducts,
                                 modifier = Modifier.weight(1f)
                             )
                         }

@@ -1,6 +1,9 @@
 package com.example.freshtrack
 
 import android.app.Application
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.example.freshtrack.di.appModules
 import org.koin.android.ext.koin.androidContext
 import com.example.freshtrack.data.notification.NotificationScheduler
@@ -19,6 +22,12 @@ class FreshTrackApplication : Application() {
 
         crashLoopDetector = CrashLoopDetector(this)
         crashLoopDetector.onAppStarting()
+
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStop(owner: LifecycleOwner) {
+                crashLoopDetector.onAppExitCleanly()
+            }
+        })
 
         startKoin {
             androidLogger(Level.ERROR)
@@ -52,3 +61,4 @@ class FreshTrackApplication : Application() {
         const val CHANNEL_ID_EXPIRY_ALERTS = "expiry_alerts"
     }
 }
+
