@@ -88,9 +88,10 @@ class AddEditProductViewModel(
     }
 
     fun updateQuantity(quantity: String) {
-        // Only allow numbers
+        // Only allow numbers, cap at 999
         if (quantity.isEmpty() || quantity.all { it.isDigit() }) {
-            _uiState.update { it.copy(quantity = quantity) }
+            val capped = quantity.take(3) // Max 3 digits (999)
+            _uiState.update { it.copy(quantity = capped) }
         }
     }
 
@@ -126,7 +127,11 @@ class AddEditProductViewModel(
         // Validate quantity
         val quantityInt = state.quantity.toIntOrNull()
         if (quantityInt == null || quantityInt < 1) {
-            _uiState.update { it.copy(error = "Please enter a valid quantity (minimum 1)") }
+            _uiState.update { it.copy(error = "Please enter a valid quantity (1-999)") }
+            return
+        }
+        if (quantityInt > 999) {
+            _uiState.update { it.copy(error = "Maximum quantity is 999") }
             return
         }
 

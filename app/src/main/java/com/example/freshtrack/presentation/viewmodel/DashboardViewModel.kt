@@ -34,7 +34,9 @@ class DashboardViewModel(
                 productRepository.getActiveProductCount()
             ) { allProducts, expiredProducts, activeCount ->
 
-                val expiringToday = allProducts.filter { it.daysUntilExpiry() == 0L }
+                val expiringToday = allProducts.filter { 
+                    it.daysUntilExpiry() == 0L && !it.isExpired() 
+                }
                 val expiringThisWeek = allProducts.filter {
                     it.daysUntilExpiry() in 1..7
                 }
