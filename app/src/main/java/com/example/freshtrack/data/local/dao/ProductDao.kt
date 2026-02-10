@@ -80,6 +80,15 @@ interface ProductDao {
     @Query("SELECT COUNT(*) FROM products WHERE isConsumed = 0 AND isDiscarded = 0")
     fun getActiveProductCount(): Flow<Int>
 
+    @Query("SELECT * FROM products WHERE isConsumed = 1 ORDER BY addedDate DESC")
+    fun getConsumedProducts(): Flow<List<ProductEntity>>
+
+    @Query("SELECT * FROM products WHERE isDiscarded = 1 ORDER BY addedDate DESC")
+    fun getDiscardedProducts(): Flow<List<ProductEntity>>
+
+    @Query("DELETE FROM products WHERE isConsumed = 1 OR isDiscarded = 1")
+    suspend fun deleteHistory()
+
     @Query("DELETE FROM products")
     suspend fun deleteAllProducts()
 }

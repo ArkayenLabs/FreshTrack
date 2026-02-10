@@ -25,6 +25,9 @@ interface ProductRepository {
     suspend fun markAsDiscarded(productId: String)
     suspend fun updateProductQuantity(productId: String, newQuantity: Int)
     fun getActiveProductCount(): Flow<Int>
+    fun getConsumedProducts(): Flow<List<Product>>
+    fun getDiscardedProducts(): Flow<List<Product>>
+    suspend fun deleteHistory()
 }
 
 /**
@@ -114,6 +117,22 @@ class ProductRepositoryImpl(
 
     override fun getActiveProductCount(): Flow<Int> {
         return productDao.getActiveProductCount()
+    }
+
+    override fun getConsumedProducts(): Flow<List<Product>> {
+        return productDao.getConsumedProducts().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getDiscardedProducts(): Flow<List<Product>> {
+        return productDao.getDiscardedProducts().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun deleteHistory() {
+        productDao.deleteHistory()
     }
 }
 

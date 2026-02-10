@@ -91,6 +91,13 @@ val viewModelModule = module {
     viewModel <SettingsViewModel>{
         SettingsViewModel()
     }
+
+    // History ViewModel
+    viewModel<HistoryViewModel> {
+        HistoryViewModel(
+            productRepository = get()
+        )
+    }
 }
 
 /**

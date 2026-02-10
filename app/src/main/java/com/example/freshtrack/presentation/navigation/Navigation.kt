@@ -20,6 +20,7 @@ import com.example.freshtrack.presentation.screen.settings.SettingsScreen
 import com.example.freshtrack.presentation.screen.scanner.BarcodeScannerScreen
 import com.example.freshtrack.presentation.screen.onboarding.OnboardingScreen
 import com.example.freshtrack.presentation.screen.splash.SplashScreen
+import com.example.freshtrack.presentation.screen.history.HistoryScreen
 import org.koin.compose.koinInject
 
 /**
@@ -43,6 +44,7 @@ sealed class Screen(val route: String) {
     }
     object Settings : Screen("settings")
     object BarcodeScanner : Screen("barcode_scanner")
+    object History : Screen("history")
 }
 
 /**
@@ -209,12 +211,24 @@ fun FreshTrackNavGraph(
                 },
                 onNavigateToLicenses = {
                     navController.navigate(Screen.OpenSourceLicenses.route)
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Screen.History.route)
                 }
             )
         }
         composable(Screen.OpenSourceLicenses.route) {
             CustomOSSLicensesScreen(
                 onNavigateBack = { navController.navigateUp() }
+            )
+        }
+
+        // History Screen
+        composable(Screen.History.route) {
+            HistoryScreen(
+                onNavigateBack = {
+                    navController.navigateUp()
+                }
             )
         }
 

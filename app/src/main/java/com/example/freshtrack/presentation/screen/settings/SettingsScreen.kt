@@ -35,6 +35,7 @@ import org.koin.compose.koinInject
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToLicenses: () -> Unit,
+    onNavigateToHistory: () -> Unit = {},
 
     viewModel: SettingsViewModel = koinViewModel()
 
@@ -102,6 +103,12 @@ fun SettingsScreen(
                 title = "Data & Storage",
                 icon = Icons.Outlined.Storage
             ) {
+                SettingsItemCard(
+                    icon = Icons.Outlined.History,
+                    title = "History",
+                    description = "View consumed & discarded items",
+                    onClick = onNavigateToHistory
+                )
                 SettingsItemCard(
                     icon = Icons.Outlined.Download,
                     title = if (isExporting) "Exporting..." else "Export Data",
