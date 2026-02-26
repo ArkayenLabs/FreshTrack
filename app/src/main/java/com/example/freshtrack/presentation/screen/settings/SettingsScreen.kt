@@ -106,7 +106,7 @@ fun SettingsScreen(
                 SettingsItemCard(
                     icon = Icons.Outlined.History,
                     title = "History",
-                    description = "View consumed & discarded items",
+                    description = "View used & discarded items",
                     onClick = onNavigateToHistory
                 )
                 SettingsItemCard(
@@ -156,16 +156,9 @@ fun SettingsScreen(
                 SettingsItemCard(
                     icon = Icons.Outlined.AppSettingsAlt,
                     title = "App Version",
-                    description = "1.0.2",
+                    description = "1.1.0",
                     onClick = { },
                     enabled = false
-                )
-
-                SettingsItemCard(
-                    icon = Icons.Outlined.Code,
-                    title = "Open Source Licenses",
-                    description = "View third-party licenses",
-                    onClick = onNavigateToLicenses
                 )
 
                 SettingsItemCard(
@@ -179,19 +172,34 @@ fun SettingsScreen(
                 )
 
                 SettingsItemCard(
-                    icon = Icons.Outlined.Feedback,
-                    title = "Send Feedback",
-                    description = "Help us improve FreshTrack",
+                    icon = Icons.Outlined.Star,
+                    title = "Rate Us",
+                    description = "Rate and review on Play Store",
                     onClick = {
-                        val deviceInfo = "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}\nApp Version: 1.0.2"
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}"))
+                            context.startActivity(intent)
+                        }
+                    }
+                )
+
+                SettingsItemCard(
+                    icon = Icons.Outlined.HelpOutline,
+                    title = "Need Help?",
+                    description = "Contact support via email",
+                    onClick = {
+                        val deviceInfo = "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}\nApp Version: 1.1.0"
                         val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("mailto:")
                             putExtra(Intent.EXTRA_EMAIL, arrayOf("hello@arkayenlabs.com"))
-                            putExtra(Intent.EXTRA_SUBJECT, "[FreshTrack] App Feedback")
+                            putExtra(Intent.EXTRA_SUBJECT, "[FreshTrack] Help & Support")
                             putExtra(Intent.EXTRA_TEXT, "\n\n---\n$deviceInfo")
                         }
                         try {
-                            context.startActivity(Intent.createChooser(emailIntent, "Send Feedback"))
+                            context.startActivity(Intent.createChooser(emailIntent, "Contact Support"))
                         } catch (e: Exception) {
                             Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
                         }
@@ -225,6 +233,13 @@ fun SettingsScreen(
                     text = "Made with ❤️ for a sustainable future",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Open Source Licenses",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    modifier = Modifier.clickable { onNavigateToLicenses() }
                 )
             }
         }
