@@ -124,7 +124,7 @@ fun NotificationPermissionDialog(
                     text = if (isDeniedBefore) {
                         "To receive expiry alerts, please enable notifications in app settings."
                     } else {
-                        "Get timely alerts before your products expire. Never waste food again!"
+                        "Get timely alerts before your products expire. Never let anything go to waste!"
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
@@ -143,7 +143,7 @@ fun NotificationPermissionDialog(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             NotificationBenefit("📅 Expiry reminders")
-                            NotificationBenefit("💰 Reduce food waste")
+                            NotificationBenefit("💰 Reduce waste")
                             NotificationBenefit("⏰ Daily summaries")
                         }
                     }
