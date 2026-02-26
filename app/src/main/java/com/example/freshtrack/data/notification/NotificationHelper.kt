@@ -57,6 +57,7 @@ object NotificationHelper {
 
     private const val NOTIFICATION_ID_EXPIRY = 1001
     private const val NOTIFICATION_ID_DAILY = 1002
+    private const val GROUP_KEY_EXPIRY = "com.example.freshtrack.EXPIRY_GROUP"
 
     /**
      * Send notification for expiring products
@@ -77,31 +78,56 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        // View Items action
+        val viewIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("navigate_to", "expiring")
+        }
+        val viewPendingIntent = PendingIntent.getActivity(
+            context,
+            1,
+            viewIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         val title = when {
-            productCount == 1 -> "1 Product Expiring Soon"
-            else -> "$productCount Products Expiring Soon"
+            productCount == 1 -> "\uD83D\uDEA8 1 Product Expiring Soon"
+            else -> "\uD83D\uDEA8 $productCount Products Expiring Soon"
         }
 
-        val text = when {
-            productNames.size == 1 -> productNames[0]
-            productNames.size == 2 -> "${productNames[0]}, ${productNames[1]}"
-            productNames.size >= 3 -> "${productNames[0]}, ${productNames[1]}, and ${productCount - 2} more"
-            else -> "Check your products"
+        val summaryText = when {
+            productCount == 1 -> productNames.first()
+            else -> "$productCount items need your attention"
+        }
+
+        // Build InboxStyle with individual product names
+        val inboxStyle = NotificationCompat.InboxStyle()
+            .setBigContentTitle(title)
+            .setSummaryText("FreshTrack")
+
+        productNames.take(5).forEach { name ->
+            inboxStyle.addLine("\u2022 $name")
+        }
+        if (productCount > 5) {
+            inboxStyle.addLine("...and ${productCount - 5} more")
         }
 
         val notification = NotificationCompat.Builder(
             context,
             FreshTrackApplication.CHANNEL_ID_EXPIRY_ALERTS
         )
-            .setSmallIcon(R.drawable.ic_notification) // You'll need to add this icon
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
-            .setContentText(text)
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText(text)
-            )
+            .setContentText(summaryText)
+            .setStyle(inboxStyle)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
+            .addAction(
+                R.drawable.ic_notification,
+                "View Items",
+                viewPendingIntent
+            )
+            .setGroup(GROUP_KEY_EXPIRY)
             .setAutoCancel(true)
             .build()
 
@@ -128,15 +154,23 @@ object NotificationHelper {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val inboxStyle = NotificationCompat.InboxStyle()
+            .setBigContentTitle("\uD83D\uDCCA Daily Summary")
+            .setSummaryText("FreshTrack")
+            .addLine("\uD83D\uDCE6 $totalProducts products tracked")
+            .addLine("\u26A0\uFE0F $expiringCount expiring soon")
+
         val notification = NotificationCompat.Builder(
             context,
             FreshTrackApplication.CHANNEL_ID_EXPIRY_ALERTS
         )
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Daily Summary")
+            .setContentTitle("\uD83D\uDCCA Daily Summary")
             .setContentText("$expiringCount of $totalProducts products expiring soon")
+            .setStyle(inboxStyle)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
+            .setGroup(GROUP_KEY_EXPIRY)
             .setAutoCancel(true)
             .build()
 
