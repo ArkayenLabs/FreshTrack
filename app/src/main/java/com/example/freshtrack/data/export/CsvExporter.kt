@@ -31,7 +31,7 @@ object CsvExporter {
                     val expiryDate = dateFormat.format(Date(product.expiryDate))
                     val addedDate = dateFormat.format(Date(product.addedDate))
                     val status = when {
-                        product.isConsumed -> "Consumed"
+                        product.isConsumed -> "Used"
                         product.isDiscarded -> "Discarded"
                         product.expiryDate < System.currentTimeMillis() -> "Expired"
                         else -> "Active"

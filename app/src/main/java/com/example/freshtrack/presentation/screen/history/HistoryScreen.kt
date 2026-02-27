@@ -83,7 +83,7 @@ fun HistoryScreen(
                     onClick = { selectedTabIndex = 0 },
                     text = {
                         Text(
-                            "Consumed (${consumedProducts.size})",
+                            "Used (${consumedProducts.size})",
                             fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.Normal
                         )
                     }
@@ -103,7 +103,7 @@ fun HistoryScreen(
             when (selectedTabIndex) {
                 0 -> HistoryList(
                     products = consumedProducts,
-                    emptyMessage = "No consumed products yet",
+                    emptyMessage = "No used products yet",
                     onDelete = { viewModel.deleteProduct(it) }
                 )
                 1 -> HistoryList(
@@ -210,7 +210,7 @@ private fun HistoryItemCard(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "${product.category} • Qty: ${product.quantity}",
+                    text = "${product.category} • Qty: ${product.originalQuantity}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

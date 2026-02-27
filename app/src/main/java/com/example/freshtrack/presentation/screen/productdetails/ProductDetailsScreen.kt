@@ -253,7 +253,7 @@ fun ProductDetailsScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Consumed",
+                                "Used",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -365,7 +365,7 @@ fun ProductDetailsScreen(
     if (showConsumeDialog) {
         val maxQty = uiState.product?.quantity ?: 1
         QuantityPickerDialog(
-            title = "Consume How Many?",
+            title = "Use How Many?",
             maxQuantity = maxQty,
             selectedQuantity = selectedQuantity,
             onQuantityChange = { selectedQuantity = it },
@@ -374,7 +374,7 @@ fun ProductDetailsScreen(
                 showConsumeDialog = false
             },
             onDismiss = { showConsumeDialog = false },
-            confirmText = "Consume",
+            confirmText = "Use",
             icon = Icons.Default.CheckCircle,
             iconTint = MaterialTheme.colorScheme.primary
         )
