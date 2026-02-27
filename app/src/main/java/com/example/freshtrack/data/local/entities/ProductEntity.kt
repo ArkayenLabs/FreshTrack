@@ -18,6 +18,7 @@ data class ProductEntity(
     val expiryDate: Long, // Unix timestamp in milliseconds
     val addedDate: Long = System.currentTimeMillis(),
     val quantity: Int = 1,
+    val originalQuantity: Int = quantity,
     val notes: String? = null,
     val imageUri: String? = null,
     val notificationEnabled: Boolean = true,
