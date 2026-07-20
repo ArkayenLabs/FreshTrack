@@ -43,6 +43,7 @@ class FreshTrackApplication : Application() {
         createNotificationChannels()
         NotificationScheduler.scheduleDailyExpiryCheck(this)
         NotificationScheduler.scheduleWeeklySummary(this)
+        com.example.freshtrack.data.sync.SyncWorker.schedule(this)
 
         claimGuestDataForSignedInUser()
     }

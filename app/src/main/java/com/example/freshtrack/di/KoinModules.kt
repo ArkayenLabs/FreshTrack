@@ -35,6 +35,20 @@ val repositoryModule = module {
     // Repositories
     single { com.example.freshtrack.data.session.UserSession(get()) }
 
+    // Firestore sync
+    single { com.google.firebase.firestore.FirebaseFirestore.getInstance() }
+    single<com.example.freshtrack.data.sync.RemoteProductStore> {
+        com.example.freshtrack.data.remote.firestore.RemoteProductDataSource(get())
+    }
+    single {
+        com.example.freshtrack.data.sync.ProductSyncer(
+            productDao = get(),
+            remote = get(),
+            session = get(),
+            syncPrefs = get()
+        )
+    }
+
     single<ProductRepository> {
         ProductRepositoryImpl(productDao = get(), session = get())
     }
@@ -93,6 +107,9 @@ val preferencesModule = module {
 
     // Onboarding Preferences
     single { OnboardingPreferences(androidContext()) }
+
+    // Sync watermarks
+    single { com.example.freshtrack.data.preferences.SyncPreferences(androidContext()) }
 }
 
 /**

@@ -85,15 +85,21 @@ class ScannerState {
 fun FreshTrackNavGraph(
     navController: NavHostController,
     onboardingPreferences: OnboardingPreferences = koinInject(),
-    productRepository: com.example.freshtrack.data.repository.ProductRepository = koinInject()
+    productRepository: com.example.freshtrack.data.repository.ProductRepository = koinInject(),
+    productSyncer: com.example.freshtrack.data.sync.ProductSyncer = koinInject()
 ) {
     val scannerState = remember { ScannerState() }
     val appScope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Anything added as a guest is adopted by the account on sign-in, so weeks of
-    // tracking are not stranded the moment someone finally signs up.
-    fun claimGuestData() {
-        appScope.launch { runCatching { productRepository.claimGuestData() } }
+    // tracking are not stranded the moment someone finally signs up. Claim first,
+    // then sync, so the newly claimed rows go up with everything else.
+    fun claimGuestDataThenSync() {
+        appScope.launch {
+            runCatching { productRepository.claimGuestData() }
+            com.example.freshtrack.data.sync.SyncWorker.syncNow(context)
+        }
     }
 
     NavHost(
@@ -152,7 +158,7 @@ fun FreshTrackNavGraph(
                     navController.navigate(Screen.ForgotPassword.route)
                 },
                 onLoginSuccess = {
-                    claimGuestData()
+                    claimGuestDataThenSync()
                     onboardingPreferences.setGuestMode(false)
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
@@ -184,7 +190,7 @@ fun FreshTrackNavGraph(
                     navController.navigate(Screen.TermsOfService.route)
                 },
                 onRegisterSuccess = {
-                    claimGuestData()
+                    claimGuestDataThenSync()
                     onboardingPreferences.setGuestMode(false)
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
@@ -291,6 +297,9 @@ fun FreshTrackNavGraph(
                 onNavigateToHistory = { navController.navigate(Screen.History.route) },
                 onNavigateToImpact = { navController.navigate(Screen.Impact.route) },
                 onSignOut = {
+                    // Watermarks are per account; leaving them would make the
+                    // next account think it had already synced up to this point.
+                    productSyncer.onSignedOut()
                     // Clear guest mode flag so they land on Login, not Dashboard
                     onboardingPreferences.setGuestMode(false)
                     navController.navigate(Screen.Login.route) {
