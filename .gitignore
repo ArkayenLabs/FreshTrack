@@ -49,6 +49,15 @@ outputs/
 .kotlin/
 out/
 
+# === Firebase ===
+# Contains the project's Firebase config and API key. Kept out of the repo by
+# choice — a fresh clone or CI build must supply its own copy.
+google-services.json
+
+# === Graphify (tool output, not source) ===
+graphify-out/
+run_graphify.ps1
+
 # === Misc ===
 *.apk
 *.aab
