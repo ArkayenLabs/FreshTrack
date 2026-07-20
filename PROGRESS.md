@@ -18,8 +18,8 @@ Phase 1 retention work is done. The Phase 2 readiness audit is closed except for
 known gaps listed below. Backup & Sync is **built but inert** — nothing grants
 premium yet, so every cloud write is refused by design.
 
-Last verified state: 30 commits, all pushed. 21 unit tests, 4 migration tests on
-device, 36 Firestore rules tests — all passing.
+Last verified state: 58 unit tests, 4 migration tests on device, 36 Firestore
+rules tests — all passing.
 
 ---
 
@@ -66,10 +66,22 @@ device, 36 Firestore rules tests — all passing.
 - [x] Runs on a background worker; failure never blocks the UI
 - [x] Sync engine has no Firebase dependency, so its logic is JVM-testable
 
+### Phase 1 follow-ups and quality
+- [x] **Notifications reworked** — urgency tiering, the item named when there is
+      only one, and a "Mark as used" action. Also fixed already-expired items
+      never being notified at all.
+- [x] **Home-screen widget** (Glance) — overdue and this week, reads Room
+      directly so it works offline and for guests.
+- [x] **CSV import with duplicate detection** — plus two exporter bugs found on
+      the way in: unescaped category, and locale-dependent dates.
+- [x] **Sync UI** — the Backup & Sync card reports real status instead of
+      "coming soon".
+
 ### Testing
 - [x] Migration tests for 4→5, 5→6, 6→7 and the full 1→7 chain, run on device
 - [x] 36 Firestore rules tests on the emulator
-- [x] 21 unit tests covering the sync engine and document mapping
+- [x] 58 unit tests covering sync, document mapping, notification copy,
+      widget selection, and CSV round-tripping
 - [x] Every test suite verified by deliberately breaking the thing it covers and
       confirming the right tests failed
 
@@ -81,8 +93,9 @@ device, 36 Firestore rules tests — all passing.
       currently inert for every user. This is the blocker.
 - [ ] **Deploy the rules** — `firebase deploy --only firestore:rules`. They exist
       and pass tests but are not live.
-- [ ] **Sync UI** — Settings still says "Premium feature — coming soon". There is
-      no way to trigger a sync or see its status.
+- [ ] **Legal & compliance** — see `COMPLIANCE.md`. Account deletion is a live
+      Play policy violation; the "no data collection" claim contradicts active
+      analytics.
 
 ---
 
@@ -104,12 +117,14 @@ Not bugs to fix today, but things that are true and should not be forgotten.
   confirmed the barcode lookup works in a minified release APK.
 - **Analytics contradicts the store listing.** It says "no data collection"
   while Analytics and Crashlytics are active.
-- **No CSV import.** Data can leave but not come back, which also means an
-  export is not a restore path.
-- **Duplicate items are still possible.** `COLLATE NOCASE` makes comparison
-  case-insensitive but does not prevent inserting "Milk" twice.
-- **Notifications are generic.** No urgency tiering, no variation, no action
-  beyond opening the app.
+- **Duplicate prevention covers import only.** Adding the same item twice by
+  hand is still possible; only CSV import checks for duplicates.
+- **Widget rendering unverified.** Provider registers and the refresh path runs,
+  but it has not been placed on a real home screen.
+- **Notification action unverified.** "Mark as used" is wired but has not been
+  tapped on a device.
+- **CSV file picker unverified.** Parsing and dedupe are tested; choosing a real
+  file through the picker is not.
 - **Deferred auth is really skippable auth.** Users still see a Login screen
   with a Skip, rather than no login until a cloud feature is touched.
 - **Store listing statistic** still uses the US figure. Play Console task.
