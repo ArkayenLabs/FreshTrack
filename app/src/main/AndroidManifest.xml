@@ -76,6 +76,12 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Handles "Mark as used" tapped on an expiry notification. Not
+             exported: only our own PendingIntent may trigger it. -->
+        <receiver
+            android:name=".data.notification.NotificationActionReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>
