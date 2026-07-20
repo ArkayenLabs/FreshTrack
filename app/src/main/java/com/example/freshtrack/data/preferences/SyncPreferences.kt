@@ -39,6 +39,16 @@ class SyncPreferences(context: Context) {
         prefs.edit().putLong(pushKey(pantryId), value).apply()
     }
 
+    /**
+     * When a sync last completed, for display. Not per pantry: the user is
+     * being told "your data is backed up", not asked to reason about pantries.
+     */
+    fun lastSuccessAt(): Long = prefs.getLong(KEY_LAST_SUCCESS, 0L)
+
+    fun setLastSuccessAt(value: Long) {
+        prefs.edit().putLong(KEY_LAST_SUCCESS, value).apply()
+    }
+
     /** Used when a user signs out, so the next account starts clean. */
     fun clear() {
         prefs.edit().clear().apply()
@@ -49,5 +59,6 @@ class SyncPreferences(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "freshtrack_sync_prefs"
+        private const val KEY_LAST_SUCCESS = "last_success_at"
     }
 }

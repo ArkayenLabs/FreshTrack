@@ -91,6 +91,7 @@ class ProductSyncer(
         // Only advanced once the pull actually applied, so a crash mid-sync
         // replays rather than skips.
         syncPrefs.setLastPulledAt(pantryId, newestPulled)
+        syncPrefs.setLastSuccessAt(System.currentTimeMillis())
 
         return SyncResult.Success(pulled = pulledIds.size, pushed = localChanges.size)
     }

@@ -54,6 +54,21 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val productRepository: ProductRepository = koinInject()
+    val productSyncer: com.example.freshtrack.data.sync.ProductSyncer = koinInject()
+    val syncPreferences: com.example.freshtrack.data.preferences.SyncPreferences = koinInject()
+
+    var isSyncing by remember { mutableStateOf(false) }
+    // Seeded from the stored timestamp so the card says something truthful
+    // before any sync is attempted in this session.
+    var syncStatus by remember {
+        mutableStateOf(
+            if (FirebaseAuth.getInstance().currentUser == null) {
+                "Sign in to back up your items"
+            } else {
+                describeLastSync(syncPreferences.lastSuccessAt())
+            }
+        )
+    }
 
     // OpenDocument rather than GetContent: it returns a persistable URI and lets
     // the user pick from any provider, including Drive.
@@ -302,11 +317,24 @@ fun SettingsScreen(
                 )
 
                 SettingsItemCard(
-                    icon = Icons.Outlined.CloudUpload,
-                    title = "Backup & Sync",
-                    description = "Premium feature — coming soon",
-                    onClick = { },
-                    enabled = false
+                    icon = when {
+                        isSyncing -> Icons.Outlined.CloudSync
+                        syncStatus.startsWith("Backed up") -> Icons.Outlined.CloudDone
+                        else -> Icons.Outlined.CloudUpload
+                    },
+                    title = if (isSyncing) "Backing up..." else "Backup & Sync",
+                    description = syncStatus,
+                    // Tapping while signed out would do nothing, so it stays
+                    // inert rather than pretending to work.
+                    enabled = !isSyncing && FirebaseAuth.getInstance().currentUser != null,
+                    onClick = {
+                        isSyncing = true
+                        scope.launch {
+                            val result = productSyncer.sync()
+                            syncStatus = describeSync(result, syncPreferences.lastSuccessAt())
+                            isSyncing = false
+                        }
+                    }
                 )
             }
 
@@ -798,4 +826,47 @@ private fun AdvanceNoticeDaysDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 6.dp
     )
+}
+/**
+ * Wording for the Backup & Sync card.
+ *
+ * Deliberately plain about the two cases that are not success. A backup that
+ * silently is not happening is worse than no backup, because the user stops
+ * worrying about it.
+ */
+private fun describeSync(
+    result: com.example.freshtrack.data.sync.SyncResult,
+    lastSuccessAt: Long
+): String = when (result) {
+    is com.example.freshtrack.data.sync.SyncResult.Success ->
+        "Backed up just now"
+
+    com.example.freshtrack.data.sync.SyncResult.SkippedSignedOut ->
+        "Sign in to back up your items"
+
+    com.example.freshtrack.data.sync.SyncResult.SkippedNotPremium ->
+        "Backup is a Premium feature"
+
+    is com.example.freshtrack.data.sync.SyncResult.Retryable ->
+        "No connection. Will retry automatically."
+
+    is com.example.freshtrack.data.sync.SyncResult.Failed ->
+        "Backup failed. " + describeLastSync(lastSuccessAt)
+}
+
+/** "Backed up 3 hours ago", or an honest statement that it never has been. */
+private fun describeLastSync(lastSuccessAt: Long): String {
+    if (lastSuccessAt <= 0L) return "Not backed up yet"
+
+    val elapsed = System.currentTimeMillis() - lastSuccessAt
+    val minutes = elapsed / 60_000
+    val hours = minutes / 60
+    val days = hours / 24
+
+    return when {
+        minutes < 1 -> "Backed up just now"
+        minutes < 60 -> "Backed up $minutes ${if (minutes == 1L) "minute" else "minutes"} ago"
+        hours < 24 -> "Backed up $hours ${if (hours == 1L) "hour" else "hours"} ago"
+        else -> "Backed up $days ${if (days == 1L) "day" else "days"} ago"
+    }
 }
