@@ -259,12 +259,6 @@ fun AddEditProductScreen(
                 )
             }
 
-            // SECTION 5: Notification Settings
-            NotificationSettingsCard(
-                enabled = uiState.notificationEnabled,
-                onToggle = { viewModel.toggleNotification(it) }
-            )
-
             Spacer(Modifier.height(80.dp)) // Space for bottom button
         }
     }
@@ -562,74 +556,6 @@ fun ExpiryStatusIndicator(expiryDate: Long) {
                 text = if (daysUntilExpiry >= 0) "$daysUntilExpiry days" else "Expired",
                 style = MaterialTheme.typography.bodySmall,
                 color = color
-            )
-        }
-    }
-}
-
-@Composable
-fun NotificationSettingsCard(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (enabled)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (enabled) Icons.Default.Notifications else Icons.Outlined.NotificationsOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = if (enabled)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(
-                        "Expiry Notifications",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        if (enabled) "Get notified before expiry" else "Notifications disabled",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Switch(
-                checked = enabled,
-                onCheckedChange = onToggle
             )
         }
     }

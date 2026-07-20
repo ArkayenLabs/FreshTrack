@@ -3,6 +3,7 @@ package com.example.freshtrack.di
 import com.example.freshtrack.data.local.FreshTrackDatabase
 import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.data.repository.*
+import com.example.freshtrack.domain.repository.*
 import com.example.freshtrack.presentation.viewmodel.*
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -28,7 +29,10 @@ val databaseModule = module {
  */
 val repositoryModule = module {
 
-    // Product Repository
+    // Firebase Auth
+    single { com.google.firebase.auth.FirebaseAuth.getInstance() }
+
+    // Repositories
     single<ProductRepository> {
         ProductRepositoryImpl(productDao = get())
     }
@@ -36,6 +40,40 @@ val repositoryModule = module {
     // Category Repository
     single<CategoryRepository> {
         CategoryRepositoryImpl(categoryDao = get())
+    }
+
+    // Auth Repository
+    single<com.example.freshtrack.domain.repository.AuthRepository> {
+        com.example.freshtrack.data.repository.FirebaseAuthRepositoryImpl(get())
+    }
+
+    // Product Lookup Repository
+    single<ProductLookupRepository> {
+        ProductLookupRepositoryImpl(api = get())
+    }
+}
+
+/**
+ * Koin module for network dependencies
+ */
+val networkModule = module {
+    single {
+        val loggingInterceptor = okhttp3.logging.HttpLoggingInterceptor().apply {
+            level = okhttp3.logging.HttpLoggingInterceptor.Level.BODY
+        }
+        val client = okhttp3.OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .build()
+
+        retrofit2.Retrofit.Builder()
+            .baseUrl("https://world.openfoodfacts.org/")
+            .client(client)
+            .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+            .build()
+    }
+
+    single {
+        get<retrofit2.Retrofit>().create(com.example.freshtrack.data.remote.OpenFoodFactsApi::class.java)
     }
 }
 
@@ -47,7 +85,6 @@ val preferencesModule = module {
 
     // Onboarding Preferences
     single { OnboardingPreferences(androidContext()) }
-
 }
 
 /**
@@ -76,13 +113,21 @@ val viewModelModule = module {
     viewModel<AddEditProductViewModel> {
         AddEditProductViewModel(
             productRepository = get(),
-            categoryRepository = get()
+            categoryRepository = get(),
+            productLookupRepository = get()
         )
     }
 
     // Product Details ViewModel
     viewModel<ProductDetailsViewModel> {
         ProductDetailsViewModel(
+            productRepository = get()
+        )
+    }
+
+    // Impact ViewModel
+    viewModel<ImpactViewModel> {
+        ImpactViewModel(
             productRepository = get()
         )
     }
@@ -98,6 +143,13 @@ val viewModelModule = module {
             productRepository = get()
         )
     }
+
+    // Auth ViewModel
+    viewModel<com.example.freshtrack.presentation.viewmodel.AuthViewModel> {
+        com.example.freshtrack.presentation.viewmodel.AuthViewModel(
+            authRepository = get()
+        )
+    }
 }
 
 /**
@@ -107,5 +159,6 @@ val appModules = listOf(
     databaseModule,
     repositoryModule,
     preferencesModule,
+    networkModule,
     viewModelModule
 )

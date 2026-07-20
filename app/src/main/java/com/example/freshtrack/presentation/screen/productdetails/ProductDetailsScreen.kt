@@ -169,21 +169,6 @@ fun ProductDetailsScreen(
                                 )
                             }
 
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-                            // Notifications
-                            InfoRow(
-                                icon = if (product.notificationEnabled)
-                                    Icons.Outlined.Notifications
-                                else
-                                    Icons.Outlined.NotificationsOff,
-                                label = "Notifications",
-                                value = if (product.notificationEnabled) "Enabled" else "Disabled",
-                                valueColor = if (product.notificationEnabled)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
 

@@ -6,6 +6,7 @@ import com.example.freshtrack.data.repository.CategoryRepository
 import com.example.freshtrack.data.repository.ProductRepository
 import com.example.freshtrack.domain.model.Category
 import com.example.freshtrack.domain.model.Product
+import com.example.freshtrack.domain.repository.ProductLookupRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -16,7 +17,8 @@ import java.util.UUID
  */
 class AddEditProductViewModel(
     private val productRepository: ProductRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val productLookupRepository: ProductLookupRepository
 ) : ViewModel() {
 
     // UI State
@@ -32,7 +34,7 @@ class AddEditProductViewModel(
             categoryRepository.getAllCategories().collect { categories ->
                 _uiState.update { it.copy(
                     availableCategories = categories,
-                    selectedCategory = categories.firstOrNull()?.name ?: "Food"
+                    selectedCategory = categories.firstOrNull()?.name ?: "Fresh Produce"
                 )}
             }
         }
@@ -51,10 +53,9 @@ class AddEditProductViewModel(
                         barcode = it.barcode,
                         selectedCategory = it.category,
                         expiryDate = it.expiryDate,
-                        quantity = it.quantity.toString(),  // Convert Int to String
+                        quantity = it.quantity.toString(),
                         notes = it.notes ?: "",
                         imageUri = it.imageUri,
-                        notificationEnabled = it.notificationEnabled,
                         isEditMode = true
                     )}
                 }
@@ -66,8 +67,28 @@ class AddEditProductViewModel(
      * Set barcode from scanner
      */
     fun setBarcodeFromScanner(barcode: String?) {
-        barcode?.let {
-            _uiState.update { state -> state.copy(barcode = it) }
+        barcode?.let { scannedBarcode ->
+            _uiState.update { state -> state.copy(barcode = scannedBarcode) }
+            
+            // Trigger API lookup
+            viewModelScope.launch {
+                _uiState.update { state -> state.copy(isLookingUp = true, error = null) }
+                productLookupRepository.getProductByBarcode(scannedBarcode)
+                    .onSuccess { productInfo ->
+                        _uiState.update { state ->
+                            state.copy(
+                                name = if (state.name.isBlank()) productInfo.name else state.name,
+                                imageUri = productInfo.imageUrl ?: state.imageUri,
+                                isLookingUp = false
+                            )
+                        }
+                    }
+                    .onFailure { error ->
+                        _uiState.update { state -> 
+                            state.copy(isLookingUp = false, error = "Product not found or lookup failed") 
+                        }
+                    }
+            }
         }
     }
 
@@ -103,9 +124,6 @@ class AddEditProductViewModel(
         _uiState.update { it.copy(imageUri = uri) }
     }
 
-    fun toggleNotification(enabled: Boolean) {
-        _uiState.update { it.copy(notificationEnabled = enabled) }
-    }
 
     /**
      * Save or update product
@@ -184,7 +202,7 @@ data class AddEditProductUiState(
     val productId: String = "",
     val name: String = "",
     val barcode: String? = null,
-    val selectedCategory: String = "Food",
+    val selectedCategory: String = "Fresh Produce",
     val availableCategories: List<Category> = emptyList(),
     val expiryDate: Long = 0L,
     val quantity: String = "",  // Changed from Int to String, default empty
@@ -193,6 +211,7 @@ data class AddEditProductUiState(
     val notificationEnabled: Boolean = true,
     val isEditMode: Boolean = false,
     val isSaving: Boolean = false,
+    val isLookingUp: Boolean = false,
     val error: String? = null
 )
 
@@ -227,17 +246,19 @@ class ProductDetailsViewModel(
     }
 
     fun markAsConsumed(onSuccess: () -> Unit) {
-        val productId = _uiState.value.product?.id ?: return
+        val product = _uiState.value.product ?: return
         viewModelScope.launch {
-            productRepository.markAsConsumed(productId)
+            productRepository.markAsConsumed(product.id)
+            com.example.freshtrack.util.AnalyticsHelper.logItemConsumed(product.category, product.isExpired())
             onSuccess()
         }
     }
 
     fun markAsDiscarded(onSuccess: () -> Unit) {
-        val productId = _uiState.value.product?.id ?: return
+        val product = _uiState.value.product ?: return
         viewModelScope.launch {
-            productRepository.markAsDiscarded(productId)
+            productRepository.markAsDiscarded(product.id)
+            com.example.freshtrack.util.AnalyticsHelper.logItemDiscarded(product.category)
             onSuccess()
         }
     }
@@ -248,6 +269,7 @@ class ProductDetailsViewModel(
             val remaining = product.quantity - amount
             if (remaining <= 0) {
                 productRepository.markAsConsumed(product.id)
+                com.example.freshtrack.util.AnalyticsHelper.logItemConsumed(product.category, product.isExpired())
                 onSuccess()
             } else {
                 productRepository.updateProductQuantity(product.id, remaining)
@@ -261,6 +283,7 @@ class ProductDetailsViewModel(
             val remaining = product.quantity - amount
             if (remaining <= 0) {
                 productRepository.markAsDiscarded(product.id)
+                com.example.freshtrack.util.AnalyticsHelper.logItemDiscarded(product.category)
                 onSuccess()
             } else {
                 productRepository.updateProductQuantity(product.id, remaining)
