@@ -38,7 +38,7 @@ abstract class FreshTrackDatabase : RoomDatabase() {
         /**
          * Migration from version 1 to 2: adds originalQuantity column
          */
-        private val MIGRATION_1_2 = object : Migration(1, 2) {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE products ADD COLUMN originalQuantity INTEGER NOT NULL DEFAULT 1")
                 // Set originalQuantity to current quantity for existing products
@@ -49,7 +49,7 @@ abstract class FreshTrackDatabase : RoomDatabase() {
         /**
          * Migration from version 2 to 3: adds COLLATE NOCASE to name/category
          */
-        private val MIGRATION_2_3 = object : Migration(2, 3) {
+        val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Category table migration
                 db.execSQL("""
@@ -90,7 +90,7 @@ abstract class FreshTrackDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_3_4 = object : Migration(3, 4) {
+        val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Remap any products from removed categories to 'Other'
                 db.execSQL("UPDATE products SET category = 'Other' WHERE category IN ('Food', 'Medicine', 'Cosmetics')")
@@ -116,7 +116,7 @@ abstract class FreshTrackDatabase : RoomDatabase() {
          * money-saved and waste totals exact (they are plain counts) and only makes
          * the waste-free day count conservative for pre-migration history.
          */
-        private val MIGRATION_4_5 = object : Migration(4, 5) {
+        val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE products ADD COLUMN resolvedDate INTEGER DEFAULT NULL")
                 db.execSQL("UPDATE products SET resolvedDate = addedDate WHERE isConsumed = 1 OR isDiscarded = 1")
@@ -134,7 +134,7 @@ abstract class FreshTrackDatabase : RoomDatabase() {
          * - isDeleted / deletedAt: tombstones, since a hard DELETE cannot
          *   propagate to another device.
          */
-        private val MIGRATION_5_6 = object : Migration(5, 6) {
+        val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE products ADD COLUMN userId TEXT NOT NULL DEFAULT 'guest'")
                 db.execSQL("ALTER TABLE products ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
@@ -145,6 +145,14 @@ abstract class FreshTrackDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Every migration, in one place, so the app and MigrationTest can never
+         * disagree about which migrations exist.
+         */
+        val ALL_MIGRATIONS = arrayOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6
+        )
+
         fun getInstance(context: Context): FreshTrackDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -153,7 +161,7 @@ abstract class FreshTrackDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                     .addCallback(DatabaseCallback())
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(*ALL_MIGRATIONS)
                     .build()
 
                 INSTANCE = instance

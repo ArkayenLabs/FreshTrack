@@ -55,7 +55,7 @@ class MigrationTest {
             close()
         }
 
-        val db = helper.runMigrationsAndValidate(dbName, 5, true)
+        val db = helper.runMigrationsAndValidate(dbName, 5, true, *FreshTrackDatabase.ALL_MIGRATIONS)
 
         db.query("SELECT resolvedDate FROM products WHERE id = 'used'").use {
             assertTrue(it.moveToFirst())
@@ -96,7 +96,7 @@ class MigrationTest {
             close()
         }
 
-        val db = helper.runMigrationsAndValidate(dbName, 6, true)
+        val db = helper.runMigrationsAndValidate(dbName, 6, true, *FreshTrackDatabase.ALL_MIGRATIONS)
 
         db.query("SELECT userId, isDeleted, deletedAt FROM products").use {
             assertTrue(it.moveToFirst())
@@ -122,6 +122,6 @@ class MigrationTest {
     @Test
     fun migrateAll_1To6() {
         helper.createDatabase(dbName, 1).close()
-        helper.runMigrationsAndValidate(dbName, 6, true)
+        helper.runMigrationsAndValidate(dbName, 6, true, *FreshTrackDatabase.ALL_MIGRATIONS)
     }
 }

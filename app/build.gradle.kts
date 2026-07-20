@@ -71,6 +71,12 @@ android {
         buildConfig = true
     }
 
+    // MigrationTest builds each historical schema on-device, so the exported
+    // JSONs must ship with the test APK.
+    sourceSets {
+        getByName("androidTest").assets.srcDirs("$projectDir/schemas")
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
