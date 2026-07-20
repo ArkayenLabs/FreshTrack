@@ -42,6 +42,19 @@ service cloud.firestore {
       return isSignedIn() && pantryData(pantryId).ownerUid == uid();
     }
 
+    // Entitlement lives on the pantry, not the owner's user document, because
+    // the rules already fetch the pantry — checking the owner's profile instead
+    // would cost a second billed read on every product write. A Cloud Function
+    // sets this when a Play Billing purchase is verified; clients cannot.
+    function pantryIsPremium(pantryId) {
+      return pantryData(pantryId).get('isPremium', false) == true;
+    }
+
+    // Household size. Free pantries are single-user; premium allows a household.
+    function memberLimitFor(isPremium) {
+      return isPremium ? 6 : 1;
+    }
+
     // ─── Users ──────────────────────────────────────────────────────────────
     //
     // `plan` is an entitlement. It must only ever be written by a trusted server
@@ -72,30 +85,44 @@ service cloud.firestore {
       // isMemberOf(), to avoid paying for a second read of the same document.
       allow get: if isSignedIn() && uid() in resource.data.memberUids;
 
-      // A new pantry must be created owned by, and containing only, its creator.
-      // Without this a client could create a pantry that already lists someone
-      // else as a member.
+      // A new pantry must be created owned by, and containing only, its creator,
+      // and never pre-flagged as premium. Without this a client could create a
+      // pantry that already lists someone else as a member, or one that has
+      // granted itself a paid entitlement.
       allow create: if isSignedIn()
                     && request.resource.data.ownerUid == uid()
-                    && request.resource.data.memberUids == [uid()];
+                    && request.resource.data.memberUids == [uid()]
+                    && request.resource.data.get('isPremium', false) == false;
 
-      // Only the owner changes membership, and ownership itself is immutable —
-      // otherwise a member could promote themselves and lock the owner out.
+      // Only the owner changes membership. Ownership and the premium flag are
+      // both immutable from a client — otherwise a member could promote
+      // themselves and lock the owner out, or anyone could unlock a family plan.
       allow update: if isOwnerOf(pantryId)
                     && request.resource.data.ownerUid == resource.data.ownerUid
-                    && uid() in request.resource.data.memberUids;
+                    && request.resource.data.get('isPremium', false)
+                       == resource.data.get('isPremium', false)
+                    && uid() in request.resource.data.memberUids
+                    && request.resource.data.memberUids.size()
+                       <= memberLimitFor(pantryIsPremium(pantryId));
 
       allow delete: if isOwnerOf(pantryId);
 
       // ─── Products ─────────────────────────────────────────────────────────
       match /products/{productId} {
 
+        // Reads stay open to members regardless of plan. If a subscription
+        // lapses the user can still read back and export what they already
+        // uploaded — their data is not held hostage. Only further backup stops.
         allow get: if isMemberOf(pantryId);
         allow list: if isMemberOf(pantryId);
 
+        // Writing to the cloud is the premium feature. Free accounts are fully
+        // functional offline; nothing is capped locally.
+        //
         // updatedAt drives last-write-wins, so a write without a usable
         // timestamp is rejected rather than silently winning or losing.
         allow create, update: if isMemberOf(pantryId)
+                              && pantryIsPremium(pantryId)
                               && request.resource.data.updatedAt is number;
 
         // Deletes are soft: the client sets isDeleted so the removal can

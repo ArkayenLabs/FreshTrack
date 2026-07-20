@@ -84,7 +84,10 @@ P0 is complete and verified on device. P1 design decisions are settled in
   ~~Original:~~ — A hard `DELETE` cannot propagate to other devices. Sync
   needs `isDeleted` + `deletedAt` (tombstones), also in the same migration.
 
-- [ ] **Free-tier limits must exist before billing** — There is no concept of a plan in
+- [x] **Free-tier limits must exist before billing** — Decided: a feature gate,
+  not quantity caps. Free stays unlimited locally; cloud writes and households
+  are premium. Enforced in rules and covered by tests. No counters needed.
+  ~~Original:~~ — There is no concept of a plan in
   the codebase. Decide what free caps are (item count, history retention) and enforce
   server-side in rules, not only in the UI.
 

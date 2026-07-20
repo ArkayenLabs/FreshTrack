@@ -12,7 +12,8 @@ import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs } from '
 
 const ALICE = 'alice-uid';
 const BOB = 'bob-uid';
-const PANTRY = 'pantry-1';
+const PANTRY = 'pantry-1';        // free tier, owned by Alice
+const PREMIUM_PANTRY = 'pantry-premium'; // premium, owned by Alice
 
 let testEnv;
 
@@ -44,6 +45,20 @@ beforeEach(async () => {
     });
     await setDoc(doc(db, 'pantries', PANTRY, 'products', 'milk'), {
       name: 'Milk',
+      updatedAt: 100,
+      isDeleted: false,
+    });
+    // A premium pantry, flagged the way a Cloud Function would after verifying
+    // a Play Billing purchase.
+    await setDoc(doc(db, 'pantries', PREMIUM_PANTRY), {
+      name: 'Alice premium pantry',
+      ownerUid: ALICE,
+      memberUids: [ALICE],
+      isPremium: true,
+      createdAt: 1,
+    });
+    await setDoc(doc(db, 'pantries', PREMIUM_PANTRY, 'products', 'eggs'), {
+      name: 'Eggs',
       updatedAt: 100,
       isDeleted: false,
     });
@@ -88,9 +103,9 @@ describe('pantry membership', () => {
     await assertFails(getDocs(collection(bob(), 'pantries', PANTRY, 'products')));
   });
 
-  it('a non-member cannot write products', async () => {
+  it('a non-member cannot write products even to a premium pantry', async () => {
     await assertFails(
-      setDoc(doc(bob(), 'pantries', PANTRY, 'products', 'stolen'), {
+      setDoc(doc(bob(), 'pantries', PREMIUM_PANTRY, 'products', 'stolen'), {
         name: 'Stolen',
         updatedAt: 200,
       })
@@ -142,7 +157,7 @@ describe('pantry ownership is not transferable by members', () => {
 
   it('the owner can add a member', async () => {
     await assertSucceeds(
-      updateDoc(doc(alice(), 'pantries', PANTRY), { memberUids: [ALICE, BOB] })
+      updateDoc(doc(alice(), 'pantries', PREMIUM_PANTRY), { memberUids: [ALICE, BOB] })
     );
   });
 
@@ -155,11 +170,11 @@ describe('pantry ownership is not transferable by members', () => {
   });
 });
 
-describe('product writes', () => {
+describe('product writes (premium pantry)', () => {
   it('a member can update a product', async () => {
     await assertSucceeds(
-      updateDoc(doc(alice(), 'pantries', PANTRY, 'products', 'milk'), {
-        name: 'Whole Milk',
+      updateDoc(doc(alice(), 'pantries', PREMIUM_PANTRY, 'products', 'eggs'), {
+        name: 'Free Range Eggs',
         updatedAt: 300,
       })
     );
@@ -167,13 +182,15 @@ describe('product writes', () => {
 
   it('a write without updatedAt is rejected', async () => {
     await assertFails(
-      setDoc(doc(alice(), 'pantries', PANTRY, 'products', 'no-ts'), { name: 'No timestamp' })
+      setDoc(doc(alice(), 'pantries', PREMIUM_PANTRY, 'products', 'no-ts'), {
+        name: 'No timestamp',
+      })
     );
   });
 
   it('a write with a non-numeric updatedAt is rejected', async () => {
     await assertFails(
-      setDoc(doc(alice(), 'pantries', PANTRY, 'products', 'bad-ts'), {
+      setDoc(doc(alice(), 'pantries', PREMIUM_PANTRY, 'products', 'bad-ts'), {
         name: 'Bad timestamp',
         updatedAt: 'yesterday',
       })
@@ -181,15 +198,89 @@ describe('product writes', () => {
   });
 
   it('hard delete is refused even for the owner', async () => {
-    await assertFails(deleteDoc(doc(alice(), 'pantries', PANTRY, 'products', 'milk')));
+    await assertFails(
+      deleteDoc(doc(alice(), 'pantries', PREMIUM_PANTRY, 'products', 'eggs'))
+    );
   });
 
   it('soft delete via isDeleted is allowed', async () => {
     await assertSucceeds(
-      updateDoc(doc(alice(), 'pantries', PANTRY, 'products', 'milk'), {
+      updateDoc(doc(alice(), 'pantries', PREMIUM_PANTRY, 'products', 'eggs'), {
         isDeleted: true,
         deletedAt: 400,
         updatedAt: 400,
+      })
+    );
+  });
+});
+
+describe('free tier gates cloud writes, not reads', () => {
+  it('a free pantry cannot write products', async () => {
+    await assertFails(
+      setDoc(doc(alice(), 'pantries', PANTRY, 'products', 'new-item'), {
+        name: 'New Item',
+        updatedAt: 500,
+      })
+    );
+  });
+
+  it('a free pantry cannot update existing products', async () => {
+    await assertFails(
+      updateDoc(doc(alice(), 'pantries', PANTRY, 'products', 'milk'), {
+        name: 'Changed',
+        updatedAt: 500,
+      })
+    );
+  });
+
+  it('a free pantry can still read its products', async () => {
+    // A lapsed subscriber must be able to read and export what they already
+    // uploaded, rather than have it held hostage.
+    await assertSucceeds(getDoc(doc(alice(), 'pantries', PANTRY, 'products', 'milk')));
+  });
+
+  it('a client cannot create a pantry pre-flagged as premium', async () => {
+    await assertFails(
+      setDoc(doc(bob(), 'pantries', 'bob-premium'), {
+        name: 'Bob premium',
+        ownerUid: BOB,
+        memberUids: [BOB],
+        isPremium: true,
+        createdAt: 1,
+      })
+    );
+  });
+
+  it('an owner cannot flag their own pantry as premium', async () => {
+    await assertFails(updateDoc(doc(alice(), 'pantries', PANTRY), { isPremium: true }));
+  });
+});
+
+describe('household size limits', () => {
+  it('a free pantry cannot add a second member', async () => {
+    await assertFails(
+      updateDoc(doc(alice(), 'pantries', PANTRY), { memberUids: [ALICE, BOB] })
+    );
+  });
+
+  it('a premium pantry can add members', async () => {
+    await assertSucceeds(
+      updateDoc(doc(alice(), 'pantries', PREMIUM_PANTRY), { memberUids: [ALICE, BOB] })
+    );
+  });
+
+  it('a premium pantry allows up to six members', async () => {
+    await assertSucceeds(
+      updateDoc(doc(alice(), 'pantries', PREMIUM_PANTRY), {
+        memberUids: [ALICE, BOB, 'c', 'd', 'e', 'f'],
+      })
+    );
+  });
+
+  it('a premium pantry rejects a seventh member', async () => {
+    await assertFails(
+      updateDoc(doc(alice(), 'pantries', PREMIUM_PANTRY), {
+        memberUids: [ALICE, BOB, 'c', 'd', 'e', 'f', 'g'],
       })
     );
   });

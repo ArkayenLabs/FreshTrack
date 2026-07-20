@@ -116,19 +116,45 @@ cannot silently win.
 
 ## Free tier limits
 
-Not yet decided, and required **before** billing ships. Whatever the caps are,
-they must be enforced in rules or a Cloud Function, not only in the UI — client
-checks are advisory against a decompiled app.
+**There are no quantity caps. The paywall is a feature gate.**
 
-Firestore cannot count documents cheaply in a rule, so a cap needs a maintained
-counter (for example `productCount` on the pantry document, updated in a
-transaction or a Cloud Function trigger).
+| | Free | Premium |
+|---|---|---|
+| Local inventory | Unlimited | Unlimited |
+| Barcode scan, notifications, CSV export, history | Yes | Yes |
+| Cloud backup & sync (writes) | No | Yes |
+| Reading data already uploaded | Yes | Yes |
+| Household members | 1 | 6 |
 
----
+Three reasons there is no item cap:
+
+1. **It would break live users.** People are already using the app with unlimited
+   local items. A retroactive cap would strand data on their phones.
+2. **It contradicts the listing.** "No account, 100% offline" is what the 5.0
+   reviews praise. Capping offline storage undermines the thing that works.
+3. **Local storage is free to us.** Firestore reads and writes are not. The
+   paywall belongs where the cost is.
+
+This also removes the counter infrastructure entirely — no `productCount`, no
+transactional increments, no Cloud Function trigger to keep a count accurate.
+
+**Reads survive a downgrade.** If a subscription lapses, the user can still read
+and export everything already uploaded; only further backup stops. Locking people
+out of data they already gave us would be holding it hostage.
+
+**Where the entitlement lives.** `isPremium` sits on the pantry document, not the
+owner's user profile. The rules already fetch the pantry to check membership, so
+this costs no extra billed read; checking the owner's profile would double the
+reads on every product write. A Cloud Function sets it after verifying a Play
+Billing purchase — rules refuse any client write to it, on both create and
+update.
+
+**Household size** is enforced with `memberUids.size()`, which needs no counter
+because the list is already on the document.
 
 ## Open items before implementation
 
-- [ ] Decide free-tier caps (item count, history retention) and how they are counted
+- [x] Free-tier model decided: feature gate, no quantity caps. See above.
 - [x] Rules unit tests — 27 tests in `firestore-tests/rules.test.mjs`, run with
       `npm run test:rules`. Verified meaningful by deliberately loosening two
       rules and confirming the matching tests failed.
