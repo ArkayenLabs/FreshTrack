@@ -91,8 +91,8 @@ object NotificationHelper {
         )
 
         val title = when {
-            productCount == 1 -> "\uD83D\uDEA8 1 Product Expiring Soon"
-            else -> "\uD83D\uDEA8 $productCount Products Expiring Soon"
+            productCount == 1 -> "1 Product Expiring Soon"
+            else -> "$productCount Products Expiring Soon"
         }
 
         val summaryText = when {
@@ -155,17 +155,17 @@ object NotificationHelper {
         )
 
         val inboxStyle = NotificationCompat.InboxStyle()
-            .setBigContentTitle("\uD83D\uDCCA Daily Summary")
+            .setBigContentTitle("Daily Summary")
             .setSummaryText("FreshTrack")
-            .addLine("\uD83D\uDCE6 $totalProducts products tracked")
-            .addLine("\u26A0\uFE0F $expiringCount expiring soon")
+            .addLine("\u2022 $totalProducts products tracked")
+            .addLine("\u2022 $expiringCount expiring soon")
 
         val notification = NotificationCompat.Builder(
             context,
             FreshTrackApplication.CHANNEL_ID_EXPIRY_ALERTS
         )
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("\uD83D\uDCCA Daily Summary")
+            .setContentTitle("Daily Summary")
             .setContentText("$expiringCount of $totalProducts products expiring soon")
             .setStyle(inboxStyle)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
