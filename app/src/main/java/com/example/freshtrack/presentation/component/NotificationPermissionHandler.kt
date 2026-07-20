@@ -142,9 +142,9 @@ fun NotificationPermissionDialog(
                             modifier = Modifier.padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            NotificationBenefit("📅 Expiry reminders")
-                            NotificationBenefit("💰 Reduce waste")
-                            NotificationBenefit("⏰ Daily summaries")
+                            NotificationBenefit("Expiry reminders")
+                            NotificationBenefit("Reduce food waste")
+                            NotificationBenefit("Daily summaries")
                         }
                     }
                 }
@@ -186,6 +186,11 @@ fun NotificationBenefit(text: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        Text(
+            text = "•",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary
+        )
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,

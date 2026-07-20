@@ -183,7 +183,7 @@ fun CustomOSSLicensesScreen(
             item {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Thank you to all open source contributors ❤️",
+                    "Thank you to all open source contributors.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth()
