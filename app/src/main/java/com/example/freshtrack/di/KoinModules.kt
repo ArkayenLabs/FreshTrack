@@ -58,8 +58,14 @@ val repositoryModule = module {
  */
 val networkModule = module {
     single {
+        // Bodies are logged in debug only. On release this must stay NONE so that
+        // request and response contents never reach logcat on a user's device.
         val loggingInterceptor = okhttp3.logging.HttpLoggingInterceptor().apply {
-            level = okhttp3.logging.HttpLoggingInterceptor.Level.BODY
+            level = if (com.example.freshtrack.BuildConfig.DEBUG) {
+                okhttp3.logging.HttpLoggingInterceptor.Level.BODY
+            } else {
+                okhttp3.logging.HttpLoggingInterceptor.Level.NONE
+            }
         }
         val client = okhttp3.OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
