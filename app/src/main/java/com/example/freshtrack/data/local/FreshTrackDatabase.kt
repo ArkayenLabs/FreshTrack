@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
  */
 @Database(
     entities = [ProductEntity::class, CategoryEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class FreshTrackDatabase : RoomDatabase() {
@@ -123,6 +123,28 @@ abstract class FreshTrackDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 5 to 6: adds the columns sync needs.
+         *
+         * - userId: every existing row predates accounts, so it is backfilled to
+         *   'guest'. The claim step on sign-in adopts those rows for the account,
+         *   which is the same path a guest-to-signup takes.
+         * - updatedAt: seeded from resolvedDate or addedDate so existing rows have
+         *   a sane last-write time rather than all colliding on migration time.
+         * - isDeleted / deletedAt: tombstones, since a hard DELETE cannot
+         *   propagate to another device.
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE products ADD COLUMN userId TEXT NOT NULL DEFAULT 'guest'")
+                db.execSQL("ALTER TABLE products ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE products ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE products ADD COLUMN deletedAt INTEGER DEFAULT NULL")
+                db.execSQL("UPDATE products SET updatedAt = COALESCE(resolvedDate, addedDate)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_products_userId ON products(userId)")
+            }
+        }
+
         fun getInstance(context: Context): FreshTrackDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -131,7 +153,7 @@ abstract class FreshTrackDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                     .addCallback(DatabaseCallback())
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
 
                 INSTANCE = instance

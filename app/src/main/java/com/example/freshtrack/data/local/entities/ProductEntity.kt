@@ -2,6 +2,7 @@ package com.example.freshtrack.data.local.entities
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
@@ -9,10 +10,19 @@ import java.util.UUID
  * Product entity representing items tracked in the app
  * Stores all information about expirable products
  */
-@Entity(tableName = "products")
+@Entity(
+    tableName = "products",
+    indices = [Index(value = ["userId"])]
+)
 data class ProductEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
+    /**
+     * Firebase uid of the owner, or [GUEST_USER_ID] for rows created before the
+     * user signed in. Every query filters on this so two accounts sharing a
+     * device never see each other's items.
+     */
+    val userId: String = GUEST_USER_ID,
     @ColumnInfo(collate = ColumnInfo.NOCASE)
     val name: String,
     val barcode: String? = null,
@@ -29,8 +39,19 @@ data class ProductEntity(
     val isDiscarded: Boolean = false,
     // When the item was marked used or discarded. Null while still active.
     // Backfilled to addedDate for rows resolved before this column existed.
-    val resolvedDate: Long? = null
+    val resolvedDate: Long? = null,
+    /** Last local write. Drives last-write-wins when sync lands. */
+    val updatedAt: Long = System.currentTimeMillis(),
+    /**
+     * Tombstone. A hard DELETE cannot propagate to other devices, so deletes are
+     * soft and the row is filtered out of every user-facing query.
+     */
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null
 )
+
+/** Owner id used for rows created before the user signed in. */
+const val GUEST_USER_ID = "guest"
 
 /**
  * Category entity for product categorization

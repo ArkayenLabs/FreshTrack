@@ -33,8 +33,10 @@ val repositoryModule = module {
     single { com.google.firebase.auth.FirebaseAuth.getInstance() }
 
     // Repositories
+    single { com.example.freshtrack.data.session.UserSession(get()) }
+
     single<ProductRepository> {
-        ProductRepositoryImpl(productDao = get())
+        ProductRepositoryImpl(productDao = get(), session = get())
     }
 
     // Category Repository

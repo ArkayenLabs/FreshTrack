@@ -2,6 +2,7 @@ package com.example.freshtrack.data.repository
 
 import com.example.freshtrack.data.local.dao.CategoryDao
 import com.example.freshtrack.data.local.dao.ProductDao
+import com.example.freshtrack.data.session.UserSession
 import com.example.freshtrack.domain.model.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -30,6 +31,12 @@ interface ProductRepository {
     fun getDiscardedProducts(): Flow<List<Product>>
     fun getImpactStats(): Flow<ImpactStats>
     suspend fun deleteHistory()
+
+    /**
+     * Adopts any guest-owned rows for the signed-in account. Returns how many
+     * were claimed. No-op when signed out.
+     */
+    suspend fun claimGuestData(): Int
 }
 
 /**
@@ -49,29 +56,33 @@ interface CategoryRepository {
  * Handles data operations and domain/entity mapping
  */
 class ProductRepositoryImpl(
-    private val productDao: ProductDao
+    private val productDao: ProductDao,
+    private val session: UserSession
 ) : ProductRepository {
 
+    /** Resolved per call so a sign-in or sign-out takes effect immediately. */
+    private fun uid(): String = session.currentUserId()
+
     override fun getAllProducts(): Flow<List<Product>> {
-        return productDao.getAllActiveProducts().map { entities ->
+        return productDao.getAllActiveProducts(uid()).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
     override fun getProductsByCategory(category: String): Flow<List<Product>> {
-        return productDao.getProductsByCategory(category).map { entities ->
+        return productDao.getProductsByCategory(uid(), category).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
     override fun getProductById(productId: String): Flow<Product?> {
-        return productDao.getProductById(productId).map { entity ->
+        return productDao.getProductById(uid(), productId).map { entity ->
             entity?.toDomain()
         }
     }
 
     override suspend fun getProductByIdOnce(productId: String): Product? {
-        return productDao.getProductByIdOnce(productId)?.toDomain()
+        return productDao.getProductByIdOnce(uid(), productId)?.toDomain()
     }
 
     override suspend fun getExpiringProducts(daysThreshold: Int): List<Product> {
@@ -79,13 +90,14 @@ class ProductRepositoryImpl(
         val thresholdTime = currentTime + TimeUnit.DAYS.toMillis(daysThreshold.toLong())
 
         return productDao.getExpiringProducts(
+            userId = uid(),
             timestampThreshold = thresholdTime,
             currentTimestamp = currentTime
         ).map { it.toDomain() }
     }
 
     override fun getExpiredProducts(): Flow<List<Product>> {
-        return productDao.getExpiredProducts().map { entities ->
+        return productDao.getExpiredProducts(uid()).map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -95,7 +107,14 @@ class ProductRepositoryImpl(
             name = product.name.trim(),
             category = product.category.trim()
         )
-        productDao.insertProduct(trimmedProduct.toEntity())
+        // Ownership and last-write are stamped here rather than at the call site,
+        // so no screen can create an unowned row.
+        productDao.insertProduct(
+            trimmedProduct.toEntity().copy(
+                userId = uid(),
+                updatedAt = System.currentTimeMillis()
+            )
+        )
     }
 
     override suspend fun updateProduct(product: Product) {
@@ -103,50 +122,58 @@ class ProductRepositoryImpl(
             name = product.name.trim(),
             category = product.category.trim()
         )
-        productDao.updateProduct(trimmedProduct.toEntity())
+        productDao.updateProduct(
+            trimmedProduct.toEntity().copy(
+                userId = uid(),
+                updatedAt = System.currentTimeMillis()
+            )
+        )
     }
 
     override suspend fun deleteProduct(productId: String) {
-        productDao.deleteProductById(productId)
+        productDao.softDeleteProductById(uid(), productId, System.currentTimeMillis())
     }
 
     override suspend fun markAsConsumed(productId: String) {
-        productDao.markAsConsumed(productId, System.currentTimeMillis())
+        productDao.markAsConsumed(uid(), productId, System.currentTimeMillis())
     }
 
     override suspend fun markAsDiscarded(productId: String) {
-        productDao.markAsDiscarded(productId, System.currentTimeMillis())
+        productDao.markAsDiscarded(uid(), productId, System.currentTimeMillis())
     }
 
     override suspend fun updateProductQuantity(productId: String, newQuantity: Int) {
-        val product = productDao.getProductByIdOnce(productId)
+        val product = productDao.getProductByIdOnce(uid(), productId)
         product?.let {
-            productDao.updateProduct(it.copy(quantity = newQuantity))
+            productDao.updateProduct(
+                it.copy(quantity = newQuantity, updatedAt = System.currentTimeMillis())
+            )
         }
     }
 
     override fun getActiveProductCount(): Flow<Int> {
-        return productDao.getActiveProductCount()
+        return productDao.getActiveProductCount(uid())
     }
 
     override fun getConsumedProducts(): Flow<List<Product>> {
-        return productDao.getConsumedProducts().map { entities ->
+        return productDao.getConsumedProducts(uid()).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
     override fun getDiscardedProducts(): Flow<List<Product>> {
-        return productDao.getDiscardedProducts().map { entities ->
+        return productDao.getDiscardedProducts(uid()).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
     override fun getImpactStats(): Flow<ImpactStats> {
+        val userId = uid()
         return combine(
-            productDao.getConsumedCount(),
-            productDao.getDiscardedCount(),
-            productDao.getLastDiscardedAt(),
-            productDao.getFirstActivityAt()
+            productDao.getConsumedCount(userId),
+            productDao.getDiscardedCount(userId),
+            productDao.getLastDiscardedAt(userId),
+            productDao.getFirstActivityAt(userId)
         ) { saved, wasted, lastDiscardedAt, firstActivityAt ->
             val now = System.currentTimeMillis()
 
@@ -166,7 +193,16 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun deleteHistory() {
-        productDao.deleteHistory()
+        productDao.deleteHistory(uid(), System.currentTimeMillis())
+    }
+
+    override suspend fun claimGuestData(): Int {
+        if (!session.isSignedIn()) return 0
+        val pending = productDao.countGuestProducts()
+        if (pending > 0) {
+            productDao.claimGuestProducts(uid(), System.currentTimeMillis())
+        }
+        return pending
     }
 }
 
