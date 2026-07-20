@@ -147,6 +147,33 @@ interface ProductDao {
     @Query("SELECT COUNT(*) FROM products WHERE pantryId = 'local' AND isDeleted = 0")
     suspend fun countGuestProducts(): Int
 
+    // ─── Duplicate detection ──────────────────────────────────────────────────
+
+    /**
+     * An active product with the same name expiring on the same day.
+     *
+     * Name matching is case-insensitive because the column is COLLATE NOCASE.
+     * Expiry is part of the key on purpose: buying milk twice in a week is two
+     * genuine items, not a duplicate. Same name *and* same date is what
+     * indicates the same physical thing entered twice.
+     */
+    @Query("""
+        SELECT * FROM products
+        WHERE pantryId = :pantryId
+        AND isDeleted = 0
+        AND isConsumed = 0
+        AND isDiscarded = 0
+        AND name = :name
+        AND expiryDate BETWEEN :dayStart AND :dayEnd
+        LIMIT 1
+    """)
+    suspend fun findActiveDuplicate(
+        pantryId: String,
+        name: String,
+        dayStart: Long,
+        dayEnd: Long
+    ): ProductEntity?
+
     // ─── Sync ─────────────────────────────────────────────────────────────────
     // These deliberately do NOT filter isDeleted. Sync has to see tombstones,
     // otherwise a deletion can never be pushed to another device.

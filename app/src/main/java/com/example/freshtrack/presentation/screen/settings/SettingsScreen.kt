@@ -30,6 +30,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -46,9 +47,40 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isExporting by remember { mutableStateOf(false) }
+    var isImporting by remember { mutableStateOf(false) }
+    var importSummary by remember {
+        mutableStateOf<com.example.freshtrack.domain.model.ImportSummary?>(null)
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val productRepository: ProductRepository = koinInject()
+
+    // OpenDocument rather than GetContent: it returns a persistable URI and lets
+    // the user pick from any provider, including Drive.
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        isImporting = true
+        scope.launch {
+            try {
+                val text = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                }
+                if (text.isNullOrBlank()) {
+                    Toast.makeText(context, "That file is empty", Toast.LENGTH_SHORT).show()
+                } else {
+                    val parsed = com.example.freshtrack.data.export.CsvImporter.parse(text)
+                    val summary = productRepository.importProducts(parsed.products)
+                    importSummary = summary.copy(failedRows = parsed.errors.size)
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+            } finally {
+                isImporting = false
+            }
+        }
+    }
 
     // Profile edit state
     var showEditNameDialog by remember { mutableStateOf(false) }
@@ -224,6 +256,20 @@ fun SettingsScreen(
                     title = "History",
                     description = "View used & discarded items",
                     onClick = onNavigateToHistory
+                )
+                SettingsItemCard(
+                    icon = Icons.Outlined.Upload,
+                    title = if (isImporting) "Importing..." else "Import Data",
+                    description = "Restore products from a CSV export",
+                    onClick = {
+                        if (!isImporting) {
+                            // Some providers label CSV as text/comma-separated-values
+                            // or octet-stream, so accept a wider set than text/csv.
+                            importLauncher.launch(
+                                arrayOf("text/csv", "text/comma-separated-values", "text/plain", "application/octet-stream")
+                            )
+                        }
+                    }
                 )
                 SettingsItemCard(
                     icon = Icons.Outlined.Download,
@@ -435,6 +481,38 @@ fun SettingsScreen(
                 }
             },
             shape = RoundedCornerShape(24.dp)
+        )
+    }
+
+    // A summary rather than a toast: skipped duplicates need explaining, or the
+    // user assumes the import silently lost their data.
+    importSummary?.let { summary ->
+        AlertDialog(
+            onDismissRequest = { importSummary = null },
+            icon = { Icon(Icons.Outlined.Upload, contentDescription = null) },
+            title = { Text("Import complete") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Added: ${summary.imported}")
+                    if (summary.skippedDuplicates > 0) {
+                        Text("Already in your list: ${summary.skippedDuplicates}")
+                    }
+                    if (summary.failedRows > 0) {
+                        Text("Rows that could not be read: ${summary.failedRows}")
+                    }
+                    if (summary.imported == 0 && summary.skippedDuplicates > 0) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Everything in that file was already here, so nothing changed.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { importSummary = null }) { Text("Done") }
+            }
         )
     }
 }

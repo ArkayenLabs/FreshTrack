@@ -37,6 +37,15 @@ interface ProductRepository {
      * were claimed. No-op when signed out.
      */
     suspend fun claimGuestData(): Int
+
+    /**
+     * An existing active product that looks like the same physical item:
+     * same name, expiring the same day.
+     */
+    suspend fun findDuplicate(name: String, expiryDate: Long): Product?
+
+    /** Inserts products, skipping any that duplicate something already held. */
+    suspend fun importProducts(products: List<Product>): ImportSummary
 }
 
 /**
@@ -199,6 +208,52 @@ class ProductRepositoryImpl(
 
     override suspend fun deleteHistory() {
         productDao.deleteHistory(pantry(), System.currentTimeMillis())
+    }
+
+    override suspend fun findDuplicate(name: String, expiryDate: Long): Product? {
+        val (dayStart, dayEnd) = dayBounds(expiryDate)
+        return productDao.findActiveDuplicate(pantry(), name.trim(), dayStart, dayEnd)?.toDomain()
+    }
+
+    override suspend fun importProducts(products: List<Product>): ImportSummary {
+        var imported = 0
+        var skipped = 0
+        val now = System.currentTimeMillis()
+
+        products.forEach { product ->
+            val name = product.name.trim()
+            if (name.isEmpty()) return@forEach
+
+            // Checked one at a time rather than in bulk so that duplicates
+            // *within* the file are caught too, not just against what is
+            // already stored.
+            if (findDuplicate(name, product.expiryDate) != null) {
+                skipped++
+                return@forEach
+            }
+
+            productDao.insertProduct(
+                product.copy(name = name, category = product.category.trim())
+                    .toEntity()
+                    .copy(pantryId = pantry(), userId = uid(), updatedAt = now)
+            )
+            imported++
+        }
+
+        return ImportSummary(imported = imported, skippedDuplicates = skipped)
+    }
+
+    /** Start and end of the calendar day containing [timestamp]. */
+    private fun dayBounds(timestamp: Long): Pair<Long, Long> {
+        val cal = java.util.Calendar.getInstance().apply {
+            timeInMillis = timestamp
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val start = cal.timeInMillis
+        return start to (start + java.util.concurrent.TimeUnit.DAYS.toMillis(1) - 1)
     }
 
     override suspend fun claimGuestData(): Int {

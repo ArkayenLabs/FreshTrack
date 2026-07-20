@@ -14,37 +14,56 @@ import java.util.*
  */
 object CsvExporter {
 
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    /**
+     * Locale.US on purpose. This column is machine-read on import, and
+     * Locale.getDefault() can emit non-Latin digits on some device locales,
+     * producing a file the importer cannot parse.
+     */
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
+    const val HEADER = "Name,Category,Barcode,Expiry Date,Quantity,Notes,Added Date,Status"
+
+    /**
+     * Export products to CSV and return share intent
+     */
+    /**
+     * Builds the CSV text.
+     *
+     * Separate from file and Intent handling so the exact format can be
+     * round-tripped against CsvImporter in a unit test — this is the seam where
+     * export and import would otherwise silently drift apart.
+     */
+    fun buildCsv(products: List<Product>): String = buildString {
+        appendLine(HEADER)
+
+        products.forEach { product ->
+            val expiryDate = dateFormat.format(Date(product.expiryDate))
+            val addedDate = dateFormat.format(Date(product.addedDate))
+            val status = when {
+                product.isConsumed -> "Used"
+                product.isDiscarded -> "Discarded"
+                product.expiryDate < System.currentTimeMillis() -> "Expired"
+                else -> "Active"
+            }
+
+            // Every free-text field is escaped. Category was previously written
+            // raw, which would corrupt the file the moment a custom category
+            // contained a comma.
+            val name = escapeCsv(product.name)
+            val category = escapeCsv(product.category)
+            val notes = escapeCsv(product.notes ?: "")
+            val barcode = escapeCsv(product.barcode ?: "")
+
+            appendLine("$name,$category,$barcode,$expiryDate,${product.quantity},$notes,$addedDate,$status")
+        }
+    }
 
     /**
      * Export products to CSV and return share intent
      */
     fun exportToCSV(context: Context, products: List<Product>): Intent? {
         try {
-            // Create CSV content
-            val csvContent = buildString {
-                // Header row
-                appendLine("Name,Category,Barcode,Expiry Date,Quantity,Notes,Added Date,Status")
-                
-                // Data rows
-                products.forEach { product ->
-                    val expiryDate = dateFormat.format(Date(product.expiryDate))
-                    val addedDate = dateFormat.format(Date(product.addedDate))
-                    val status = when {
-                        product.isConsumed -> "Used"
-                        product.isDiscarded -> "Discarded"
-                        product.expiryDate < System.currentTimeMillis() -> "Expired"
-                        else -> "Active"
-                    }
-                    
-                    // Escape special characters in CSV
-                    val name = escapeCsv(product.name)
-                    val notes = escapeCsv(product.notes ?: "")
-                    val barcode = product.barcode ?: ""
-                    
-                    appendLine("$name,${product.category},$barcode,$expiryDate,${product.quantity},$notes,$addedDate,$status")
-                }
-            }
+            val csvContent = buildCsv(products)
 
             // Create file in cache directory
             val fileName = "FreshTrack_Export_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.csv"
