@@ -1,19 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Backup rules for Android 12 (API 31) and above.
+
+    freshtrack_prefs is an EncryptedSharedPreferences file. Its master key lives in
+    the device keystore and is never part of a backup, so restoring it onto a
+    different device produces a file that cannot be decrypted. It must be excluded
+    from both cloud backup and device transfer.
+
+    The Room database is plain and restores cleanly, so it stays included — today it
+    is the only recovery path a user has if they lose their phone.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="freshtrack_prefs.xml" />
+        <exclude domain="sharedpref" path="crash_loop_detector.xml" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="freshtrack_prefs.xml" />
+        <exclude domain="sharedpref" path="crash_loop_detector.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>
