@@ -143,7 +143,7 @@ fun ForgotPasswordScreen(
                     // Success message
                     AnimatedVisibility(visible = uiState.isSuccess, enter = fadeIn(), exit = fadeOut()) {
                         Text(
-                            text = "Reset link sent! Check your email.",
+                            text = "If an account exists for that email, a reset link is on its way.",
                             color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
