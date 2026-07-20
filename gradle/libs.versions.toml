@@ -14,6 +14,7 @@ gms-plugin = "0.10.4"
 google-services = "4.4.1"
 firebase-crashlytics-plugin = "2.9.9"
 firebase-bom = "32.7.4"
+glance = "1.1.1"
 play-services-auth = "21.0.0"
 
 
@@ -38,6 +39,8 @@ firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "play-services-auth" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

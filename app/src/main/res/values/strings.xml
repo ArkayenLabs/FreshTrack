@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">FreshTrack</string>
+    <string name="widget_description">See what is expiring soon</string>
 </resources>

@@ -28,6 +28,7 @@ import com.example.freshtrack.presentation.component.RequestNotificationPermissi
 import com.example.freshtrack.presentation.navigation.FreshTrackNavGraph
 import com.example.freshtrack.presentation.theme.FreshTrackTheme
 import com.example.freshtrack.util.InAppUpdateManager
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -118,5 +119,15 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         inAppUpdateManager?.cleanup()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // The user has most likely just added or resolved something. Android's
+        // own widget update period is clamped to 30 minutes and skipped while
+        // dozing, so refreshing on the way out is what keeps it current.
+        lifecycleScope.launch {
+            com.example.freshtrack.widget.WidgetRefresher.refresh(this@MainActivity)
+        }
     }
 }

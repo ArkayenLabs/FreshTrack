@@ -119,6 +119,10 @@ dependencies {
     implementation("androidx.camera:camera-view:1.5.1")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
+    // Home-screen widget
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+
     // Background Work
     implementation("androidx.work:work-runtime-ktx:2.11.0")
 

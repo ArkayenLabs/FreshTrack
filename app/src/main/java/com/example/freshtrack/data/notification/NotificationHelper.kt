@@ -47,6 +47,10 @@ class ExpiryNotificationWorker(
         if (all.isNotEmpty()) {
             sendExpiryNotification(applicationContext, all)
         }
+
+        // Keeps the widget current even if the app is never opened, which is
+        // the whole point of having one.
+        com.example.freshtrack.widget.WidgetRefresher.refresh(applicationContext)
     }
 }
 

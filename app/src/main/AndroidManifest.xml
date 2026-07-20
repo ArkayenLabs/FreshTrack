@@ -82,6 +82,18 @@
             android:name=".data.notification.NotificationActionReceiver"
             android:exported="false" />
 
+        <!-- Home-screen widget. Exported so the launcher can host it. -->
+        <receiver
+            android:name=".widget.FreshTrackWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/freshtrack_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>
