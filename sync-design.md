@@ -3,7 +3,10 @@
 Decisions for Phase 2. Written before any sync client code, so the expensive
 choices are settled on paper rather than in a migration against live data.
 
-Status: **design agreed, not implemented.**
+Status: **design agreed, rules written and tested, sync client not implemented.**
+
+Rules tests: `npm run test:rules` (needs Java for the Firestore emulator; runs
+against project `demo-freshtrack`, which can never reach production).
 
 ---
 
@@ -126,8 +129,9 @@ transaction or a Cloud Function trigger).
 ## Open items before implementation
 
 - [ ] Decide free-tier caps (item count, history retention) and how they are counted
-- [ ] Rules unit tests — `firestore.rules` is currently untested, which is the
-      same mistake as shipping an untested migration
+- [x] Rules unit tests — 27 tests in `firestore-tests/rules.test.mjs`, run with
+      `npm run test:rules`. Verified meaningful by deliberately loosening two
+      rules and confirming the matching tests failed.
 - [ ] Cloud Function for Play Billing verification to write `plan`
 - [ ] Account deletion path (must clean up pantries; cannot be a client delete)
 - [ ] Reconcile analytics with the "no data collection" store listing

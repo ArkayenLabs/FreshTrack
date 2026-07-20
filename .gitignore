@@ -58,6 +58,13 @@ google-services.json
 graphify-out/
 run_graphify.ps1
 
+# === Node (Firestore rules tests only, not the Android build) ===
+node_modules/
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+.firebase/
+
 # === Misc ===
 *.apk
 *.aab
