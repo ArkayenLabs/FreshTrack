@@ -3,23 +3,32 @@
 Findings from a full codebase pass, July 2026. These are the things to fix
 **before** building Firestore sync, not after. Ordered by risk.
 
-Nothing here has been implemented yet — this is the plan only.
+P0 is complete and verified on device. P1 design decisions are settled in
+`sync-design.md` with rules in `firestore.rules`; no sync client code exists yet.
 
 ---
 
 ## P0 — Ship-blockers (wrong or unsafe in the app that is live today)
 
-- [ ] **Sign-out does not clear local data** — `FirebaseAuthRepositoryImpl.signOut()` only
+- [x] **Sign-out does not clear local data** — Resolved differently to the original
+  plan. Every query now filters by `userId`, so another account cannot see the
+  data without it being deleted. A destructive wipe was deferred until sync
+  exists and there is a cloud copy to restore from.
+  ~~Original finding:~~ — `FirebaseAuthRepositoryImpl.signOut()` only
   calls `auth.signOut()`. Room is untouched. User A signs out, User B signs in on the
   same phone, and B sees A's entire inventory. This is a privacy bug today and becomes a
   data-corruption bug the moment sync exists (B would upload A's items to B's account).
   Decide the rule: wipe on sign-out, or keep and claim on sign-in. Cannot stay undefined.
 
-- [ ] **No ownership field in the data model** — `ProductEntity` has no `userId`. Every
+- [x] **No ownership field in the data model** — Done. `userId`, `updatedAt`,
+  `isDeleted` and `deletedAt` added in `Migration(5, 6)`, verified on device.
+  ~~Original finding:~~ — `ProductEntity` has no `userId`. Every
   row is anonymous. Firestore cannot be added until rows know who they belong to. This is
   the single biggest blocker and it requires `Migration(5, 6)`.
 
-- [ ] **Auto Backup is on with empty rules** — `allowBackup="true"`, and both
+- [x] **Auto Backup is on with empty rules** — Done. Encrypted prefs excluded
+  from cloud backup and device transfer; Room DB still included.
+  ~~Original finding:~~ — `allowBackup="true"`, and both
   `backup_rules.xml` and `data_extraction_rules.xml` are still the unmodified Studio
   templates. Android is currently uploading the Room DB and preferences to the user's
   Google Drive. Two consequences:
@@ -28,11 +37,14 @@ Nothing here has been implemented yet — this is the plan only.
     (the master key lives in the device keystore and is not backed up), which is a known
     crash-on-restore class. Exclude the encrypted prefs at minimum.
 
-- [ ] **HTTP logging at BODY level in release** — `KoinModules.kt:62` sets
+- [x] **HTTP logging at BODY level in release** — Done, gated on BuildConfig.DEBUG.
+  ~~Original finding:~~ — `KoinModules.kt:62` sets
   `HttpLoggingInterceptor.Level.BODY` unconditionally. Full request and response bodies
   are written to logcat in production builds. Gate on `BuildConfig.DEBUG`.
 
-- [ ] **Raw Firebase error strings shown to users** — `AuthViewModel` assigns
+- [x] **Raw Firebase error strings shown to users** — Done, mapped to safe
+  messages; password reset no longer confirms whether an account exists.
+  ~~Original finding:~~ — `AuthViewModel` assigns
   `error = e.message` in all five auth paths. These are technical English strings, and
   some ("There is no user record...") let an attacker probe which emails are registered.
   Map to friendly messages; do not distinguish "wrong password" from "no such account".
@@ -41,25 +53,35 @@ Nothing here has been implemented yet — this is the plan only.
 
 ## P1 — Must be settled before writing any Firestore code
 
-- [ ] **Decide the sync data model** — Room stays source of truth with Firestore as
+- [x] **Decide the sync data model** — Room-first, Firestore as mirror. See
+  `sync-design.md`.
+  ~~Original:~~ — Room stays source of truth with Firestore as
   mirror, or Firestore becomes source of truth. This decision drives everything else and
   is expensive to reverse. Recommend Room-first with background push, to protect the
   offline-first promise.
 
-- [ ] **Write Firestore security rules before the client** — Rules default to open. A
+- [x] **Write Firestore security rules before the client** — Written in
+  `firestore.rules`. Not yet deployed and not yet unit-tested.
+  ~~Original:~~ — Rules default to open. A
   live app with an open collection is a data breach. Rules must enforce
   `request.auth.uid == resource.data.userId` for every read and write.
 
-- [ ] **Define the guest-to-account migration** — Someone uses the app as a guest for
+- [x] **Define the guest-to-account migration** — Done in P0; guest rows are
+  claimed at app start and after login/registration.
+  ~~Original:~~ — Someone uses the app as a guest for
   weeks, accumulates items, then signs in. Those rows have no owner. Claim them for the
   new account, or discard them? Silent data loss here would be the worst possible first
   impression for a paying user.
 
-- [ ] **Plan conflict resolution** — Same item edited on phone and tablet while offline.
+- [x] **Plan conflict resolution** — Last-write-wins on `updatedAt`, which is
+  already in the schema. See `sync-design.md`.
+  ~~Original:~~ — Same item edited on phone and tablet while offline.
   Needs a rule (last-write-wins with `updatedAt`, or per-field merge) plus an
   `updatedAt` column. Add it in the same migration as `userId`.
 
-- [ ] **Plan soft deletes** — A hard `DELETE` cannot propagate to other devices. Sync
+- [x] **Plan soft deletes** — Done in P0; `isDeleted`/`deletedAt` exist and all
+  queries filter tombstones.
+  ~~Original:~~ — A hard `DELETE` cannot propagate to other devices. Sync
   needs `isDeleted` + `deletedAt` (tombstones), also in the same migration.
 
 - [ ] **Free-tier limits must exist before billing** — There is no concept of a plan in
@@ -75,7 +97,8 @@ Nothing here has been implemented yet — this is the plan only.
   index on `products` and no pre-insert check in the add flow. Needs either a unique
   index or a "this item already exists, add to it?" prompt.
 
-- [ ] **Emoji still in the app** — Six in `NotificationHelper.kt` (lines 94, 95, 158,
+- [x] **Emoji still in the app** — Done, all six removed from NotificationHelper.
+  ~~Original:~~ — Six in `NotificationHelper.kt` (lines 94, 95, 158,
   160, 161, 168), hidden as escaped unicode (`🚨` etc.) so they survived the
   earlier emoji sweep. Notifications currently render a siren, chart, package, and
   warning emoji. Replace with Material icons or plain text.
@@ -95,7 +118,9 @@ Nothing here has been implemented yet — this is the plan only.
   ships its own consumer rules so this may be fine, but nobody has confirmed the barcode
   lookup actually works in a minified release build. Test it on a real release APK.
 
-- [ ] **`Migration(4, 5)` is untested at runtime** — Carried over from the last session.
+- [x] **`Migration(4, 5)` is untested at runtime** — Done. `MigrationTest` covers
+  4→5, 5→6 and the full 1→6 chain; all three pass on device.
+  ~~Original:~~ — Carried over from the last session.
   Needs a `MigrationTestHelper` test. Should be done alongside the `userId` migration.
 
 ---

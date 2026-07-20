@@ -1,0 +1,108 @@
+rules_version = '2';
+
+// FreshTrack Firestore security rules.
+//
+// Deny by default: anything not matched below is refused. Every rule assumes a
+// hostile client, because the client is a published app that anyone can decompile
+// and drive with arbitrary requests.
+//
+// Shape:
+//   /users/{uid}                          profile, entitlement, pantry ids
+//   /pantries/{pantryId}                  memberUids is the access-control list
+//   /pantries/{pantryId}/products/{id}    the inventory itself
+//
+// Note on queries: there is no `list` permission on /pantries anywhere below.
+// Rules cannot reliably constrain what a collection query returns, so the client
+// never queries the collection — it reads its own user document, takes the
+// pantry ids, and fetches each pantry by id. That removes a whole class of
+// "accidentally readable by everyone" mistakes.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Membership lookup for subcollections. Costs one document read per rule
+    // evaluation, which is the price of shared pantries.
+    function pantryData(pantryId) {
+      return get(/databases/$(database)/documents/pantries/$(pantryId)).data;
+    }
+
+    function isMemberOf(pantryId) {
+      return isSignedIn() && uid() in pantryData(pantryId).memberUids;
+    }
+
+    function isOwnerOf(pantryId) {
+      return isSignedIn() && pantryData(pantryId).ownerUid == uid();
+    }
+
+    // ─── Users ──────────────────────────────────────────────────────────────
+    //
+    // `plan` is an entitlement. It must only ever be written by a trusted server
+    // (a Cloud Function that has verified a Play Billing purchase). A client that
+    // could set its own plan could grant itself premium for free, so both create
+    // and update refuse any client-supplied change to it.
+    match /users/{userId} {
+      allow get: if isSignedIn() && uid() == userId;
+
+      allow create: if isSignedIn()
+                    && uid() == userId
+                    && !('plan' in request.resource.data);
+
+      allow update: if isSignedIn()
+                    && uid() == userId
+                    && request.resource.data.get('plan', 'free')
+                       == resource.data.get('plan', 'free');
+
+      // Account deletion is a server-side operation; it has to clean up pantries
+      // too, which a single client delete cannot do atomically.
+      allow delete: if false;
+    }
+
+    // ─── Pantries ───────────────────────────────────────────────────────────
+    match /pantries/{pantryId} {
+
+      // Read the pantry document directly from `resource`, rather than calling
+      // isMemberOf(), to avoid paying for a second read of the same document.
+      allow get: if isSignedIn() && uid() in resource.data.memberUids;
+
+      // A new pantry must be created owned by, and containing only, its creator.
+      // Without this a client could create a pantry that already lists someone
+      // else as a member.
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerUid == uid()
+                    && request.resource.data.memberUids == [uid()];
+
+      // Only the owner changes membership, and ownership itself is immutable —
+      // otherwise a member could promote themselves and lock the owner out.
+      allow update: if isOwnerOf(pantryId)
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && uid() in request.resource.data.memberUids;
+
+      allow delete: if isOwnerOf(pantryId);
+
+      // ─── Products ─────────────────────────────────────────────────────────
+      match /products/{productId} {
+
+        allow get: if isMemberOf(pantryId);
+        allow list: if isMemberOf(pantryId);
+
+        // updatedAt drives last-write-wins, so a write without a usable
+        // timestamp is rejected rather than silently winning or losing.
+        allow create, update: if isMemberOf(pantryId)
+                              && request.resource.data.updatedAt is number;
+
+        // Deletes are soft: the client sets isDeleted so the removal can
+        // propagate to other devices. A hard delete would vanish without ever
+        // reaching them, so it is refused outright.
+        allow delete: if false;
+      }
+    }
+  }
+}
