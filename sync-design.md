@@ -56,6 +56,17 @@ product document of every sharing user, in production, while people are writing
 to them. With a pantry in between, a household is a pantry with more entries in
 `memberUids` — no data moves, ever. Each user gets one personal pantry at signup.
 
+**Local rows carry `pantryId` too.** Room mirrors the remote key: `ProductEntity`
+has `pantryId` as its access key (added in `Migration(6, 7)`), with `userId` kept
+only for attribution. Filtering locally by the viewer's uid would break the
+moment a shared pantry is downloaded — the same item would be either mislabelled
+as theirs or invisible, depending which uid was stamped. Signed out, rows sit in
+the `local` pantry; on sign-in they are claimed into `personal-{uid}`.
+
+**Pantry ids are derived, not allocated.** A personal pantry is always
+`personal-{uid}`, so the client can address it without a round trip and creating
+it twice is harmless.
+
 **Why `memberUids` is an array on the pantry document.** Security rules can read
 it in a single `get()`. A separate members subcollection would need to be kept in
 sync with the rules' view of membership, which is a second source of truth for

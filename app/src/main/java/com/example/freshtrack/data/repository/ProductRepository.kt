@@ -63,26 +63,29 @@ class ProductRepositoryImpl(
     /** Resolved per call so a sign-in or sign-out takes effect immediately. */
     private fun uid(): String = session.currentUserId()
 
+    /** The access key for every user-facing query. */
+    private fun pantry(): String = session.activePantryId()
+
     override fun getAllProducts(): Flow<List<Product>> {
-        return productDao.getAllActiveProducts(uid()).map { entities ->
+        return productDao.getAllActiveProducts(pantry()).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
     override fun getProductsByCategory(category: String): Flow<List<Product>> {
-        return productDao.getProductsByCategory(uid(), category).map { entities ->
+        return productDao.getProductsByCategory(pantry(), category).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
     override fun getProductById(productId: String): Flow<Product?> {
-        return productDao.getProductById(uid(), productId).map { entity ->
+        return productDao.getProductById(pantry(), productId).map { entity ->
             entity?.toDomain()
         }
     }
 
     override suspend fun getProductByIdOnce(productId: String): Product? {
-        return productDao.getProductByIdOnce(uid(), productId)?.toDomain()
+        return productDao.getProductByIdOnce(pantry(), productId)?.toDomain()
     }
 
     override suspend fun getExpiringProducts(daysThreshold: Int): List<Product> {
@@ -90,14 +93,14 @@ class ProductRepositoryImpl(
         val thresholdTime = currentTime + TimeUnit.DAYS.toMillis(daysThreshold.toLong())
 
         return productDao.getExpiringProducts(
-            userId = uid(),
+            pantryId = pantry(),
             timestampThreshold = thresholdTime,
             currentTimestamp = currentTime
         ).map { it.toDomain() }
     }
 
     override fun getExpiredProducts(): Flow<List<Product>> {
-        return productDao.getExpiredProducts(uid()).map { entities ->
+        return productDao.getExpiredProducts(pantry()).map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -111,6 +114,7 @@ class ProductRepositoryImpl(
         // so no screen can create an unowned row.
         productDao.insertProduct(
             trimmedProduct.toEntity().copy(
+                pantryId = pantry(),
                 userId = uid(),
                 updatedAt = System.currentTimeMillis()
             )
@@ -124,6 +128,7 @@ class ProductRepositoryImpl(
         )
         productDao.updateProduct(
             trimmedProduct.toEntity().copy(
+                pantryId = pantry(),
                 userId = uid(),
                 updatedAt = System.currentTimeMillis()
             )
@@ -131,19 +136,19 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun deleteProduct(productId: String) {
-        productDao.softDeleteProductById(uid(), productId, System.currentTimeMillis())
+        productDao.softDeleteProductById(pantry(), productId, System.currentTimeMillis())
     }
 
     override suspend fun markAsConsumed(productId: String) {
-        productDao.markAsConsumed(uid(), productId, System.currentTimeMillis())
+        productDao.markAsConsumed(pantry(), productId, System.currentTimeMillis())
     }
 
     override suspend fun markAsDiscarded(productId: String) {
-        productDao.markAsDiscarded(uid(), productId, System.currentTimeMillis())
+        productDao.markAsDiscarded(pantry(), productId, System.currentTimeMillis())
     }
 
     override suspend fun updateProductQuantity(productId: String, newQuantity: Int) {
-        val product = productDao.getProductByIdOnce(uid(), productId)
+        val product = productDao.getProductByIdOnce(pantry(), productId)
         product?.let {
             productDao.updateProduct(
                 it.copy(quantity = newQuantity, updatedAt = System.currentTimeMillis())
@@ -152,28 +157,28 @@ class ProductRepositoryImpl(
     }
 
     override fun getActiveProductCount(): Flow<Int> {
-        return productDao.getActiveProductCount(uid())
+        return productDao.getActiveProductCount(pantry())
     }
 
     override fun getConsumedProducts(): Flow<List<Product>> {
-        return productDao.getConsumedProducts(uid()).map { entities ->
+        return productDao.getConsumedProducts(pantry()).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
     override fun getDiscardedProducts(): Flow<List<Product>> {
-        return productDao.getDiscardedProducts(uid()).map { entities ->
+        return productDao.getDiscardedProducts(pantry()).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
     override fun getImpactStats(): Flow<ImpactStats> {
-        val userId = uid()
+        val pantryId = pantry()
         return combine(
-            productDao.getConsumedCount(userId),
-            productDao.getDiscardedCount(userId),
-            productDao.getLastDiscardedAt(userId),
-            productDao.getFirstActivityAt(userId)
+            productDao.getConsumedCount(pantryId),
+            productDao.getDiscardedCount(pantryId),
+            productDao.getLastDiscardedAt(pantryId),
+            productDao.getFirstActivityAt(pantryId)
         ) { saved, wasted, lastDiscardedAt, firstActivityAt ->
             val now = System.currentTimeMillis()
 
@@ -193,14 +198,14 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun deleteHistory() {
-        productDao.deleteHistory(uid(), System.currentTimeMillis())
+        productDao.deleteHistory(pantry(), System.currentTimeMillis())
     }
 
     override suspend fun claimGuestData(): Int {
         if (!session.isSignedIn()) return 0
         val pending = productDao.countGuestProducts()
         if (pending > 0) {
-            productDao.claimGuestProducts(uid(), System.currentTimeMillis())
+            productDao.claimGuestProducts(pantry(), uid(), System.currentTimeMillis())
         }
         return pending
     }

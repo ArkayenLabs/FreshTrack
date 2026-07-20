@@ -118,10 +118,54 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 6 → 7 adds pantryId. Guest rows go to the local pantry; rows already
+     * claimed by an account go to that account's personal pantry. Getting this
+     * wrong hides a signed-in user's entire inventory, because pantryId is what
+     * every user-facing query filters on.
+     */
+    @Test
+    fun migrate6To7_backfillsPantryFromExistingOwner() {
+        helper.createDatabase(dbName, 6).apply {
+            execSQL(
+                """
+                INSERT INTO products
+                (id, name, barcode, category, expiryDate, addedDate, quantity,
+                 originalQuantity, notes, imageUri, notificationEnabled, isConsumed,
+                 isDiscarded, resolvedDate, userId, updatedAt, isDeleted, deletedAt)
+                VALUES ('guest-row', 'Milk', NULL, 'Dairy', 200, 100, 1, 1, NULL, NULL,
+                        1, 0, 0, NULL, 'guest', 100, 0, NULL)
+                """.trimIndent()
+            )
+            execSQL(
+                """
+                INSERT INTO products
+                (id, name, barcode, category, expiryDate, addedDate, quantity,
+                 originalQuantity, notes, imageUri, notificationEnabled, isConsumed,
+                 isDiscarded, resolvedDate, userId, updatedAt, isDeleted, deletedAt)
+                VALUES ('owned-row', 'Eggs', NULL, 'Dairy', 200, 100, 1, 1, NULL, NULL,
+                        1, 0, 0, NULL, 'abc123', 100, 0, NULL)
+                """.trimIndent()
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(dbName, 7, true, *FreshTrackDatabase.ALL_MIGRATIONS)
+
+        db.query("SELECT pantryId FROM products WHERE id = 'guest-row'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("local", it.getString(0))
+        }
+        db.query("SELECT pantryId FROM products WHERE id = 'owned-row'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("personal-abc123", it.getString(0))
+        }
+    }
+
     /** The whole chain, as an upgrading user from the earliest shipped version. */
     @Test
-    fun migrateAll_1To6() {
+    fun migrateAll_1To7() {
         helper.createDatabase(dbName, 1).close()
-        helper.runMigrationsAndValidate(dbName, 6, true, *FreshTrackDatabase.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(dbName, 7, true, *FreshTrackDatabase.ALL_MIGRATIONS)
     }
 }

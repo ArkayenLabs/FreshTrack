@@ -12,15 +12,27 @@ import java.util.UUID
  */
 @Entity(
     tableName = "products",
-    indices = [Index(value = ["userId"])]
+    indices = [Index(value = ["pantryId"]), Index(value = ["userId"])]
 )
 data class ProductEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     /**
-     * Firebase uid of the owner, or [GUEST_USER_ID] for rows created before the
-     * user signed in. Every query filters on this so two accounts sharing a
-     * device never see each other's items.
+     * Which pantry this row belongs to — the access key, and what every
+     * user-facing query filters on.
+     *
+     * Rows belong to a pantry rather than a person because a shared household
+     * pantry is visible to several people. Keying on the viewer's uid would make
+     * a downloaded shared item either look like their own or be invisible to
+     * them, depending which uid was stamped.
+     *
+     * [LOCAL_PANTRY_ID] until the user signs in, then their personal pantry.
+     */
+    val pantryId: String = LOCAL_PANTRY_ID,
+    /**
+     * Firebase uid of whoever created the row, or [GUEST_USER_ID] if created
+     * before sign-in. Attribution only — access is decided by [pantryId]. Kept
+     * so a household can later show who added what.
      */
     val userId: String = GUEST_USER_ID,
     @ColumnInfo(collate = ColumnInfo.NOCASE)
@@ -50,8 +62,21 @@ data class ProductEntity(
     val deletedAt: Long? = null
 )
 
-/** Owner id used for rows created before the user signed in. */
+/** Creator id used for rows created before the user signed in. */
 const val GUEST_USER_ID = "guest"
+
+/**
+ * Pantry id for rows that have never been associated with an account. Claimed
+ * into the user's personal pantry on sign-in.
+ */
+const val LOCAL_PANTRY_ID = "local"
+
+/**
+ * A user's personal pantry id is derived from their uid rather than allocated,
+ * so the client can address it without a round trip and creating it twice is
+ * harmless.
+ */
+fun personalPantryId(uid: String) = "personal-$uid"
 
 /**
  * Category entity for product categorization

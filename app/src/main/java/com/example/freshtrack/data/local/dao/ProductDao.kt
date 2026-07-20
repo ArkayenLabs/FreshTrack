@@ -9,25 +9,32 @@ import kotlinx.coroutines.flow.Flow
  * Data Access Object for Product operations
  * Provides reactive queries using Flow for automatic UI updates
  *
- * Every user-facing query filters on `userId` and `isDeleted = 0`. The owner
- * filter is what keeps two accounts on one device from seeing each other's
- * items; the tombstone filter hides soft-deleted rows that are kept so the
- * delete can propagate once sync exists.
+ * Every user-facing query filters on `pantryId` and `isDeleted = 0`.
+ *
+ * `pantryId` is the access key, not `userId` — a shared household pantry is
+ * visible to several accounts, so filtering by the viewer's uid would make a
+ * downloaded shared item either look like their own or be invisible to them.
+ * `userId` is kept for attribution only. On one device, two accounts resolve to
+ * different pantries, which is what keeps their inventories separate.
+ *
+ * The tombstone filter hides soft-deleted rows. The queries under "Sync"
+ * deliberately skip that filter, because a deletion that sync cannot see can
+ * never be propagated.
  */
 @Dao
 interface ProductDao {
 
-    @Query("SELECT * FROM products WHERE userId = :userId AND isDeleted = 0 AND isConsumed = 0 AND isDiscarded = 0 ORDER BY expiryDate ASC")
-    fun getAllActiveProducts(userId: String): Flow<List<ProductEntity>>
+    @Query("SELECT * FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND isConsumed = 0 AND isDiscarded = 0 ORDER BY expiryDate ASC")
+    fun getAllActiveProducts(pantryId: String): Flow<List<ProductEntity>>
 
-    @Query("SELECT * FROM products WHERE userId = :userId AND isDeleted = 0 AND category = :category AND isConsumed = 0 AND isDiscarded = 0 ORDER BY expiryDate ASC")
-    fun getProductsByCategory(userId: String, category: String): Flow<List<ProductEntity>>
+    @Query("SELECT * FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND category = :category AND isConsumed = 0 AND isDiscarded = 0 ORDER BY expiryDate ASC")
+    fun getProductsByCategory(pantryId: String, category: String): Flow<List<ProductEntity>>
 
-    @Query("SELECT * FROM products WHERE id = :productId AND userId = :userId AND isDeleted = 0")
-    fun getProductById(userId: String, productId: String): Flow<ProductEntity?>
+    @Query("SELECT * FROM products WHERE id = :productId AND pantryId = :pantryId AND isDeleted = 0")
+    fun getProductById(pantryId: String, productId: String): Flow<ProductEntity?>
 
-    @Query("SELECT * FROM products WHERE id = :productId AND userId = :userId AND isDeleted = 0")
-    suspend fun getProductByIdOnce(userId: String, productId: String): ProductEntity?
+    @Query("SELECT * FROM products WHERE id = :productId AND pantryId = :pantryId AND isDeleted = 0")
+    suspend fun getProductByIdOnce(pantryId: String, productId: String): ProductEntity?
 
     /**
      * Get products expiring within specified days
@@ -35,7 +42,7 @@ interface ProductDao {
      */
     @Query("""
         SELECT * FROM products
-        WHERE userId = :userId
+        WHERE pantryId = :pantryId
         AND isDeleted = 0
         AND expiryDate <= :timestampThreshold
         AND expiryDate >= :currentTimestamp
@@ -45,14 +52,14 @@ interface ProductDao {
         ORDER BY expiryDate ASC
     """)
     suspend fun getExpiringProducts(
-        userId: String,
+        pantryId: String,
         timestampThreshold: Long,
         currentTimestamp: Long = System.currentTimeMillis()
     ): List<ProductEntity>
 
     @Query("""
         SELECT * FROM products
-        WHERE userId = :userId
+        WHERE pantryId = :pantryId
         AND isDeleted = 0
         AND expiryDate < :currentTimestamp
         AND isConsumed = 0
@@ -60,12 +67,12 @@ interface ProductDao {
         ORDER BY expiryDate DESC
     """)
     fun getExpiredProducts(
-        userId: String,
+        pantryId: String,
         currentTimestamp: Long = System.currentTimeMillis()
     ): Flow<List<ProductEntity>>
 
-    @Query("SELECT * FROM products WHERE userId = :userId AND isDeleted = 0 AND barcode = :barcode LIMIT 1")
-    suspend fun getProductByBarcode(userId: String, barcode: String): ProductEntity?
+    @Query("SELECT * FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND barcode = :barcode LIMIT 1")
+    suspend fun getProductByBarcode(pantryId: String, barcode: String): ProductEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProduct(product: ProductEntity)
@@ -80,49 +87,49 @@ interface ProductDao {
      * Soft delete. The row is kept as a tombstone so the deletion can be
      * replayed onto other devices once sync exists.
      */
-    @Query("UPDATE products SET isDeleted = 1, deletedAt = :deletedAt, updatedAt = :deletedAt WHERE id = :productId AND userId = :userId")
-    suspend fun softDeleteProductById(userId: String, productId: String, deletedAt: Long)
+    @Query("UPDATE products SET isDeleted = 1, deletedAt = :deletedAt, updatedAt = :deletedAt WHERE id = :productId AND pantryId = :pantryId")
+    suspend fun softDeleteProductById(pantryId: String, productId: String, deletedAt: Long)
 
-    @Query("UPDATE products SET isConsumed = 1, resolvedDate = :resolvedAt, updatedAt = :resolvedAt WHERE id = :productId AND userId = :userId")
-    suspend fun markAsConsumed(userId: String, productId: String, resolvedAt: Long)
+    @Query("UPDATE products SET isConsumed = 1, resolvedDate = :resolvedAt, updatedAt = :resolvedAt WHERE id = :productId AND pantryId = :pantryId")
+    suspend fun markAsConsumed(pantryId: String, productId: String, resolvedAt: Long)
 
-    @Query("UPDATE products SET isDiscarded = 1, resolvedDate = :resolvedAt, updatedAt = :resolvedAt WHERE id = :productId AND userId = :userId")
-    suspend fun markAsDiscarded(userId: String, productId: String, resolvedAt: Long)
+    @Query("UPDATE products SET isDiscarded = 1, resolvedDate = :resolvedAt, updatedAt = :resolvedAt WHERE id = :productId AND pantryId = :pantryId")
+    suspend fun markAsDiscarded(pantryId: String, productId: String, resolvedAt: Long)
 
     // ─── Impact Dashboard aggregates ──────────────────────────────────────────
     // All derived from Room so every call site counts and nothing can drift.
 
-    @Query("SELECT COUNT(*) FROM products WHERE userId = :userId AND isDeleted = 0 AND isConsumed = 1")
-    fun getConsumedCount(userId: String): Flow<Int>
+    @Query("SELECT COUNT(*) FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND isConsumed = 1")
+    fun getConsumedCount(pantryId: String): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM products WHERE userId = :userId AND isDeleted = 0 AND isDiscarded = 1")
-    fun getDiscardedCount(userId: String): Flow<Int>
+    @Query("SELECT COUNT(*) FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND isDiscarded = 1")
+    fun getDiscardedCount(pantryId: String): Flow<Int>
 
     /**
      * Timestamp of the most recent discard, or null if the user has never
      * discarded anything. Drives the waste-free day count.
      */
-    @Query("SELECT MAX(resolvedDate) FROM products WHERE userId = :userId AND isDeleted = 0 AND isDiscarded = 1")
-    fun getLastDiscardedAt(userId: String): Flow<Long?>
+    @Query("SELECT MAX(resolvedDate) FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND isDiscarded = 1")
+    fun getLastDiscardedAt(pantryId: String): Flow<Long?>
 
     /**
      * Earliest activity in the account, used as the streak origin when the user
      * has never discarded anything.
      */
-    @Query("SELECT MIN(addedDate) FROM products WHERE userId = :userId AND isDeleted = 0")
-    fun getFirstActivityAt(userId: String): Flow<Long?>
+    @Query("SELECT MIN(addedDate) FROM products WHERE pantryId = :pantryId AND isDeleted = 0")
+    fun getFirstActivityAt(pantryId: String): Flow<Long?>
 
-    @Query("SELECT COUNT(*) FROM products WHERE userId = :userId AND isDeleted = 0 AND isConsumed = 0 AND isDiscarded = 0")
-    fun getActiveProductCount(userId: String): Flow<Int>
+    @Query("SELECT COUNT(*) FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND isConsumed = 0 AND isDiscarded = 0")
+    fun getActiveProductCount(pantryId: String): Flow<Int>
 
-    @Query("SELECT * FROM products WHERE userId = :userId AND isDeleted = 0 AND isConsumed = 1 ORDER BY addedDate DESC")
-    fun getConsumedProducts(userId: String): Flow<List<ProductEntity>>
+    @Query("SELECT * FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND isConsumed = 1 ORDER BY addedDate DESC")
+    fun getConsumedProducts(pantryId: String): Flow<List<ProductEntity>>
 
-    @Query("SELECT * FROM products WHERE userId = :userId AND isDeleted = 0 AND isDiscarded = 1 ORDER BY addedDate DESC")
-    fun getDiscardedProducts(userId: String): Flow<List<ProductEntity>>
+    @Query("SELECT * FROM products WHERE pantryId = :pantryId AND isDeleted = 0 AND isDiscarded = 1 ORDER BY addedDate DESC")
+    fun getDiscardedProducts(pantryId: String): Flow<List<ProductEntity>>
 
-    @Query("UPDATE products SET isDeleted = 1, deletedAt = :deletedAt, updatedAt = :deletedAt WHERE userId = :userId AND (isConsumed = 1 OR isDiscarded = 1)")
-    suspend fun deleteHistory(userId: String, deletedAt: Long)
+    @Query("UPDATE products SET isDeleted = 1, deletedAt = :deletedAt, updatedAt = :deletedAt WHERE pantryId = :pantryId AND (isConsumed = 1 OR isDiscarded = 1)")
+    suspend fun deleteHistory(pantryId: String, deletedAt: Long)
 
     // ─── Account handover ─────────────────────────────────────────────────────
 
@@ -130,11 +137,28 @@ interface ProductDao {
      * Adopts rows left behind by guest use — and by the 5→6 migration, which
      * backfills all pre-account rows to 'guest' — for the signed-in account.
      */
-    @Query("UPDATE products SET userId = :userId, updatedAt = :updatedAt WHERE userId = 'guest'")
-    suspend fun claimGuestProducts(userId: String, updatedAt: Long)
+    @Query("""
+        UPDATE products
+        SET pantryId = :pantryId, userId = :userId, updatedAt = :updatedAt
+        WHERE pantryId = 'local'
+    """)
+    suspend fun claimGuestProducts(pantryId: String, userId: String, updatedAt: Long)
 
-    @Query("SELECT COUNT(*) FROM products WHERE userId = 'guest' AND isDeleted = 0")
+    @Query("SELECT COUNT(*) FROM products WHERE pantryId = 'local' AND isDeleted = 0")
     suspend fun countGuestProducts(): Int
+
+    // ─── Sync ─────────────────────────────────────────────────────────────────
+    // These deliberately do NOT filter isDeleted. Sync has to see tombstones,
+    // otherwise a deletion can never be pushed to another device.
+
+    @Query("SELECT * FROM products WHERE pantryId = :pantryId AND updatedAt > :since")
+    suspend fun getChangedSince(pantryId: String, since: Long): List<ProductEntity>
+
+    @Query("SELECT * FROM products WHERE id = :productId")
+    suspend fun getByIdIncludingDeleted(productId: String): ProductEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFromRemote(products: List<ProductEntity>)
 }
 
 /**

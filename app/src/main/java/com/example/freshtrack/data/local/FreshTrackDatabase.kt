@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
  */
 @Database(
     entities = [ProductEntity::class, CategoryEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class FreshTrackDatabase : RoomDatabase() {
@@ -146,11 +146,34 @@ abstract class FreshTrackDatabase : RoomDatabase() {
         }
 
         /**
+         * Migration from version 6 to 7: adds pantryId.
+         *
+         * Products belong to a pantry, not a person — a shared household pantry
+         * is visible to several accounts, so the viewer's uid is the wrong key.
+         * userId is kept for attribution.
+         *
+         * Rows are backfilled by their existing owner: guest rows go to the
+         * local pantry, and rows already claimed by an account go to that
+         * account's personal pantry, which is derived from the uid rather than
+         * allocated.
+         */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE products ADD COLUMN pantryId TEXT NOT NULL DEFAULT 'local'")
+                db.execSQL(
+                    "UPDATE products SET pantryId = 'personal-' || userId WHERE userId != 'guest'"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_products_pantryId ON products(pantryId)")
+            }
+        }
+
+        /**
          * Every migration, in one place, so the app and MigrationTest can never
          * disagree about which migrations exist.
          */
         val ALL_MIGRATIONS = arrayOf(
-            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+            MIGRATION_6_7
         )
 
         fun getInstance(context: Context): FreshTrackDatabase {
