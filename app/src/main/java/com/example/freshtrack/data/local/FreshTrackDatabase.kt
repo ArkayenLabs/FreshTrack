@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
  */
 @Database(
     entities = [ProductEntity::class, CategoryEntity::class],
-    version = 2,
+    version = 5,
     exportSchema = true
 )
 abstract class FreshTrackDatabase : RoomDatabase() {
@@ -46,6 +46,83 @@ abstract class FreshTrackDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 2 to 3: adds COLLATE NOCASE to name/category
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Category table migration
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `categories_new` (
+                        `name` TEXT NOT NULL COLLATE NOCASE, 
+                        `colorHex` TEXT NOT NULL, 
+                        `icon` TEXT NOT NULL, 
+                        `sortOrder` INTEGER NOT NULL, 
+                        PRIMARY KEY(`name`)
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO `categories_new` (`name`, `colorHex`, `icon`, `sortOrder`) SELECT `name`, `colorHex`, `icon`, `sortOrder` FROM `categories`")
+                db.execSQL("DROP TABLE `categories`")
+                db.execSQL("ALTER TABLE `categories_new` RENAME TO `categories`")
+
+                // Product table migration
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `products_new` (
+                        `id` TEXT NOT NULL, 
+                        `name` TEXT NOT NULL COLLATE NOCASE, 
+                        `barcode` TEXT, 
+                        `category` TEXT NOT NULL COLLATE NOCASE, 
+                        `expiryDate` INTEGER NOT NULL, 
+                        `addedDate` INTEGER NOT NULL, 
+                        `quantity` INTEGER NOT NULL, 
+                        `originalQuantity` INTEGER NOT NULL, 
+                        `notes` TEXT, 
+                        `imageUri` TEXT, 
+                        `notificationEnabled` INTEGER NOT NULL, 
+                        `isConsumed` INTEGER NOT NULL, 
+                        `isDiscarded` INTEGER NOT NULL, 
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO `products_new` (`id`, `name`, `barcode`, `category`, `expiryDate`, `addedDate`, `quantity`, `originalQuantity`, `notes`, `imageUri`, `notificationEnabled`, `isConsumed`, `isDiscarded`) SELECT `id`, `name`, `barcode`, `category`, `expiryDate`, `addedDate`, `quantity`, `originalQuantity`, `notes`, `imageUri`, `notificationEnabled`, `isConsumed`, `isDiscarded` FROM `products`")
+                db.execSQL("DROP TABLE `products`")
+                db.execSQL("ALTER TABLE `products_new` RENAME TO `products`")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Remap any products from removed categories to 'Other'
+                db.execSQL("UPDATE products SET category = 'Other' WHERE category IN ('Food', 'Medicine', 'Cosmetics')")
+
+                // Remove all old categories and insert food-only set
+                db.execSQL("DELETE FROM categories")
+                db.execSQL("INSERT INTO categories (name, colorHex, icon, sortOrder) VALUES ('Fresh Produce', '#4CAF50', 'eco', 0)")
+                db.execSQL("INSERT INTO categories (name, colorHex, icon, sortOrder) VALUES ('Dairy', '#2196F3', 'water_drop', 1)")
+                db.execSQL("INSERT INTO categories (name, colorHex, icon, sortOrder) VALUES ('Bakery', '#FF9800', 'bakery_dining', 2)")
+                db.execSQL("INSERT INTO categories (name, colorHex, icon, sortOrder) VALUES ('Beverages', '#00BCD4', 'local_drink', 3)")
+                db.execSQL("INSERT INTO categories (name, colorHex, icon, sortOrder) VALUES ('Pantry', '#795548', 'kitchen', 4)")
+                db.execSQL("INSERT INTO categories (name, colorHex, icon, sortOrder) VALUES ('Leftovers', '#FF5722', 'takeout_dining', 5)")
+                db.execSQL("INSERT INTO categories (name, colorHex, icon, sortOrder) VALUES ('Other', '#9E9E9E', 'category', 6)")
+            }
+        }
+
+        /**
+         * Migration from version 4 to 5: adds resolvedDate, the timestamp of when
+         * an item was marked used or discarded. Powers the Impact Dashboard.
+         *
+         * Rows already resolved before this column existed have no real resolution
+         * timestamp available, so they are backfilled to addedDate. That keeps the
+         * money-saved and waste totals exact (they are plain counts) and only makes
+         * the waste-free day count conservative for pre-migration history.
+         */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE products ADD COLUMN resolvedDate INTEGER DEFAULT NULL")
+                db.execSQL("UPDATE products SET resolvedDate = addedDate WHERE isConsumed = 1 OR isDiscarded = 1")
+            }
+        }
+
         fun getInstance(context: Context): FreshTrackDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -54,7 +131,7 @@ abstract class FreshTrackDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                     .addCallback(DatabaseCallback())
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
 
                 INSTANCE = instance

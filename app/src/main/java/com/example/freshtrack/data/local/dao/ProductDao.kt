@@ -71,11 +71,34 @@ interface ProductDao {
     @Query("DELETE FROM products WHERE id = :productId")
     suspend fun deleteProductById(productId: String)
 
-    @Query("UPDATE products SET isConsumed = 1 WHERE id = :productId")
-    suspend fun markAsConsumed(productId: String)
+    @Query("UPDATE products SET isConsumed = 1, resolvedDate = :resolvedAt WHERE id = :productId")
+    suspend fun markAsConsumed(productId: String, resolvedAt: Long)
 
-    @Query("UPDATE products SET isDiscarded = 1 WHERE id = :productId")
-    suspend fun markAsDiscarded(productId: String)
+    @Query("UPDATE products SET isDiscarded = 1, resolvedDate = :resolvedAt WHERE id = :productId")
+    suspend fun markAsDiscarded(productId: String, resolvedAt: Long)
+
+    // ─── Impact Dashboard aggregates ──────────────────────────────────────────
+    // All derived from Room so every call site counts and nothing can drift.
+
+    @Query("SELECT COUNT(*) FROM products WHERE isConsumed = 1")
+    fun getConsumedCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM products WHERE isDiscarded = 1")
+    fun getDiscardedCount(): Flow<Int>
+
+    /**
+     * Timestamp of the most recent discard, or null if the user has never
+     * discarded anything. Drives the waste-free day count.
+     */
+    @Query("SELECT MAX(resolvedDate) FROM products WHERE isDiscarded = 1")
+    fun getLastDiscardedAt(): Flow<Long?>
+
+    /**
+     * Earliest activity in the account, used as the streak origin when the user
+     * has never discarded anything.
+     */
+    @Query("SELECT MIN(addedDate) FROM products")
+    fun getFirstActivityAt(): Flow<Long?>
 
     @Query("SELECT COUNT(*) FROM products WHERE isConsumed = 0 AND isDiscarded = 0")
     fun getActiveProductCount(): Flow<Int>

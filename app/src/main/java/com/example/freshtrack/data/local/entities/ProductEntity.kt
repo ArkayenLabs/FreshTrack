@@ -1,5 +1,6 @@
 package com.example.freshtrack.data.local.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
@@ -12,8 +13,10 @@ import java.util.UUID
 data class ProductEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
+    @ColumnInfo(collate = ColumnInfo.NOCASE)
     val name: String,
     val barcode: String? = null,
+    @ColumnInfo(collate = ColumnInfo.NOCASE)
     val category: String,
     val expiryDate: Long, // Unix timestamp in milliseconds
     val addedDate: Long = System.currentTimeMillis(),
@@ -23,7 +26,10 @@ data class ProductEntity(
     val imageUri: String? = null,
     val notificationEnabled: Boolean = true,
     val isConsumed: Boolean = false,
-    val isDiscarded: Boolean = false
+    val isDiscarded: Boolean = false,
+    // When the item was marked used or discarded. Null while still active.
+    // Backfilled to addedDate for rows resolved before this column existed.
+    val resolvedDate: Long? = null
 )
 
 /**
@@ -33,6 +39,7 @@ data class ProductEntity(
 @Entity(tableName = "categories")
 data class CategoryEntity(
     @PrimaryKey
+    @ColumnInfo(collate = ColumnInfo.NOCASE)
     val name: String,
     val colorHex: String, // Hex color code (e.g., "#4CAF50")
     val icon: String, // Material icon name
@@ -40,43 +47,57 @@ data class CategoryEntity(
 )
 
 /**
- * Predefined categories for initial setup
+ * Predefined food-focused categories for initial setup
  */
 object DefaultCategories {
-    val FOOD = CategoryEntity(
-        name = "Food",
+    val FRESH_PRODUCE = CategoryEntity(
+        name = "Fresh Produce",
         colorHex = "#4CAF50", // Green
-        icon = "restaurant",
+        icon = "eco",
         sortOrder = 0
     )
 
-    val MEDICINE = CategoryEntity(
-        name = "Medicine",
-        colorHex = "#F44336", // Red
-        icon = "medication",
+    val DAIRY = CategoryEntity(
+        name = "Dairy",
+        colorHex = "#2196F3", // Blue
+        icon = "water_drop",
         sortOrder = 1
     )
 
-    val COSMETICS = CategoryEntity(
-        name = "Cosmetics",
-        colorHex = "#E91E63", // Pink
-        icon = "face",
+    val BAKERY = CategoryEntity(
+        name = "Bakery",
+        colorHex = "#FF9800", // Amber
+        icon = "bakery_dining",
         sortOrder = 2
     )
 
     val BEVERAGES = CategoryEntity(
         name = "Beverages",
-        colorHex = "#2196F3", // Blue
+        colorHex = "#00BCD4", // Cyan
         icon = "local_drink",
         sortOrder = 3
+    )
+
+    val PANTRY = CategoryEntity(
+        name = "Pantry",
+        colorHex = "#795548", // Brown
+        icon = "kitchen",
+        sortOrder = 4
+    )
+
+    val LEFTOVERS = CategoryEntity(
+        name = "Leftovers",
+        colorHex = "#FF5722", // Deep Orange
+        icon = "takeout_dining",
+        sortOrder = 5
     )
 
     val OTHER = CategoryEntity(
         name = "Other",
         colorHex = "#9E9E9E", // Grey
         icon = "category",
-        sortOrder = 4
+        sortOrder = 6
     )
 
-    fun getAll() = listOf(FOOD, MEDICINE, COSMETICS, BEVERAGES, OTHER)
-}
+    fun getAll() = listOf(FRESH_PRODUCE, DAIRY, BAKERY, BEVERAGES, PANTRY, LEFTOVERS, OTHER)
+}

@@ -4,6 +4,7 @@ import com.example.freshtrack.data.local.dao.CategoryDao
 import com.example.freshtrack.data.local.dao.ProductDao
 import com.example.freshtrack.domain.model.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.TimeUnit
 
@@ -27,6 +28,7 @@ interface ProductRepository {
     fun getActiveProductCount(): Flow<Int>
     fun getConsumedProducts(): Flow<List<Product>>
     fun getDiscardedProducts(): Flow<List<Product>>
+    fun getImpactStats(): Flow<ImpactStats>
     suspend fun deleteHistory()
 }
 
@@ -89,11 +91,19 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun insertProduct(product: Product) {
-        productDao.insertProduct(product.toEntity())
+        val trimmedProduct = product.copy(
+            name = product.name.trim(),
+            category = product.category.trim()
+        )
+        productDao.insertProduct(trimmedProduct.toEntity())
     }
 
     override suspend fun updateProduct(product: Product) {
-        productDao.updateProduct(product.toEntity())
+        val trimmedProduct = product.copy(
+            name = product.name.trim(),
+            category = product.category.trim()
+        )
+        productDao.updateProduct(trimmedProduct.toEntity())
     }
 
     override suspend fun deleteProduct(productId: String) {
@@ -101,11 +111,11 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun markAsConsumed(productId: String) {
-        productDao.markAsConsumed(productId)
+        productDao.markAsConsumed(productId, System.currentTimeMillis())
     }
 
     override suspend fun markAsDiscarded(productId: String) {
-        productDao.markAsDiscarded(productId)
+        productDao.markAsDiscarded(productId, System.currentTimeMillis())
     }
 
     override suspend fun updateProductQuantity(productId: String, newQuantity: Int) {
@@ -128,6 +138,30 @@ class ProductRepositoryImpl(
     override fun getDiscardedProducts(): Flow<List<Product>> {
         return productDao.getDiscardedProducts().map { entities ->
             entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getImpactStats(): Flow<ImpactStats> {
+        return combine(
+            productDao.getConsumedCount(),
+            productDao.getDiscardedCount(),
+            productDao.getLastDiscardedAt(),
+            productDao.getFirstActivityAt()
+        ) { saved, wasted, lastDiscardedAt, firstActivityAt ->
+            val now = System.currentTimeMillis()
+
+            // Days since the last discard. With no discards on record we count
+            // from the user's first activity instead, so a user who has never
+            // wasted anything still sees a growing number.
+            val streakOrigin = lastDiscardedAt ?: firstActivityAt
+            val wasteFreeDays = streakOrigin?.let { calendarDaysBetween(it, now) } ?: 0
+
+            ImpactStats(
+                itemsSaved = saved,
+                itemsWasted = wasted,
+                wasteFreeDays = wasteFreeDays,
+                hasHistory = saved + wasted > 0
+            )
         }
     }
 

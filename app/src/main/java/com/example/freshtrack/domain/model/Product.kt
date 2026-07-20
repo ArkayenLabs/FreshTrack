@@ -21,7 +21,8 @@ data class Product(
     val imageUri: String?,
     val notificationEnabled: Boolean,
     val isConsumed: Boolean,
-    val isDiscarded: Boolean
+    val isDiscarded: Boolean,
+    val resolvedDate: Long? = null
 ) {
     /**
      * Calculate days until expiry based on calendar dates
@@ -128,7 +129,8 @@ fun ProductEntity.toDomain(): Product {
         imageUri = imageUri,
         notificationEnabled = notificationEnabled,
         isConsumed = isConsumed,
-        isDiscarded = isDiscarded
+        isDiscarded = isDiscarded,
+        resolvedDate = resolvedDate
     )
 }
 
@@ -149,7 +151,8 @@ fun Product.toEntity(): ProductEntity {
         imageUri = imageUri,
         notificationEnabled = notificationEnabled,
         isConsumed = isConsumed,
-        isDiscarded = isDiscarded
+        isDiscarded = isDiscarded,
+        resolvedDate = resolvedDate
     )
 }
 
