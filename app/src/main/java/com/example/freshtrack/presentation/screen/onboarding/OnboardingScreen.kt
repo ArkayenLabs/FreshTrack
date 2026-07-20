@@ -38,13 +38,14 @@ data class OnboardingPage(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    onSkip: () -> Unit = {}
 ) {
     val pages = remember {
         listOf(
             OnboardingPage(
-                title = "Track Your Products",
-                description = "Keep track of all your food, medicines, cosmetics, and beverages in one place. Never let anything go to waste!",
+                title = "Track Your Food",
+                description = "Keep track of all your groceries and food items in one place. Know exactly what you have and when it expires.",
                 icon = Icons.Outlined.Inventory2,
                 backgroundColor = androidx.compose.ui.graphics.Color(0xFF4CAF50),
                 iconBackgroundColor = androidx.compose.ui.graphics.Color(0xFF81C784)
@@ -93,7 +94,7 @@ fun OnboardingScreen(
                     exit = fadeOut()
                 ) {
                     TextButton(
-                        onClick = onComplete,
+                        onClick = onSkip,
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
