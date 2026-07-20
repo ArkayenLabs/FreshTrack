@@ -11,6 +11,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.freshtrack.data.preferences.OnboardingPreferences
+import com.example.freshtrack.presentation.screen.auth.ForgotPasswordScreen
+import com.example.freshtrack.presentation.screen.auth.LoginScreen
+import com.example.freshtrack.presentation.screen.auth.RegisterScreen
+import com.example.freshtrack.presentation.screen.auth.TermsOfServiceScreen
 import com.example.freshtrack.presentation.screen.dashboard.DashboardScreen
 import com.example.freshtrack.presentation.screen.productlist.ProductListScreen
 import com.example.freshtrack.presentation.screen.addproduct.AddEditProductScreen
@@ -21,6 +25,10 @@ import com.example.freshtrack.presentation.screen.scanner.BarcodeScannerScreen
 import com.example.freshtrack.presentation.screen.onboarding.OnboardingScreen
 import com.example.freshtrack.presentation.screen.splash.SplashScreen
 import com.example.freshtrack.presentation.screen.history.HistoryScreen
+import com.example.freshtrack.presentation.screen.impact.ImpactScreen
+import com.example.freshtrack.presentation.viewmodel.AuthViewModel
+import com.google.firebase.auth.FirebaseAuth
+import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 /**
@@ -29,6 +37,10 @@ import org.koin.compose.koinInject
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Onboarding : Screen("onboarding")
+    object Login : Screen("login")
+    object Register : Screen("register")
+    object ForgotPassword : Screen("forgot_password")
+    object TermsOfService : Screen("terms_of_service")
     object Dashboard : Screen("dashboard")
     object ProductList : Screen("product_list?filter={filter}") {
         fun createRoute(filter: String? = null) = if (filter != null) "product_list?filter=$filter" else "product_list"
@@ -45,6 +57,7 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object BarcodeScanner : Screen("barcode_scanner")
     object History : Screen("history")
+    object Impact : Screen("impact")
 }
 
 /**
@@ -71,26 +84,28 @@ fun FreshTrackNavGraph(
     navController: NavHostController,
     onboardingPreferences: OnboardingPreferences = koinInject()
 ) {
-
-
-    // Shared scanner state
     val scannerState = remember { ScannerState() }
 
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
     ) {
-        // Onboarding Screen
+
+        // ─── Splash Screen ────────────────────────────────────────────────────────
         composable(Screen.Splash.route) {
             SplashScreen(
                 onSplashComplete = {
-                    val nextDestination = if(onboardingPreferences.isOnboardingCompleted()){
-                        Screen.Dashboard.route
-                    }else{
-                        Screen.Onboarding.route
+                    val isLoggedIn = FirebaseAuth.getInstance().currentUser != null
+                    val isGuest = onboardingPreferences.isGuestMode()
+                    val onboardingDone = onboardingPreferences.isOnboardingCompleted()
+
+                    val nextDestination = when {
+                        isLoggedIn -> Screen.Dashboard.route
+                        isGuest -> Screen.Dashboard.route
+                        !onboardingDone -> Screen.Onboarding.route
+                        else -> Screen.Login.route
                     }
 
-                    // Navigate to dashboard and remove onboarding from back stack
                     navController.navigate(nextDestination) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
@@ -98,14 +113,18 @@ fun FreshTrackNavGraph(
             )
         }
 
-        // Onboarding Screen
+        // ─── Onboarding ───────────────────────────────────────────────────────────
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onComplete = {
-                    // Mark onboarding as completed
                     onboardingPreferences.setOnboardingCompleted()
-
-                    // Navigate to dashboard and remove onboarding from back stack
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                },
+                onSkip = {
+                    onboardingPreferences.setOnboardingCompleted()
+                    onboardingPreferences.setGuestMode(true)
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
@@ -113,7 +132,62 @@ fun FreshTrackNavGraph(
             )
         }
 
-        // Dashboard Screen
+        // ─── Login ────────────────────────────────────────────────────────────────
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onNavigateToRegister = {
+                    navController.navigate(Screen.Register.route)
+                },
+                onNavigateToForgotPassword = {
+                    navController.navigate(Screen.ForgotPassword.route)
+                },
+                onLoginSuccess = {
+                    onboardingPreferences.setGuestMode(false)
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                onContinueAsGuest = {
+                    onboardingPreferences.setGuestMode(true)
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ─── Forgot Password ──────────────────────────────────────────────────────
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                onNavigateBack = { navController.navigateUp() }
+            )
+        }
+
+        // ─── Register ─────────────────────────────────────────────────────────────
+        composable(Screen.Register.route) {
+            RegisterScreen(
+                onNavigateToLogin = {
+                    navController.navigateUp()
+                },
+                onNavigateToTerms = {
+                    navController.navigate(Screen.TermsOfService.route)
+                },
+                onRegisterSuccess = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ─── Terms of Service ─────────────────────────────────────────────────────
+        composable(Screen.TermsOfService.route) {
+            TermsOfServiceScreen(
+                onNavigateBack = { navController.navigateUp() }
+            )
+        }
+
+        // ─── Dashboard ────────────────────────────────────────────────────────────
         composable(Screen.Dashboard.route) {
             DashboardScreen(
                 onNavigateToProductList = {
@@ -135,7 +209,7 @@ fun FreshTrackNavGraph(
             )
         }
 
-        // Product List Screen
+        // ─── Product List ─────────────────────────────────────────────────────────
         composable(
             route = Screen.ProductList.route,
             arguments = listOf(
@@ -148,9 +222,7 @@ fun FreshTrackNavGraph(
         ) { backStackEntry ->
             val filter = backStackEntry.arguments?.getString("filter")
             ProductListScreen(
-                onNavigateBack = {
-                    navController.navigateUp()
-                },
+                onNavigateBack = { navController.navigateUp() },
                 onNavigateToAddProduct = {
                     scannerState.clear()
                     navController.navigate(Screen.AddProduct.route)
@@ -162,14 +234,11 @@ fun FreshTrackNavGraph(
             )
         }
 
-        // Add Product Screen
+        // ─── Add Product ──────────────────────────────────────────────────────────
         composable(Screen.AddProduct.route) {
-            // Get scanned barcode if available
-            val scannedBarcode = scannerState.scannedBarcode
-
             AddEditProductScreen(
                 productId = null,
-                scannedBarcode = scannedBarcode,
+                scannedBarcode = scannerState.scannedBarcode,
                 onNavigateBack = {
                     scannerState.clear()
                     navController.navigateUp()
@@ -180,7 +249,7 @@ fun FreshTrackNavGraph(
             )
         }
 
-        // Edit Product Screen
+        // ─── Edit Product ─────────────────────────────────────────────────────────
         composable(
             route = Screen.EditProduct.route,
             arguments = listOf(
@@ -188,12 +257,9 @@ fun FreshTrackNavGraph(
             )
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId")
-            // Get scanned barcode if available
-            val scannedBarcode = scannerState.scannedBarcode
-
             AddEditProductScreen(
                 productId = productId,
-                scannedBarcode = scannedBarcode,
+                scannedBarcode = scannerState.scannedBarcode,
                 onNavigateBack = {
                     scannerState.clear()
                     navController.navigateUp()
@@ -203,36 +269,46 @@ fun FreshTrackNavGraph(
                 }
             )
         }
-        // Settings Screen
+
+        // ─── Settings ─────────────────────────────────────────────────────────────
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = {
-                    navController.navigateUp()
-                },
-                onNavigateToLicenses = {
-                    navController.navigate(Screen.OpenSourceLicenses.route)
-                },
-                onNavigateToHistory = {
-                    navController.navigate(Screen.History.route)
+                onNavigateBack = { navController.navigateUp() },
+                onNavigateToLicenses = { navController.navigate(Screen.OpenSourceLicenses.route) },
+                onNavigateToHistory = { navController.navigate(Screen.History.route) },
+                onNavigateToImpact = { navController.navigate(Screen.Impact.route) },
+                onSignOut = {
+                    // Clear guest mode flag so they land on Login, not Dashboard
+                    onboardingPreferences.setGuestMode(false)
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                    }
                 }
             )
         }
+
+        // ─── OSS Licenses ─────────────────────────────────────────────────────────
         composable(Screen.OpenSourceLicenses.route) {
             CustomOSSLicensesScreen(
                 onNavigateBack = { navController.navigateUp() }
             )
         }
 
-        // History Screen
+        // ─── History ──────────────────────────────────────────────────────────────
         composable(Screen.History.route) {
             HistoryScreen(
-                onNavigateBack = {
-                    navController.navigateUp()
-                }
+                onNavigateBack = { navController.navigateUp() }
             )
         }
 
-        // Product Details Screen
+        // ─── Impact Dashboard ─────────────────────────────────────────────────────
+        composable(Screen.Impact.route) {
+            ImpactScreen(
+                onNavigateBack = { navController.navigateUp() }
+            )
+        }
+
+        // ─── Product Details ──────────────────────────────────────────────────────
         composable(
             route = Screen.ProductDetails.route,
             arguments = listOf(
@@ -242,28 +318,21 @@ fun FreshTrackNavGraph(
             val productId = backStackEntry.arguments?.getString("productId") ?: ""
             ProductDetailsScreen(
                 productId = productId,
-                onNavigateBack = {
-                    navController.navigateUp()
-                },
+                onNavigateBack = { navController.navigateUp() },
                 onNavigateToEdit = { id ->
                     navController.navigate(Screen.EditProduct.createRoute(id))
                 }
             )
         }
 
-
-
-        // Barcode Scanner Screen
+        // ─── Barcode Scanner ──────────────────────────────────────────────────────
         composable(Screen.BarcodeScanner.route) {
             BarcodeScannerScreen(
                 onBarcodeScanned = { barcode ->
-                    // Store barcode in shared state
                     scannerState.setBarcode(barcode)
                     navController.navigateUp()
                 },
-                onNavigateBack = {
-                    navController.navigateUp()
-                }
+                onNavigateBack = { navController.navigateUp() }
             )
         }
     }

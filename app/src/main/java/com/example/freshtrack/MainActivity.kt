@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import com.example.freshtrack.presentation.component.RequestNotificationPermissionSimple
 import com.example.freshtrack.presentation.navigation.FreshTrackNavGraph
 import com.example.freshtrack.presentation.theme.FreshTrackTheme
 import com.example.freshtrack.util.InAppUpdateManager
@@ -84,6 +85,7 @@ class MainActivity : ComponentActivity() {
             }
             
             FreshTrackTheme {
+                RequestNotificationPermissionSimple()
                 Scaffold(
                     snackbarHost = {
                         SnackbarHost(hostState = snackbarHostState) { data ->

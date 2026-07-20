@@ -24,7 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.data.export.CsvExporter
 import com.example.freshtrack.data.repository.ProductRepository
+import com.example.freshtrack.presentation.viewmodel.AuthViewModel
 import com.example.freshtrack.presentation.viewmodel.SettingsViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -36,16 +39,20 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToLicenses: () -> Unit,
     onNavigateToHistory: () -> Unit = {},
-
-    viewModel: SettingsViewModel = koinViewModel()
-
+    onNavigateToImpact: () -> Unit = {},
+    onSignOut: () -> Unit = {},
+    viewModel: SettingsViewModel = koinViewModel(),
+    authViewModel: AuthViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showDaysDialog by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val productRepository: ProductRepository = koinInject()
+
+    // Profile edit state
+    var showEditNameDialog by remember { mutableStateOf(false) }
+    var editNameValue by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -77,32 +84,141 @@ fun SettingsScreen(
                 .padding(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Notifications Section
-            SettingsSection(
-                title = "Notifications",
-                icon = Icons.Outlined.Notifications
-            ) {
-                SettingsSwitchCard(
-                    icon = Icons.Outlined.NotificationsActive,
-                    title = "Daily Reminder",
-                    description = "Get daily summary of expiring products",
-                    checked = uiState.dailyReminderEnabled,
-                    onCheckedChange = { viewModel.toggleDailyReminder(it) }
-                )
+            // ─── User Profile Card ─────────────────────────────────────────────────
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Avatar circle with initial
+                        val displayName = currentUser.displayName?.takeIf { it.isNotBlank() }
+                        val email = currentUser.email ?: ""
+                        val initial = displayName?.firstOrNull()?.uppercaseChar()
+                            ?: email.firstOrNull()?.uppercaseChar() ?: '?'
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = initial.toString(),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
 
-                SettingsItemCard(
-                    icon = Icons.Outlined.Schedule,
-                    title = "Advance Notice",
-                    description = "${uiState.notificationDaysInAdvance} days before expiry",
-                    onClick = { showDaysDialog = true }
-                )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = displayName ?: "Add your name",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (displayName != null)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                            )
+                            if (email.isNotBlank()) {
+                                Text(
+                                    text = email,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                editNameValue = currentUser.displayName ?: ""
+                                showEditNameDialog = true
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit name",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Guest mode — nudge to sign in for cloud features
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Using as Guest",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "Sign in to unlock backup & sync",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                        TextButton(onClick = onSignOut, shape = RoundedCornerShape(10.dp)) {
+                            Text("Sign In", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
             }
+
+            // Notifications Section — removed (Daily Reminder + Advance Notice)
+            // Notifications are always-on system-level; no per-user toggle needed.
 
             // Data & Storage Section
             SettingsSection(
                 title = "Data & Storage",
                 icon = Icons.Outlined.Storage
             ) {
+                SettingsItemCard(
+                    icon = Icons.Outlined.Insights,
+                    title = "Your Impact",
+                    description = "Waste-free days and used vs. wasted",
+                    onClick = onNavigateToImpact
+                )
                 SettingsItemCard(
                     icon = Icons.Outlined.History,
                     title = "History",
@@ -142,7 +258,7 @@ fun SettingsScreen(
                 SettingsItemCard(
                     icon = Icons.Outlined.CloudUpload,
                     title = "Backup & Sync",
-                    description = "Coming in Phase 2",
+                    description = "Premium feature — coming soon",
                     onClick = { },
                     enabled = false
                 )
@@ -153,14 +269,6 @@ fun SettingsScreen(
                 title = "About",
                 icon = Icons.Outlined.Info
             ) {
-                SettingsItemCard(
-                    icon = Icons.Outlined.AppSettingsAlt,
-                    title = "App Version",
-                    description = "1.1.0",
-                    onClick = { },
-                    enabled = false
-                )
-
                 SettingsItemCard(
                     icon = Icons.Outlined.PrivacyTip,
                     title = "Privacy Policy",
@@ -209,6 +317,52 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(16.dp))
 
+            // Sign Out Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                var showSignOutDialog by remember { mutableStateOf(false) }
+
+                if (showSignOutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showSignOutDialog = false },
+                        title = { Text("Sign Out", fontWeight = FontWeight.Bold) },
+                        text = { Text("Are you sure you want to sign out?") },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showSignOutDialog = false
+                                    scope.launch {
+                                        authViewModel.signOut()
+                                        onSignOut()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            ) { Text("Sign Out") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+                        }
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = { showSignOutDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp)
+                ) {
+                    Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Sign Out", fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
             // App Info Footer
             Column(
                 modifier = Modifier
@@ -230,7 +384,7 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Made with ❤️ for a sustainable future",
+                    text = "Made for a sustainable future",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -245,15 +399,42 @@ fun SettingsScreen(
         }
     }
 
-    // Days Selector Dialog
-    if (showDaysDialog) {
-        AdvanceNoticeDaysDialog(
-            currentDays = uiState.notificationDaysInAdvance,
-            onDismiss = { showDaysDialog = false },
-            onConfirm = { days ->
-                viewModel.updateNotificationDays(days)
-                showDaysDialog = false
-            }
+    // Name Edit Dialog
+    if (showEditNameDialog) {
+        var nameInput by remember { mutableStateOf(editNameValue) }
+        AlertDialog(
+            onDismissRequest = { showEditNameDialog = false },
+            title = { Text("Edit Name", fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = nameInput,
+                    onValueChange = { nameInput = it },
+                    label = { Text("Display Name") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val trimmedName = nameInput.trim()
+                        val user = FirebaseAuth.getInstance().currentUser
+                        val profileUpdates = UserProfileChangeRequest.Builder()
+                            .setDisplayName(trimmedName)
+                            .build()
+                        user?.updateProfile(profileUpdates)
+                            ?.addOnCompleteListener { /* profile updated */ }
+                        showEditNameDialog = false
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Save", fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditNameDialog = false }, shape = RoundedCornerShape(12.dp)) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
         )
     }
 }
