@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -82,9 +84,17 @@ class ScannerState {
 @Composable
 fun FreshTrackNavGraph(
     navController: NavHostController,
-    onboardingPreferences: OnboardingPreferences = koinInject()
+    onboardingPreferences: OnboardingPreferences = koinInject(),
+    productRepository: com.example.freshtrack.data.repository.ProductRepository = koinInject()
 ) {
     val scannerState = remember { ScannerState() }
+    val appScope = rememberCoroutineScope()
+
+    // Anything added as a guest is adopted by the account on sign-in, so weeks of
+    // tracking are not stranded the moment someone finally signs up.
+    fun claimGuestData() {
+        appScope.launch { runCatching { productRepository.claimGuestData() } }
+    }
 
     NavHost(
         navController = navController,
@@ -142,6 +152,7 @@ fun FreshTrackNavGraph(
                     navController.navigate(Screen.ForgotPassword.route)
                 },
                 onLoginSuccess = {
+                    claimGuestData()
                     onboardingPreferences.setGuestMode(false)
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
@@ -173,6 +184,8 @@ fun FreshTrackNavGraph(
                     navController.navigate(Screen.TermsOfService.route)
                 },
                 onRegisterSuccess = {
+                    claimGuestData()
+                    onboardingPreferences.setGuestMode(false)
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
