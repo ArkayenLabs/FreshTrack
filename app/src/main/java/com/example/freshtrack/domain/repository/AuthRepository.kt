@@ -36,4 +36,16 @@ interface AuthRepository {
      * Sign out the current user
      */
     suspend fun signOut()
+
+    /**
+     * Permanently deletes the Firebase account.
+     *
+     * Firebase refuses this unless the user signed in recently, so callers must
+     * handle [RecentLoginRequired] by asking them to sign in again rather than
+     * reporting a generic failure.
+     */
+    suspend fun deleteAccount(): Result<Unit>
+
+    /** Thrown when Firebase wants a fresh sign-in before a sensitive change. */
+    class RecentLoginRequired : Exception("Please sign in again to confirm")
 }

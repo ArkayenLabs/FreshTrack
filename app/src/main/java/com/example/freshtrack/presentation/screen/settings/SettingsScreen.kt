@@ -57,6 +57,11 @@ fun SettingsScreen(
     val productSyncer: com.example.freshtrack.data.sync.ProductSyncer = koinInject()
     val syncPreferences: com.example.freshtrack.data.preferences.SyncPreferences = koinInject()
 
+    val accountDeleter: com.example.freshtrack.data.account.AccountDeleter = koinInject()
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var deleteConfirmText by remember { mutableStateOf("") }
+    var isDeletingAccount by remember { mutableStateOf(false) }
+
     var isSyncing by remember { mutableStateOf(false) }
     // Seeded from the stored timestamp so the card says something truthful
     // before any sync is attempted in this session.
@@ -433,6 +438,25 @@ fun SettingsScreen(
                     Spacer(Modifier.width(8.dp))
                     Text("Sign Out", fontWeight = FontWeight.SemiBold)
                 }
+
+                // Deliberately quiet: a destructive, irreversible action should
+                // be findable but never sit where Sign Out is expected.
+                if (FirebaseAuth.getInstance().currentUser != null) {
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            deleteConfirmText = ""
+                            showDeleteAccountDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Delete Account",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -509,6 +533,101 @@ fun SettingsScreen(
                 }
             },
             shape = RoundedCornerShape(24.dp)
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeletingAccount) showDeleteAccountDialog = false },
+            icon = {
+                Icon(
+                    Icons.Outlined.DeleteForever,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Delete account?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Naming what goes, rather than a vague warning, so the
+                    // decision is made with the facts in front of them.
+                    Text("This permanently deletes:")
+                    Text(
+                        "• Your account and sign-in details\n" +
+                            "• Every item in your inventory, on this device and in the cloud\n" +
+                            "• Your history and impact figures",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "This cannot be undone. If you want to keep your data, " +
+                            "cancel and use Export Data first.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = deleteConfirmText,
+                        onValueChange = { deleteConfirmText = it },
+                        singleLine = true,
+                        enabled = !isDeletingAccount,
+                        label = { Text("Type DELETE to confirm") }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    // Typing is friction on purpose: a single mis-tap should not
+                    // be able to destroy someone's account.
+                    enabled = deleteConfirmText.trim().equals("DELETE", ignoreCase = false) &&
+                        !isDeletingAccount,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ),
+                    onClick = {
+                        isDeletingAccount = true
+                        scope.launch {
+                            when (val result = accountDeleter.deleteAccount()) {
+                                com.example.freshtrack.data.account.AccountDeleter.Result.Success -> {
+                                    showDeleteAccountDialog = false
+                                    Toast.makeText(
+                                        context,
+                                        "Your account and data have been deleted",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    onSignOut()
+                                }
+
+                                com.example.freshtrack.data.account.AccountDeleter.Result.NeedsRecentLogin -> {
+                                    showDeleteAccountDialog = false
+                                    Toast.makeText(
+                                        context,
+                                        "For your security, sign in again and then delete your account",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    authViewModel.signOut()
+                                    onSignOut()
+                                }
+
+                                is com.example.freshtrack.data.account.AccountDeleter.Result.Failed -> {
+                                    Toast.makeText(
+                                        context,
+                                        "Could not delete account: ${result.cause.message}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                            isDeletingAccount = false
+                        }
+                    }
+                ) {
+                    Text(if (isDeletingAccount) "Deleting..." else "Delete forever")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isDeletingAccount,
+                    onClick = { showDeleteAccountDialog = false }
+                ) { Text("Cancel") }
+            }
         )
     }
 

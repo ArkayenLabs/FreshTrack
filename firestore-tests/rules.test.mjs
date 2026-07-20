@@ -197,9 +197,24 @@ describe('product writes (premium pantry)', () => {
     );
   });
 
-  it('hard delete is refused even for the owner', async () => {
-    await assertFails(
+  it('the owner may hard delete, for account deletion', async () => {
+    // Firestore does not cascade into subcollections, so account deletion has
+    // to remove each product explicitly or they are orphaned forever.
+    await assertSucceeds(
       deleteDoc(doc(alice(), 'pantries', PREMIUM_PANTRY, 'products', 'eggs'))
+    );
+  });
+
+  it('a non-owner member cannot hard delete', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'pantries', PREMIUM_PANTRY), {
+        name: 'Shared', ownerUid: ALICE, memberUids: [ALICE, BOB],
+        isPremium: true, createdAt: 1,
+      });
+    });
+    // A member can still soft delete; they just cannot erase shared history.
+    await assertFails(
+      deleteDoc(doc(bob(), 'pantries', PREMIUM_PANTRY, 'products', 'eggs'))
     );
   });
 
@@ -315,7 +330,12 @@ describe('user documents and entitlements', () => {
     );
   });
 
-  it('cannot delete a user document', async () => {
-    await assertFails(deleteDoc(doc(alice(), 'users', ALICE)));
+  it('can delete your own user document', async () => {
+    // Required for the account deletion path.
+    await assertSucceeds(deleteDoc(doc(alice(), 'users', ALICE)));
+  });
+
+  it('cannot delete someone else user document', async () => {
+    await assertFails(deleteDoc(doc(bob(), 'users', ALICE)));
   });
 });

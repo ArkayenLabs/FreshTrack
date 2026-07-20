@@ -147,6 +147,14 @@ interface ProductDao {
     @Query("SELECT COUNT(*) FROM products WHERE pantryId = 'local' AND isDeleted = 0")
     suspend fun countGuestProducts(): Int
 
+    /**
+     * Hard delete, used only when an account is being deleted. Tombstones are
+     * pointless here: there is no longer an account for a deletion to
+     * propagate to.
+     */
+    @Query("DELETE FROM products WHERE pantryId = :pantryId")
+    suspend fun deleteAllForPantry(pantryId: String)
+
     // ─── Duplicate detection ──────────────────────────────────────────────────
 
     /**

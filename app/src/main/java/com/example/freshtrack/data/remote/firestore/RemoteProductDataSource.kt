@@ -85,6 +85,25 @@ class RemoteProductDataSource(
             }
         }.mapRemoteError()
 
+    override suspend fun deleteAccountData(pantryId: String, uid: String): Result<Unit> =
+        runCatching {
+            // Page through the subcollection rather than assuming it is small.
+            while (true) {
+                val page = products(pantryId).limit(BATCH_LIMIT.toLong()).get().await()
+                if (page.isEmpty) break
+
+                val batch = firestore.batch()
+                page.documents.forEach { batch.delete(it.reference) }
+                batch.commit().await()
+
+                if (page.size() < BATCH_LIMIT) break
+            }
+
+            firestore.collection(PANTRIES).document(pantryId).delete().await()
+            firestore.collection(USERS).document(uid).delete().await()
+            Unit
+        }.mapRemoteError()
+
     /**
      * Translates Firestore's exception vocabulary into [RemoteError] so the sync
      * engine never has to import a Firebase type.
@@ -113,6 +132,7 @@ class RemoteProductDataSource(
         )
 
         private const val PANTRIES = "pantries"
+        private const val USERS = "users"
         private const val PRODUCTS = "products"
         private const val BATCH_LIMIT = 500
     }

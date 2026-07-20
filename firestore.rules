@@ -73,9 +73,10 @@ service cloud.firestore {
                     && request.resource.data.get('plan', 'free')
                        == resource.data.get('plan', 'free');
 
-      // Account deletion is a server-side operation; it has to clean up pantries
-      // too, which a single client delete cannot do atomically.
-      allow delete: if false;
+      // A user may delete their own profile as part of deleting their account.
+      // Google Play requires an account deletion path, and without Cloud
+      // Functions there is no trusted server to do it on their behalf.
+      allow delete: if isSignedIn() && uid() == userId;
     }
 
     // ─── Pantries ───────────────────────────────────────────────────────────
@@ -125,10 +126,20 @@ service cloud.firestore {
                               && pantryIsPremium(pantryId)
                               && request.resource.data.updatedAt is number;
 
-        // Deletes are soft: the client sets isDeleted so the removal can
-        // propagate to other devices. A hard delete would vanish without ever
-        // reaching them, so it is refused outright.
-        allow delete: if false;
+        // Everyday deletion is soft: the client sets isDeleted so the removal
+        // can propagate to other devices. A hard delete would vanish without
+        // ever reaching them.
+        //
+        // The owner is nonetheless allowed to hard-delete, because account
+        // deletion has to actually erase the data. Firestore does not cascade
+        // into subcollections, so deleting the pantry alone would leave every
+        // product orphaned in the database forever — which is precisely the
+        // retention failure the deletion requirement exists to prevent. With no
+        // Cloud Function available, the client must do it.
+        //
+        // Members cannot hard-delete: for them, soft delete remains the only
+        // route, so a shared pantry cannot be quietly emptied.
+        allow delete: if isOwnerOf(pantryId);
       }
     }
   }

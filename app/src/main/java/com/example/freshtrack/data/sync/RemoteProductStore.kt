@@ -25,4 +25,14 @@ interface RemoteProductStore {
     suspend fun fetchChangedSince(pantryId: String, since: Long): Result<List<ProductEntity>>
 
     suspend fun push(pantryId: String, entities: List<ProductEntity>): Result<Unit>
+
+    /**
+     * Erases everything stored for this user: every product document, the
+     * pantry, and the user profile.
+     *
+     * Products are deleted individually because Firestore does not cascade into
+     * subcollections — deleting the pantry alone would leave them orphaned in
+     * the database with no owner and no way to reach them.
+     */
+    suspend fun deleteAccountData(pantryId: String, uid: String): Result<Unit>
 }

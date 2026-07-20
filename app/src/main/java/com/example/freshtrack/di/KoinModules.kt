@@ -41,6 +41,17 @@ val repositoryModule = module {
         com.example.freshtrack.data.remote.firestore.RemoteProductDataSource(get())
     }
     single {
+        com.example.freshtrack.data.account.AccountDeleter(
+            authRepository = get(),
+            remote = get(),
+            productDao = get(),
+            session = get(),
+            syncPrefs = get(),
+            onboardingPrefs = get()
+        )
+    }
+
+    single {
         com.example.freshtrack.data.sync.ProductSyncer(
             productDao = get(),
             remote = get(),

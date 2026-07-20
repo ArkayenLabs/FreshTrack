@@ -62,4 +62,21 @@ class FirebaseAuthRepositoryImpl(
     override suspend fun signOut() {
         auth.signOut()
     }
+
+    override suspend fun deleteAccount(): Result<Unit> {
+        val user = auth.currentUser
+            ?: return Result.failure(IllegalStateException("No signed-in user"))
+
+        return try {
+            user.delete().await()
+            Result.success(Unit)
+        } catch (e: com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+            // Firebase guards account deletion behind a recent sign-in. Surfaced
+            // as its own type so the UI can ask for re-authentication instead of
+            // showing a dead end.
+            Result.failure(AuthRepository.RecentLoginRequired())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
