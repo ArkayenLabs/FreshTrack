@@ -29,6 +29,7 @@ class LoginScreenTest {
             LoginScreen(
                 viewModel = mockViewModel,
                 onNavigateToRegister = {},
+                onNavigateToForgotPassword = {},
                 onLoginSuccess = {}
             )
         }
@@ -52,6 +53,7 @@ class LoginScreenTest {
             LoginScreen(
                 viewModel = mockViewModel,
                 onNavigateToRegister = {},
+                onNavigateToForgotPassword = {},
                 onLoginSuccess = {}
             )
         }
@@ -71,6 +73,7 @@ class LoginScreenTest {
             LoginScreen(
                 viewModel = mockViewModel,
                 onNavigateToRegister = {},
+                onNavigateToForgotPassword = {},
                 onLoginSuccess = {}
             )
         }
