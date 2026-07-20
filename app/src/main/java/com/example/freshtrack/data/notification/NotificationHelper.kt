@@ -186,6 +186,7 @@ object NotificationHelper {
 object NotificationScheduler {
 
     private const val WORK_NAME_EXPIRY_CHECK = "expiry_check_work"
+    private const val WORK_NAME_WEEKLY_SUMMARY = "weekly_summary_work"
 
     /**
      * Schedule daily expiry check at 9 AM
@@ -230,6 +231,29 @@ object NotificationScheduler {
      */
     fun cancelScheduledNotifications(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_EXPIRY_CHECK)
+        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_WEEKLY_SUMMARY)
+    }
+
+    /**
+     * Schedule Weekly Summary
+     */
+    fun scheduleWeeklySummary(context: Context) {
+        val weeklyWorkRequest = PeriodicWorkRequestBuilder<WeeklySummaryWorker>(
+            repeatInterval = 7,
+            repeatIntervalTimeUnit = TimeUnit.DAYS
+        )
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            WORK_NAME_WEEKLY_SUMMARY,
+            ExistingPeriodicWorkPolicy.KEEP,
+            weeklyWorkRequest
+        )
     }
 
     /**

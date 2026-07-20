@@ -23,6 +23,8 @@ class FreshTrackApplication : Application() {
         crashLoopDetector = CrashLoopDetector(this)
         crashLoopDetector.onAppStarting()
 
+        com.example.freshtrack.util.AnalyticsHelper.init()
+
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStop(owner: LifecycleOwner) {
                 crashLoopDetector.onAppExitCleanly()
@@ -37,6 +39,7 @@ class FreshTrackApplication : Application() {
 
         createNotificationChannels()
         NotificationScheduler.scheduleDailyExpiryCheck(this)
+        NotificationScheduler.scheduleWeeklySummary(this)
     }
 
     private fun createNotificationChannels() {
