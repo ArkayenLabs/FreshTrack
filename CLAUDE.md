@@ -17,20 +17,31 @@
 | UI / Screens | `presentation/screen/` |
 | Navigation | `presentation/navigation/Navigation.kt` — single NavHost, guest mode routing |
 | ViewModels | `presentation/viewmodel/` |
-| Local DB | `data/local/FreshTrackDatabase.kt` (Room v5), `data/local/entities/ProductEntity.kt` |
+| Local DB | `data/local/FreshTrackDatabase.kt` (Room v7), `data/local/entities/ProductEntity.kt` |
 | Repositories | `data/repository/` |
 | DI | `di/KoinModules.kt` (Koin) |
 | Preferences | `data/preferences/OnboardingPreferences.kt` — includes guest mode flag |
 | Notifications | `data/notification/` — WorkManager + NotificationHelper |
 | Auth | Firebase Auth (Email/Password + Google Sign-In) via `presentation/viewmodel/AuthViewModel.kt` |
+| Sync | `data/sync/` — ProductSyncer + SyncWorker; `data/remote/firestore/` |
+| Session | `data/session/UserSession.kt` — current uid and active pantry |
 
-**DB version: 5.** Migrations live in `FreshTrackDatabase.kt`. Adding columns always requires a new `Migration(n, n+1)`.
+**DB version: 7.** Migrations live in `FreshTrackDatabase.kt`. Adding columns always requires a new `Migration(n, n+1)`.
 
 ---
 
 ## Key Decisions & Constraints
 
-- **Offline-first.** Room is the source of truth. No Firestore yet (Backup & Sync is stubbed as Premium).
+- **Offline-first.** Room is the source of truth. Firestore mirrors it; a sync
+  failure must never block a read. See `sync-design.md`.
+- **`pantryId` is the access key, not `userId`.** Products belong to a pantry so a
+  shared household pantry works. `userId` is attribution only. Never filter
+  user-facing queries by `userId`.
+- **Deletes are soft.** Set `isDeleted`; a hard delete cannot propagate to another
+  device. Only the queries under "Sync" in `ProductDao` may see tombstones.
+- **Free tier is a feature gate, not a quantity cap.** No item limits — capping
+  local storage would strand data for existing users and contradict the listing.
+- **`isPremium` is server-written only.** Rules refuse any client write to it.
 - **`COLLATE NOCASE`** on `name` and `category` fields — prevents milk/Milk duplicates.
 - **Categories are food-only:** Fresh Produce, Dairy, Bakery, Beverages, Pantry, Leftovers, Other. No Medicine/Cosmetics.
 - **`notificationEnabled` stays in `ProductEntity`** (DB field) even though the UI toggle was removed — do not drop this column.
@@ -57,27 +68,13 @@ Settings "Sign Out" clears guest flag AND Firebase session, returns to Login.
 
 ---
 
-## Current Sprint — Checklist
+## Current Status
 
-See **`checklist.md`** for the full ordered list. Summary of remaining items:
+**See `PROGRESS.md`** — it is the single source of truth for what is done, what is
+next, and what is knowingly incomplete. Do not reconstruct status from git log.
 
-**Bugs (do first):**
-- [x] Auth wall fixed (deferred auth / guest mode)
-- [ ] Store listing statistic — manual Play Console update (Indian audience stat)
-
-**Phase 1 (near-zero infrastructure):**
-- [x] Impact Dashboard (derived from `isConsumed`/`isDiscarded` + new `resolvedDate`)
-- [x] Soft streak framing
-- [ ] Home-screen widget (Glance API)
-
-**Phase 2:**
-- [ ] ML Kit receipt scan (free tier, on-device)
-- [ ] Household sharing + Backup & Sync (Firestore)
-
-**Phase 3 (premium):**
-- [ ] AI recipe suggestions (paid API)
-- [ ] Multi-location storage zones
-- [ ] Environmental impact report
+Short version: Phase 1 done. Backup & Sync built but inert, because nothing sets
+`isPremium` yet. Rules written and tested but not deployed.
 
 ---
 
@@ -109,3 +106,7 @@ India pricing target: ₹299–499/yr. USD base: $3.99/mo · $14.99/yr.
 - Do not use emoji in any UI string.
 - Do not drop `notificationEnabled` from `ProductEntity`.
 - Do not use Hilt, TailwindCSS, or any web framework.
+- Do not filter user-facing product queries by `userId` — use `pantryId`.
+- Do not hard-delete products; set `isDeleted`.
+- Do not let a client write `isPremium` or `plan`.
+- Do not add item-count caps to the free tier.
