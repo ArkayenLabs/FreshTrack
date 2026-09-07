@@ -58,6 +58,10 @@ android {
     }
 
     compileOptions {
+        // Expiry is a calendar date, not an instant, so the model uses
+        // java.time.LocalDate. Desugaring makes that available at minSdk 24
+        // instead of forcing minSdk 26.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -174,6 +178,9 @@ dependencies {
     
     // Security
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // java.time on API 24-25
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 
