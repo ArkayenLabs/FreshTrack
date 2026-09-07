@@ -27,7 +27,13 @@ Each of those is a disclosure obligation that did not previously exist.
 
 ## P0 — Live risk on a published app
 
-- [ ] **Account deletion is missing entirely.** Google Play requires that any app
+- [x] **Account deletion — BUILT.** `data/account/AccountDeleter.kt` implements
+      the in-app flow (remote-first ordering), covered by 7 passing unit tests, and
+      a public deletion URL is cited in the legal templates. The paragraph below is
+      the original finding, kept for context; it no longer describes the code.
+      Still to verify: that the public URL actually resolves.
+
+- [ ] ~~**Account deletion is missing entirely.**~~ Google Play requires that any app
       offering account creation provides **both** an in-app deletion path **and**
       a publicly reachable web URL for deletion requests, with the URL declared
       in the Data Safety form. There is no delete-account flow in the codebase at

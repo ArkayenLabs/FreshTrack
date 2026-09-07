@@ -18,8 +18,12 @@ Phase 1 retention work is done. The Phase 2 readiness audit is closed except for
 known gaps listed below. Backup & Sync is **built but inert** — nothing grants
 premium yet, so every cloud write is refused by design.
 
-Last verified state: 58 unit tests, 4 migration tests on device, 36 Firestore
-rules tests — all passing.
+Last verified state (re-run 7 Sep 2026 at commit af65145, not inherited from
+an earlier session): 69 JVM unit tests pass, 38 Firestore rules tests pass on
+the emulator. The 4 Room migration tests and 2 Compose UI tests were **not
+run** — no device or emulator was attached. `assembleRelease` failed at the
+then-configured 2g heap with an R8 OutOfMemoryError; it succeeds once the
+heap is raised.
 
 ---
 

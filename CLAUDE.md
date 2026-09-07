@@ -85,7 +85,9 @@ Short version: Phase 1 done. Backup & Sync built but inert, because nothing sets
 
 ## Pricing & Monetization
 
-Free tier: full local inventory, barcode scan, notifications, CSV export, guest mode, ML Kit receipt scan.
+Free tier: full local inventory, barcode scan, notifications, CSV export, guest mode.
+(Receipt scanning is *planned*, not built — there is no ML Kit text-recognition
+dependency in the project. Do not describe it as shipped.)
 Premium (planned): Backup/Sync, AI recipes, family sharing, storage zones, extended history.
 India pricing target: ₹299–499/yr. USD base: $3.99/mo · $14.99/yr.
 
