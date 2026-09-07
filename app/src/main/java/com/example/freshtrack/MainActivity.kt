@@ -87,6 +87,11 @@ class MainActivity : ComponentActivity() {
             
             FreshTrackTheme {
                 RequestNotificationPermissionSimple()
+                // This Scaffold exists only to host the snackbar: it has no top or
+                // bottom bar, and every destination in the nav graph brings its own
+                // Scaffold. Consuming the content padding here would apply the
+                // system insets a second time and push every screen down.
+                @Suppress("UnusedMaterial3ScaffoldPaddingParameter")
                 Scaffold(
                     snackbarHost = {
                         SnackbarHost(hostState = snackbarHostState) { data ->
