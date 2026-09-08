@@ -23,7 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.data.export.CsvExporter
-import com.example.freshtrack.data.repository.ProductRepository
+import com.example.freshtrack.data.repository.ItemRepository
 import com.example.freshtrack.presentation.viewmodel.AuthViewModel
 import com.example.freshtrack.presentation.viewmodel.SettingsViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -53,9 +53,7 @@ fun SettingsScreen(
     }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val productRepository: ProductRepository = koinInject()
-    val productSyncer: com.example.freshtrack.data.sync.ProductSyncer = koinInject()
-    val syncPreferences: com.example.freshtrack.data.preferences.SyncPreferences = koinInject()
+    val itemRepository: ItemRepository = koinInject()
 
     val consentPreferences: com.example.freshtrack.data.preferences.ConsentPreferences = koinInject()
     var analyticsConsent by remember { mutableStateOf(consentPreferences.isAnalyticsGranted()) }
@@ -65,18 +63,11 @@ fun SettingsScreen(
     var deleteConfirmText by remember { mutableStateOf("") }
     var isDeletingAccount by remember { mutableStateOf(false) }
 
-    var isSyncing by remember { mutableStateOf(false) }
-    // Seeded from the stored timestamp so the card says something truthful
-    // before any sync is attempted in this session.
-    var syncStatus by remember {
-        mutableStateOf(
-            if (FirebaseAuth.getInstance().currentUser == null) {
-                "Sign in to back up your items"
-            } else {
-                describeLastSync(syncPreferences.lastSuccessAt())
-            }
-        )
-    }
+    // Cloud backup is not wired up in this build. Rather than showing a
+    // button that silently does nothing, the card reports what is actually
+    // true: changes are queued on the device and nothing has left it.
+    val pendingChanges by itemRepository.observePendingSyncCount()
+        .collectAsState(initial = 0)
 
     // OpenDocument rather than GetContent: it returns a persistable URI and lets
     // the user pick from any provider, including Drive.
@@ -94,7 +85,7 @@ fun SettingsScreen(
                     Toast.makeText(context, "That file is empty", Toast.LENGTH_SHORT).show()
                 } else {
                     val parsed = com.example.freshtrack.data.export.CsvImporter.parse(text)
-                    val summary = productRepository.importProducts(parsed.products)
+                    val summary = itemRepository.import(parsed.products)
                     importSummary = summary.copy(failedRows = parsed.errors.size)
                 }
             } catch (e: Exception) {
@@ -303,7 +294,7 @@ fun SettingsScreen(
                             isExporting = true
                             scope.launch {
                                 try {
-                                    val products = productRepository.getAllProducts().first()
+                                    val products = itemRepository.observeActiveItems().first()
                                     if (products.isEmpty()) {
                                         Toast.makeText(context, "No products to export", Toast.LENGTH_SHORT).show()
                                     } else {
@@ -325,24 +316,17 @@ fun SettingsScreen(
                 )
 
                 SettingsItemCard(
-                    icon = when {
-                        isSyncing -> Icons.Outlined.CloudSync
-                        syncStatus.startsWith("Backed up") -> Icons.Outlined.CloudDone
-                        else -> Icons.Outlined.CloudUpload
+                    icon = Icons.Outlined.CloudOff,
+                    title = "Backup & Sync",
+                    description = if (pendingChanges > 0) {
+                        "Not available yet. $pendingChanges change" +
+                            (if (pendingChanges == 1) "" else "s") +
+                            " saved on this device."
+                    } else {
+                        "Not available yet. Your items are saved on this device."
                     },
-                    title = if (isSyncing) "Backing up..." else "Backup & Sync",
-                    description = syncStatus,
-                    // Tapping while signed out would do nothing, so it stays
-                    // inert rather than pretending to work.
-                    enabled = !isSyncing && FirebaseAuth.getInstance().currentUser != null,
-                    onClick = {
-                        isSyncing = true
-                        scope.launch {
-                            val result = productSyncer.sync()
-                            syncStatus = describeSync(result, syncPreferences.lastSuccessAt())
-                            isSyncing = false
-                        }
-                    }
+                    enabled = false,
+                    onClick = {}
                 )
             }
 
@@ -975,26 +959,6 @@ private fun AdvanceNoticeDaysDialog(
  * silently is not happening is worse than no backup, because the user stops
  * worrying about it.
  */
-private fun describeSync(
-    result: com.example.freshtrack.data.sync.SyncResult,
-    lastSuccessAt: Long
-): String = when (result) {
-    is com.example.freshtrack.data.sync.SyncResult.Success ->
-        "Backed up just now"
-
-    com.example.freshtrack.data.sync.SyncResult.SkippedSignedOut ->
-        "Sign in to back up your items"
-
-    com.example.freshtrack.data.sync.SyncResult.SkippedNotPremium ->
-        "Backup is a Premium feature"
-
-    is com.example.freshtrack.data.sync.SyncResult.Retryable ->
-        "No connection. Will retry automatically."
-
-    is com.example.freshtrack.data.sync.SyncResult.Failed ->
-        "Backup failed. " + describeLastSync(lastSuccessAt)
-}
-
 /** "Backed up 3 hours ago", or an honest statement that it never has been. */
 private fun describeLastSync(lastSuccessAt: Long): String {
     if (lastSuccessAt <= 0L) return "Not backed up yet"

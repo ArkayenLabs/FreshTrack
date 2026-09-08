@@ -1,6 +1,7 @@
 package com.example.freshtrack.widget
 
-import com.example.freshtrack.domain.model.Product
+import com.example.freshtrack.domain.model.Item as InventoryItem
+import java.time.LocalDate
 
 /**
  * What the home-screen widget should show, decided independently of Glance so
@@ -31,10 +32,10 @@ object WidgetContent {
     /** Items expiring within this many days are worth surfacing. */
     const val HORIZON_DAYS = 7L
 
-    fun build(products: List<Product>): State {
+    fun build(products: List<InventoryItem>, today: LocalDate): State {
         val relevant = products
-            .filter { it.daysUntilExpiry() <= HORIZON_DAYS }
-            .sortedBy { it.daysUntilExpiry() }
+            .filter { it.daysUntilExpiry(today) <= HORIZON_DAYS }
+            .sortedBy { it.daysUntilExpiry(today) }
 
         if (relevant.isEmpty()) {
             return State(
@@ -44,15 +45,15 @@ object WidgetContent {
             )
         }
 
-        val overdue = relevant.count { it.daysUntilExpiry() < 0 }
-        val today = relevant.count { it.daysUntilExpiry() == 0L }
+        val overdue = relevant.count { it.daysUntilExpiry(today) < 0 }
+        val dueToday = relevant.count { it.daysUntilExpiry(today) == 0L }
 
         val headline = when {
-            overdue > 0 && today > 0 -> "$overdue overdue, $today due today"
+            overdue > 0 && dueToday > 0 -> "$overdue overdue, $dueToday due today"
             overdue == 1 -> "1 item overdue"
             overdue > 1 -> "$overdue items overdue"
-            today == 1 -> "1 item due today"
-            today > 1 -> "$today items due today"
+            dueToday == 1 -> "1 item due today"
+            dueToday > 1 -> "$dueToday items due today"
             else -> "${relevant.size} expiring this week"
         }
 
@@ -62,8 +63,8 @@ object WidgetContent {
                 Item(
                     id = product.id,
                     name = product.name,
-                    timing = timingLabel(product),
-                    isOverdue = product.daysUntilExpiry() < 0
+                    timing = timingLabel(product, today),
+                    isOverdue = product.daysUntilExpiry(today) < 0
                 )
             },
             isAllClear = false
@@ -71,8 +72,8 @@ object WidgetContent {
     }
 
     /** Short enough to survive a narrow widget without wrapping. */
-    fun timingLabel(product: Product): String {
-        val days = product.daysUntilExpiry()
+    fun timingLabel(product: InventoryItem, today: LocalDate): String {
+        val days = product.daysUntilExpiry(today)
         return when {
             days < -1 -> "${-days}d ago"
             days == -1L -> "yesterday"

@@ -1,11 +1,9 @@
 package com.example.freshtrack.data.remote.firestore
 
-import com.example.freshtrack.data.local.entities.ProductEntity
 import com.example.freshtrack.data.sync.RemoteError
 import com.example.freshtrack.data.sync.RemoteProductStore
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -44,46 +42,6 @@ class RemoteProductDataSource(
             )
         ).await()
     }.mapRemoteError()
-
-    /**
-     * Products changed strictly after [since], tombstones included — a deletion
-     * has to arrive like any other change.
-     */
-    override suspend fun fetchChangedSince(
-        pantryId: String,
-        since: Long
-    ): Result<List<ProductEntity>> = runCatching {
-        products(pantryId)
-            .whereGreaterThan(ProductFields.UPDATED_AT, since)
-            .get()
-            .await()
-            .documents
-            .mapNotNull { doc ->
-                doc.data?.let { productFromFirestore(doc.id, pantryId, it) }
-            }
-    }.mapRemoteError()
-
-    /**
-     * Writes local rows up. Merges rather than replaces, so a field this client
-     * does not know about — written by a newer app version on another device —
-     * is not wiped out by an older one.
-     */
-    override suspend fun push(pantryId: String, entities: List<ProductEntity>): Result<Unit> =
-        runCatching {
-            if (entities.isEmpty()) return@runCatching
-            // Firestore caps a batch at 500 writes.
-            entities.chunked(BATCH_LIMIT).forEach { chunk ->
-                val batch = firestore.batch()
-                chunk.forEach { entity ->
-                    batch.set(
-                        products(pantryId).document(entity.id),
-                        entity.toFirestoreMap(),
-                        SetOptions.merge()
-                    )
-                }
-                batch.commit().await()
-            }
-        }.mapRemoteError()
 
     override suspend fun deleteAccountData(pantryId: String, uid: String): Result<Unit> =
         runCatching {

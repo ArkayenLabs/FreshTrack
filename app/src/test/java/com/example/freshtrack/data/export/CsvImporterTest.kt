@@ -4,9 +4,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import com.example.freshtrack.data.local.entities.ItemState
+import com.example.freshtrack.domain.model.DateKind
+import com.example.freshtrack.domain.model.ExpiryDate
+import com.example.freshtrack.domain.model.Item
 import org.junit.Test
-import java.text.SimpleDateFormat
-import java.util.Locale
+import java.time.LocalDate
 
 class CsvImporterTest {
 
@@ -72,10 +75,9 @@ line two",2026-07-01,Active""")
         )
 
         val byName = result.products.associateBy { it.name }
-        assertTrue(byName["Used"]!!.isConsumed)
-        assertTrue(byName["Binned"]!!.isDiscarded)
-        assertFalse(byName["Live"]!!.isConsumed)
-        assertFalse(byName["Live"]!!.isDiscarded)
+        assertEquals(ItemState.USED, byName["Used"]!!.state)
+        assertEquals(ItemState.DISCARDED, byName["Binned"]!!.state)
+        assertEquals(ItemState.ACTIVE, byName["Live"]!!.state)
     }
 
     @Test
@@ -142,10 +144,11 @@ line two",2026-07-01,Active""")
     }
 
     @Test
-    fun `dates are read in the fixed export format`() {
+    fun `dates are read as calendar dates in the fixed export format`() {
         val result = CsvImporter.parse(csv("Milk,Dairy,,2026-08-01,1,,2026-07-01,Active"))
-        val expected = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse("2026-08-01")!!.time
-        assertEquals(expected, result.products.single().expiryDate)
+        // A calendar date, not an instant: parsing through a timezone is what
+        // used to shift an expiry by a day.
+        assertEquals(LocalDate.of(2026, 8, 1), result.products.single().expiry.value)
     }
 
     @Test
@@ -168,20 +171,19 @@ class CsvRoundTripTest {
         notes: String? = null,
         barcode: String? = null,
         quantity: Int = 1
-    ) = com.example.freshtrack.domain.model.Product(
+    ) = Item(
         id = name,
         name = name,
-        barcode = barcode,
         category = category,
-        expiryDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse("2026-08-01")!!.time,
-        addedDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse("2026-07-01")!!.time,
+        expiry = ExpiryDate.enteredByUser(
+            LocalDate.of(2026, 8, 1), DateKind.BEST_BEFORE, atMillis = 0L
+        ),
         quantity = quantity,
-        notes = notes,
-        imageUri = null,
-        notificationEnabled = true,
-        isConsumed = false,
-        isDiscarded = false
+        barcode = barcode,
+        notes = notes
     )
+
+    private val today: LocalDate = LocalDate.of(2026, 7, 15)
 
     @Test
     fun `ordinary products survive a round trip`() {
@@ -190,14 +192,17 @@ class CsvRoundTripTest {
             product("Bread", category = "Bakery", notes = "sourdough")
         )
 
-        val restored = CsvImporter.parse(CsvExporter.buildCsv(original)).products
+        val restored = CsvImporter.parse(CsvExporter.buildCsv(original, today)).products
 
         assertEquals(original.map { it.name }, restored.map { it.name })
         assertEquals(original.map { it.category }, restored.map { it.category })
         assertEquals(original.map { it.quantity }, restored.map { it.quantity })
         assertEquals(original.map { it.barcode }, restored.map { it.barcode })
         assertEquals(original.map { it.notes }, restored.map { it.notes })
-        assertEquals(original.map { it.expiryDate }, restored.map { it.expiryDate })
+        assertEquals(
+            original.map { it.expiry.value },
+            restored.map { it.expiry.value }
+        )
     }
 
     @Test
@@ -210,7 +215,7 @@ class CsvRoundTripTest {
             product("Dal, toor", category = "Pantry", notes = "buy 2, maybe 3")
         )
 
-        val restored = CsvImporter.parse(CsvExporter.buildCsv(original)).products
+        val restored = CsvImporter.parse(CsvExporter.buildCsv(original, today)).products
 
         assertEquals(3, restored.size)
         assertEquals(original.map { it.name }, restored.map { it.name })
@@ -219,7 +224,7 @@ class CsvRoundTripTest {
 
     @Test
     fun `exporting nothing produces a file that imports as nothing`() {
-        val restored = CsvImporter.parse(CsvExporter.buildCsv(emptyList()))
+        val restored = CsvImporter.parse(CsvExporter.buildCsv(emptyList(), today))
         assertTrue(restored.products.isEmpty())
         assertTrue(restored.errors.isEmpty())
     }

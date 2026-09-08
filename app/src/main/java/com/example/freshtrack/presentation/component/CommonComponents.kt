@@ -25,18 +25,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.domain.model.ExpiryUrgency
-import com.example.freshtrack.domain.model.Product
+import com.example.freshtrack.domain.model.Item
 import com.example.freshtrack.presentation.theme.*
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 /**
- * Modern Product Card with icon-first design
- * Minimalist, clean, with subtle elevation
+ * One item in a list.
+ *
+ * [today] is passed in rather than read from the system inside the card, so
+ * every row in a list is dated against the same day. Reading the clock per card
+ * meant a long list rendering across midnight could show two identical dates
+ * with different day counts.
  */
 @Composable
 fun ProductCard(
-    product: Product,
+    product: Item,
+    today: LocalDate,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -128,7 +135,7 @@ fun ProductCard(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = formatDateShort(product.expiryDate),
+                                text = formatDateShort(product.expiry.value),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -139,8 +146,8 @@ fun ProductCard(
 
             // Expiry Badge (10% width - accent color)
             ExpiryBadge(
-                daysRemaining = product.daysUntilExpiry(),
-                urgency = product.getUrgency()
+                daysRemaining = product.daysUntilExpiry(today),
+                urgency = product.urgency(today)
             )
         }
     }
@@ -391,10 +398,8 @@ private fun getCategoryIcon(category: String): ImageVector {
     }
 }
 
-private fun formatDateShort(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
-    return sdf.format(Date(timestamp))
-}
+private fun formatDateShort(date: LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern("MMM dd", Locale.getDefault()))
 
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())

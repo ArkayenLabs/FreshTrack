@@ -2,9 +2,7 @@ package com.example.freshtrack.data.session
 
 import com.example.freshtrack.data.local.entities.GUEST_USER_ID
 import com.example.freshtrack.data.local.entities.LOCAL_KITCHEN_ID
-import com.example.freshtrack.data.local.entities.LOCAL_PANTRY_ID
 import com.example.freshtrack.data.local.entities.personalKitchenId
-import com.example.freshtrack.data.local.entities.personalPantryId
 import com.google.firebase.auth.FirebaseAuth
 
 /**
@@ -47,16 +45,4 @@ class UserSession(
         return personalKitchenId(uid)
     }
 
-    /**
-     * The pantry currently being viewed, and the key every user-facing query
-     * filters on.
-     *
-     * Signed out this is the local pantry; signed in it is the user's personal
-     * pantry. Once household sharing exists this becomes a selectable value
-     * rather than a derived one — hence the single accessor.
-     */
-    fun activePantryId(): String {
-        val uid = auth.currentUser?.uid ?: return LOCAL_PANTRY_ID
-        return personalPantryId(uid)
-    }
 }

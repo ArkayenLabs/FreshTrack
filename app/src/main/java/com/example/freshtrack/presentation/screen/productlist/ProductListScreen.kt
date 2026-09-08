@@ -20,7 +20,8 @@ import androidx.compose.ui.unit.dp
 import com.example.freshtrack.domain.model.ProductFilter
 import com.example.freshtrack.domain.model.ProductSort
 import com.example.freshtrack.presentation.component.*
-import com.example.freshtrack.presentation.viewmodel.ProductListViewModel
+import com.example.freshtrack.presentation.viewmodel.ItemListViewModel
+import java.time.LocalDate
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,9 +31,10 @@ fun ProductListScreen(
     onNavigateToAddProduct: () -> Unit,
     onNavigateToProductDetails: (String) -> Unit,
     initialFilter: String? = null,
-    viewModel: ProductListViewModel = koinViewModel()
+    viewModel: ItemListViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val today = remember { LocalDate.now() }
     var showFilterMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<String?>(null) }
@@ -204,7 +206,7 @@ fun ProductListScreen(
                 ) {
                     LoadingState("Loading products...")
                 }
-            } else if (uiState.products.isEmpty()) {
+            } else if (uiState.items.isEmpty()) {
                 // Enhanced Empty State
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -222,11 +224,12 @@ fun ProductListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(
-                        items = uiState.products,
+                        items = uiState.items,
                         key = { it.id }
                     ) { product ->
                         ProductCard(
                             product = product,
+                            today = today,
                             onClick = { onNavigateToProductDetails(product.id) }
                         )
                     }
@@ -272,7 +275,7 @@ fun ProductListScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteProduct(productId)
+                        viewModel.deleteItem(productId)
                         showDeleteDialog = null
                     },
                     colors = ButtonDefaults.buttonColors(

@@ -3,10 +3,13 @@ package com.example.freshtrack.data.export
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
-import com.example.freshtrack.domain.model.Product
+import com.example.freshtrack.data.local.entities.ItemState
+import com.example.freshtrack.domain.model.Item
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 /**
@@ -21,6 +24,9 @@ object CsvExporter {
      */
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
+    /** ISO, and identical to the stored form, so a date cannot shift on export. */
+    private val expiryFormat: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+
     const val HEADER = "Name,Category,Barcode,Expiry Date,Quantity,Notes,Added Date,Status"
 
     /**
@@ -33,16 +39,16 @@ object CsvExporter {
      * round-tripped against CsvImporter in a unit test — this is the seam where
      * export and import would otherwise silently drift apart.
      */
-    fun buildCsv(products: List<Product>): String = buildString {
+    fun buildCsv(products: List<Item>, today: LocalDate): String = buildString {
         appendLine(HEADER)
 
         products.forEach { product ->
-            val expiryDate = dateFormat.format(Date(product.expiryDate))
-            val addedDate = dateFormat.format(Date(product.addedDate))
+            val expiryDate = product.expiry.value.format(expiryFormat)
+            val addedDate = dateFormat.format(Date(product.addedAt))
             val status = when {
-                product.isConsumed -> "Used"
-                product.isDiscarded -> "Discarded"
-                product.expiryDate < System.currentTimeMillis() -> "Expired"
+                product.state == ItemState.USED -> "Used"
+                product.state == ItemState.DISCARDED -> "Discarded"
+                product.isExpired(today) -> "Expired"
                 else -> "Active"
             }
 
@@ -61,9 +67,13 @@ object CsvExporter {
     /**
      * Export products to CSV and return share intent
      */
-    fun exportToCSV(context: Context, products: List<Product>): Intent? {
+    fun exportToCSV(
+        context: Context,
+        products: List<Item>,
+        today: LocalDate = LocalDate.now()
+    ): Intent? {
         try {
-            val csvContent = buildCsv(products)
+            val csvContent = buildCsv(products, today)
 
             // Create file in cache directory
             val fileName = "FreshTrack_Export_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.csv"

@@ -3,21 +3,35 @@ package com.example.freshtrack.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshtrack.data.repository.CategoryRepository
-import com.example.freshtrack.data.repository.ProductRepository
-import com.example.freshtrack.domain.model.*
-import kotlinx.coroutines.flow.*
+import com.example.freshtrack.data.repository.ItemRepository
+import com.example.freshtrack.domain.model.Category
+import com.example.freshtrack.domain.model.ExpiryUrgency
+import com.example.freshtrack.domain.model.Item
+import com.example.freshtrack.domain.model.ProductFilter
+import com.example.freshtrack.domain.model.ProductSort
+import com.example.freshtrack.util.AppClock
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for Dashboard Screen
- * Manages overview of expiring items and quick stats
+ * Overview of what needs attention.
+ *
+ * Bucketing is done here against a single "today" taken from the clock rather
+ * than each item asking the system time for itself, so every row on the screen
+ * is classified against the same date. Previously each call recomputed the
+ * current time, which meant a list rendered across midnight could place two
+ * items with the same date in different buckets.
  */
 class DashboardViewModel(
-    private val productRepository: ProductRepository,
-    private val categoryRepository: CategoryRepository
+    private val itemRepository: ItemRepository,
+    private val categoryRepository: CategoryRepository,
+    private val clock: AppClock = AppClock.System
 ) : ViewModel() {
 
-    // UI State
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
@@ -27,129 +41,98 @@ class DashboardViewModel(
 
     private fun loadDashboardData() {
         viewModelScope.launch {
-            // Combine multiple flows for dashboard overview
             combine(
-                productRepository.getAllProducts(),
-                productRepository.getExpiredProducts(),
-                productRepository.getActiveProductCount()
-            ) { allProducts, expiredProducts, activeCount ->
-
-                val expiringToday = allProducts.filter { 
-                    it.daysUntilExpiry() == 0L && !it.isExpired() 
-                }
-                val expiringThisWeek = allProducts.filter {
-                    it.daysUntilExpiry() in 1..7
-                }
-                val safeProducts = allProducts.filter {
-                    it.daysUntilExpiry() > 7
-                }
-                val criticalItems = allProducts.filter {
-                    it.getUrgency() == ExpiryUrgency.CRITICAL
-                }
+                itemRepository.observeActiveItems(),
+                itemRepository.observeExpiredItems(),
+                itemRepository.observeActiveCount()
+            ) { allItems, expiredItems, activeCount ->
+                val today = clock.today()
 
                 DashboardUiState(
-                    totalActiveProducts = activeCount,
-                    expiringToday = expiringToday,
-                    expiringThisWeek = expiringThisWeek,
-                    safeProducts = safeProducts,
-                    expiredProducts = expiredProducts,
-                    criticalItems = criticalItems,
+                    totalActiveItems = activeCount,
+                    expiringToday = allItems.filter { it.daysUntilExpiry(today) == 0L },
+                    expiringThisWeek = allItems.filter { it.daysUntilExpiry(today) in 1..7 },
+                    safeItems = allItems.filter { it.daysUntilExpiry(today) > 7 },
+                    expiredItems = expiredItems,
+                    criticalItems = allItems.filter {
+                        it.urgency(today) == ExpiryUrgency.CRITICAL
+                    },
                     isLoading = false
                 )
-            }.collect { state ->
-                _uiState.value = state
-            }
+            }.collect { state -> _uiState.value = state }
         }
     }
 
-    fun markAsConsumed(productId: String) {
-        viewModelScope.launch {
-            productRepository.markAsConsumed(productId)
-        }
+    fun markAsUsed(itemId: String) {
+        viewModelScope.launch { itemRepository.use(itemId) }
     }
 
-    fun markAsDiscarded(productId: String) {
-        viewModelScope.launch {
-            productRepository.markAsDiscarded(productId)
-        }
+    fun markAsDiscarded(itemId: String) {
+        viewModelScope.launch { itemRepository.discard(itemId) }
     }
 }
 
-/**
- * UI State for Dashboard
- */
 data class DashboardUiState(
-    val totalActiveProducts: Int = 0,
-    val expiringToday: List<Product> = emptyList(),
-    val expiringThisWeek: List<Product> = emptyList(),
-    val safeProducts: List<Product> = emptyList(),
-    val expiredProducts: List<Product> = emptyList(),
-    val criticalItems: List<Product> = emptyList(),
+    val totalActiveItems: Int = 0,
+    val expiringToday: List<Item> = emptyList(),
+    val expiringThisWeek: List<Item> = emptyList(),
+    val safeItems: List<Item> = emptyList(),
+    val expiredItems: List<Item> = emptyList(),
+    val criticalItems: List<Item> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null
 )
 
 /**
- * ViewModel for Product List Screen
- * Handles filtering, sorting, and product list operations
+ * The full inventory, with filtering and sorting.
  */
-class ProductListViewModel(
-    private val productRepository: ProductRepository,
-    private val categoryRepository: CategoryRepository
+class ItemListViewModel(
+    private val itemRepository: ItemRepository,
+    private val categoryRepository: CategoryRepository,
+    private val clock: AppClock = AppClock.System
 ) : ViewModel() {
 
-    // UI State
-    private val _uiState = MutableStateFlow(ProductListUiState())
-    val uiState: StateFlow<ProductListUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(ItemListUiState())
+    val uiState: StateFlow<ItemListUiState> = _uiState.asStateFlow()
 
-    // Filter and sort settings
     private val _currentFilter = MutableStateFlow(ProductFilter.ALL)
     private val _currentSort = MutableStateFlow(ProductSort.EXPIRY_DATE_ASC)
     private val _selectedCategory = MutableStateFlow<String?>(null)
 
     init {
-        loadProducts()
+        loadItems()
         loadCategories()
     }
 
-    private fun loadProducts() {
+    private fun loadItems() {
         viewModelScope.launch {
             combine(
-                productRepository.getAllProducts(),
+                itemRepository.observeActiveItems(),
                 _currentFilter,
                 _currentSort,
                 _selectedCategory
-            ) { products, filter, sort, category ->
+            ) { items, filter, sort, category ->
+                val today = clock.today()
 
-                // Apply filters
-                var filteredProducts = when (filter) {
-                    ProductFilter.ALL -> products
-                    ProductFilter.EXPIRING_SOON -> products.filter {
-                        it.daysUntilExpiry() in 0..7
+                val filtered = when (filter) {
+                    ProductFilter.ALL -> items
+                    ProductFilter.EXPIRING_SOON -> items.filter {
+                        it.daysUntilExpiry(today) in 0..7
                     }
-                    ProductFilter.EXPIRED -> products.filter { it.isExpired() }
-                    ProductFilter.BY_CATEGORY -> {
-                        category?.let { cat ->
-                            products.filter { it.category == cat }
-                        } ?: products
-                    }
+                    ProductFilter.EXPIRED -> items.filter { it.isExpired(today) }
+                    ProductFilter.BY_CATEGORY ->
+                        category?.let { cat -> items.filter { it.category == cat } } ?: items
                 }
 
-                // Apply sorting
-                filteredProducts = when (sort) {
-                    ProductSort.EXPIRY_DATE_ASC -> filteredProducts.sortedBy { it.expiryDate }
-                    ProductSort.EXPIRY_DATE_DESC -> filteredProducts.sortedByDescending { it.expiryDate }
-                    ProductSort.NAME_ASC -> filteredProducts.sortedBy { it.name }
-                    ProductSort.NAME_DESC -> filteredProducts.sortedByDescending { it.name }
-                    ProductSort.ADDED_DATE_DESC -> filteredProducts.sortedByDescending { it.addedDate }
+                when (sort) {
+                    ProductSort.EXPIRY_DATE_ASC -> filtered.sortedBy { it.expiry.value }
+                    ProductSort.EXPIRY_DATE_DESC -> filtered.sortedByDescending { it.expiry.value }
+                    ProductSort.NAME_ASC -> filtered.sortedBy { it.name }
+                    ProductSort.NAME_DESC -> filtered.sortedByDescending { it.name }
+                    ProductSort.ADDED_DATE_DESC -> filtered.sortedByDescending { it.addedAt }
                 }
-
-                filteredProducts
-            }.collect { products ->
-                _uiState.update { it.copy(
-                    products = products,
-                    isLoading = false
-                )}
+            }.collect { items ->
+                _uiState.update { it.copy(items = items, isLoading = false) }
             }
         }
     }
@@ -178,32 +161,23 @@ class ProductListViewModel(
         }
     }
 
-    fun deleteProduct(productId: String) {
-        viewModelScope.launch {
-            productRepository.deleteProduct(productId)
-        }
+    fun deleteItem(itemId: String) {
+        viewModelScope.launch { itemRepository.delete(itemId) }
     }
 
-    fun markAsConsumed(productId: String) {
-        viewModelScope.launch {
-            productRepository.markAsConsumed(productId)
-        }
+    fun markAsUsed(itemId: String) {
+        viewModelScope.launch { itemRepository.use(itemId) }
     }
 
-    fun markAsDiscarded(productId: String) {
-        viewModelScope.launch {
-            productRepository.markAsDiscarded(productId)
-        }
+    fun markAsDiscarded(itemId: String) {
+        viewModelScope.launch { itemRepository.discard(itemId) }
     }
 }
 
-/**
- * UI State for Product List
- */
-data class ProductListUiState(
-    val products: List<Product> = emptyList(),
+data class ItemListUiState(
+    val items: List<Item> = emptyList(),
     val categories: List<Category> = emptyList(),
-    val selectedCategory: String? = null, // <-- Add this line
+    val selectedCategory: String? = null,
     val isLoading: Boolean = true,
     val error: String? = null
 )

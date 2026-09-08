@@ -1,6 +1,8 @@
 package com.example.freshtrack.data.account
 
-import com.example.freshtrack.data.local.dao.ProductDao
+import com.example.freshtrack.data.local.dao.ItemDao
+import com.example.freshtrack.data.local.dao.ItemEventDao
+import com.example.freshtrack.data.local.dao.OutboxDao
 import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.data.preferences.SyncPreferences
 import com.example.freshtrack.data.session.UserSession
@@ -22,7 +24,9 @@ class AccountDeleterTest {
 
     private val auth: AuthRepository = mockk(relaxed = true)
     private val remote: RemoteProductStore = mockk(relaxed = true)
-    private val dao: ProductDao = mockk(relaxed = true)
+    private val dao: ItemDao = mockk(relaxed = true)
+    private val eventDao: ItemEventDao = mockk(relaxed = true)
+    private val outboxDao: OutboxDao = mockk(relaxed = true)
     private val session: UserSession = mockk()
     private val syncPrefs: SyncPreferences = mockk(relaxed = true)
     private val onboardingPrefs: OnboardingPreferences = mockk(relaxed = true)
@@ -32,12 +36,14 @@ class AccountDeleterTest {
     @Before
     fun setUp() {
         every { session.isSignedIn() } returns true
-        every { session.activePantryId() } returns "personal-alice"
+        every { session.activeKitchenId() } returns "personal-alice"
         every { session.currentUserId() } returns "alice"
         coEvery { remote.deleteAccountData(any(), any()) } returns Result.success(Unit)
         coEvery { auth.deleteAccount() } returns Result.success(Unit)
 
-        deleter = AccountDeleter(auth, remote, dao, session, syncPrefs, onboardingPrefs)
+        deleter = AccountDeleter(
+            auth, remote, dao, eventDao, outboxDao, session, syncPrefs, onboardingPrefs
+        )
     }
 
     @Test
@@ -58,7 +64,7 @@ class AccountDeleterTest {
 
         coVerifyOrder {
             auth.deleteAccount()
-            dao.deleteAllForPantry("personal-alice")
+            dao.deleteAllForKitchen("personal-alice")
         }
     }
 
@@ -73,7 +79,7 @@ class AccountDeleterTest {
         // Reporting success while data remains on a server would be a worse lie
         // than an error.
         coVerify(exactly = 0) { auth.deleteAccount() }
-        coVerify(exactly = 0) { dao.deleteAllForPantry(any()) }
+        coVerify(exactly = 0) { dao.deleteAllForKitchen(any()) }
     }
 
     @Test
@@ -94,7 +100,7 @@ class AccountDeleterTest {
 
         // Half-erased is worse than not started: the user still has their data
         // and is still signed in.
-        coVerify(exactly = 0) { dao.deleteAllForPantry(any()) }
+        coVerify(exactly = 0) { dao.deleteAllForKitchen(any()) }
     }
 
     @Test

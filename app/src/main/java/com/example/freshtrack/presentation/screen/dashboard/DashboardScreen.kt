@@ -18,6 +18,7 @@ import com.example.freshtrack.presentation.component.*
 import com.example.freshtrack.presentation.theme.*
 import com.example.freshtrack.presentation.viewmodel.DashboardViewModel
 import org.koin.androidx.compose.koinViewModel
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,8 @@ fun DashboardScreen(
 ) {
     RequestNotificationPermissionSimple()
     val uiState by viewModel.uiState.collectAsState()
+    // One date for the whole screen, so every row is classified consistently.
+    val today = remember { LocalDate.now() }
 
     Scaffold(
         topBar = {
@@ -93,7 +96,7 @@ fun DashboardScreen(
                 }
             }
 
-            uiState.totalActiveProducts == 0 -> {
+            uiState.totalActiveItems == 0 -> {
                 // Empty State - Separate layout
                 Column(
                     modifier = Modifier
@@ -205,7 +208,7 @@ fun DashboardScreen(
                         ) {
                             StatCard(
                                 title = "Products",
-                                value = uiState.totalActiveProducts.toString(),
+                                value = uiState.totalActiveItems.toString(),
                                 icon = Icons.Default.Inventory2,
                                 backgroundColor = MaterialTheme.colorScheme.primary,
                                 onClick = onNavigateToProductList,
@@ -237,6 +240,7 @@ fun DashboardScreen(
                         items(uiState.expiringToday) { product ->
                             ProductCard(
                                 product = product,
+                                today = today,
                                 onClick = { onNavigateToProductDetails(product.id) }
                             )
                         }
@@ -256,44 +260,47 @@ fun DashboardScreen(
                         items(uiState.expiringThisWeek.take(6)) { product ->
                             ProductCard(
                                 product = product,
+                                today = today,
                                 onClick = { onNavigateToProductDetails(product.id) }
                             )
                         }
                     }
 
                     // Expired Products
-                    if (uiState.expiredProducts.isNotEmpty()) {
+                    if (uiState.expiredItems.isNotEmpty()) {
                         item {
                             SectionHeader(
                                 title = "Expired",
                                 icon = Icons.Default.Block,
                                 color = UrgencyExpired,
-                                count = uiState.expiredProducts.size
+                                count = uiState.expiredItems.size
                             )
                         }
 
-                        items(uiState.expiredProducts.take(4)) { product ->
+                        items(uiState.expiredItems.take(4)) { product ->
                             ProductCard(
                                 product = product,
+                                today = today,
                                 onClick = { onNavigateToProductDetails(product.id) }
                             )
                         }
                     }
 
                     // Safe Products (expiring later than 7 days)
-                    if (uiState.safeProducts.isNotEmpty()) {
+                    if (uiState.safeItems.isNotEmpty()) {
                         item {
                             SectionHeader(
                                 title = "Later",
                                 icon = Icons.Default.CheckCircle,
                                 color = UrgencySafe,
-                                count = uiState.safeProducts.size
+                                count = uiState.safeItems.size
                             )
                         }
 
-                        items(uiState.safeProducts.take(4)) { product ->
+                        items(uiState.safeItems.take(4)) { product ->
                             ProductCard(
                                 product = product,
+                                today = today,
                                 onClick = { onNavigateToProductDetails(product.id) }
                             )
                         }

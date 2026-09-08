@@ -1,8 +1,13 @@
 package com.example.freshtrack.data.export
 
-import com.example.freshtrack.domain.model.Product
+import com.example.freshtrack.data.local.entities.ItemState
+import com.example.freshtrack.domain.model.DateKind
+import com.example.freshtrack.domain.model.ExpiryDate
+import com.example.freshtrack.domain.model.Item
 import java.text.ParseException
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 import java.util.Locale
 import java.util.UUID
 
@@ -22,13 +27,13 @@ object CsvImporter {
     data class RowError(val line: Int, val reason: String)
 
     data class ParseResult(
-        val products: List<Product>,
+        val products: List<Item>,
         val errors: List<RowError>
     )
 
     fun parse(csv: String): ParseResult {
         val rows = splitRows(csv)
-        val products = mutableListOf<Product>()
+        val products = mutableListOf<Item>()
         val errors = mutableListOf<RowError>()
 
         rows.forEachIndexed { index, row ->
@@ -59,28 +64,43 @@ object CsvImporter {
                 return@forEachIndexed
             }
 
-            val expiryDate = parseDate(expiryRaw)
+            val expiryDate = parseLocalDate(expiryRaw)
             if (expiryDate == null) {
                 errors += RowError(lineNumber, "Could not read expiry date \"$expiryRaw\"")
                 return@forEachIndexed
             }
 
-            products += Product(
+            val quantity = quantityRaw.toIntOrNull()?.coerceAtLeast(1) ?: 1
+            val addedAt = parseDate(addedRaw) ?: System.currentTimeMillis()
+
+            products += Item(
                 id = UUID.randomUUID().toString(),
                 name = name,
-                barcode = barcode.ifEmpty { null },
                 // An unknown category becomes Other rather than failing the row;
                 // the item itself is still worth keeping.
                 category = category.ifEmpty { "Other" },
-                expiryDate = expiryDate,
-                addedDate = parseDate(addedRaw) ?: System.currentTimeMillis(),
-                quantity = quantityRaw.toIntOrNull()?.coerceAtLeast(1) ?: 1,
-                originalQuantity = quantityRaw.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+                // A date from a file the user supplied is theirs, so it is
+                // user-sourced — but it is not confirmed, because they have not
+                // been shown it. That keeps it reviewable without letting a
+                // shelf-life estimate overwrite it later.
+                expiry = ExpiryDate(
+                    value = expiryDate,
+                    kind = DateKind.BEST_BEFORE,
+                    source = com.example.freshtrack.domain.model.DateSource.USER,
+                    confidence = 1f,
+                    confirmedByUserAt = null
+                ),
+                quantity = quantity,
+                originalQuantity = quantity,
+                barcode = barcode.ifEmpty { null },
                 notes = notes.ifEmpty { null },
                 imageUri = null,
-                notificationEnabled = true,
-                isConsumed = status.equals("Used", ignoreCase = true),
-                isDiscarded = status.equals("Discarded", ignoreCase = true)
+                state = when {
+                    status.equals("Used", ignoreCase = true) -> ItemState.USED
+                    status.equals("Discarded", ignoreCase = true) -> ItemState.DISCARDED
+                    else -> ItemState.ACTIVE
+                },
+                addedAt = addedAt
             )
         }
 
@@ -90,6 +110,17 @@ object CsvImporter {
     private fun parseDate(value: String): Long? = try {
         if (value.isBlank()) null else dateFormat.parse(value)?.time
     } catch (e: ParseException) {
+        null
+    }
+
+    /**
+     * Expiry is read as a calendar date rather than through the millisecond
+     * formatter. Parsing "2026-09-14" into an instant and back is what
+     * introduces the off-by-one-day errors this model exists to avoid.
+     */
+    private fun parseLocalDate(value: String): LocalDate? = try {
+        if (value.isBlank()) null else LocalDate.parse(value.trim())
+    } catch (e: DateTimeParseException) {
         null
     }
 

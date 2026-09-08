@@ -10,7 +10,7 @@ import androidx.work.WorkerParameters
 import com.example.freshtrack.FreshTrackApplication
 import com.example.freshtrack.MainActivity
 import com.example.freshtrack.R
-import com.example.freshtrack.data.repository.ProductRepository
+import com.example.freshtrack.data.repository.ItemRepository
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -20,10 +20,10 @@ class WeeklySummaryWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params), KoinComponent {
 
-    private val productRepository: ProductRepository by inject()
+    private val itemRepository: ItemRepository by inject()
 
     override suspend fun doWork(): Result {
-        val stats = productRepository.getImpactStats().first()
+        val stats = itemRepository.observeImpact().first()
         val saved = stats.itemsSaved
         val wasted = stats.itemsWasted
         val wasteFreeDays = stats.wasteFreeDays

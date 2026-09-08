@@ -1,6 +1,8 @@
 package com.example.freshtrack.data.account
 
-import com.example.freshtrack.data.local.dao.ProductDao
+import com.example.freshtrack.data.local.dao.ItemDao
+import com.example.freshtrack.data.local.dao.ItemEventDao
+import com.example.freshtrack.data.local.dao.OutboxDao
 import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.data.preferences.SyncPreferences
 import com.example.freshtrack.data.session.UserSession
@@ -11,7 +13,7 @@ import com.example.freshtrack.domain.repository.AuthRepository
  * Deletes a user's account and everything belonging to it.
  *
  * Order matters. Remote data goes first, while the user is still authenticated
- * and the security rules still recognise them as the pantry owner. Deleting the
+ * and the security rules still recognise them as the kitchen owner. Deleting the
  * Firebase account first would revoke that permission and strand every document
  * in Firestore with no owner and no way to reach it — the exact retention
  * failure the deletion requirement exists to prevent.
@@ -22,7 +24,9 @@ import com.example.freshtrack.domain.repository.AuthRepository
 class AccountDeleter(
     private val authRepository: AuthRepository,
     private val remote: RemoteProductStore,
-    private val productDao: ProductDao,
+    private val itemDao: ItemDao,
+    private val eventDao: ItemEventDao,
+    private val outboxDao: OutboxDao,
     private val session: UserSession,
     private val syncPrefs: SyncPreferences,
     private val onboardingPrefs: OnboardingPreferences
@@ -42,14 +46,14 @@ class AccountDeleter(
             return Result.Failed(IllegalStateException("Not signed in"))
         }
 
-        val pantryId = session.activePantryId()
+        val kitchenId = session.activeKitchenId()
         val uid = session.currentUserId()
 
         // 1. Remote first, while the account still has permission to do it.
         //    A failure here is reported rather than swallowed: claiming an
         //    account was deleted while its data remains on a server would be a
         //    worse lie than an error message.
-        remote.deleteAccountData(pantryId, uid)
+        remote.deleteAccountData(kitchenId, uid)
             .onFailure { return Result.Failed(it) }
 
         // 2. The Firebase account itself. If this needs a fresh sign-in, stop
@@ -67,7 +71,9 @@ class AccountDeleter(
         // 3. Local last. Everything here is a hard delete: this is the one place
         //    tombstones are pointless, because there is no longer an account for
         //    them to propagate to.
-        productDao.deleteAllForPantry(pantryId)
+        itemDao.deleteAllForKitchen(kitchenId)
+        eventDao.deleteAllForKitchen(kitchenId)
+        outboxDao.deleteAllForKitchen(kitchenId)
         syncPrefs.clear()
         onboardingPrefs.setGuestMode(false)
 

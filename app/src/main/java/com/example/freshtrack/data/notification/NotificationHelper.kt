@@ -10,7 +10,8 @@ import com.example.freshtrack.FreshTrackApplication
 import com.example.freshtrack.MainActivity
 import com.example.freshtrack.R
 import com.example.freshtrack.data.notification.NotificationHelper.sendExpiryNotification
-import com.example.freshtrack.data.repository.ProductRepository
+import com.example.freshtrack.data.repository.ItemRepository
+import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -24,7 +25,7 @@ class ExpiryNotificationWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params), KoinComponent {
 
-    private val productRepository: ProductRepository by inject()
+    private val itemRepository: ItemRepository by inject()
 
     override suspend fun doWork(): Result {
         return try {
@@ -37,20 +38,25 @@ class ExpiryNotificationWorker(
     }
 
     private suspend fun checkExpiringProducts() {
-        // Already-expired items were previously never notified: the expiring
-        // query filters to expiryDate >= now, so anything past its date fell
-        // silently out of every alert. Those are the ones that matter most.
-        val expired = productRepository.getExpiredProducts().first()
-        val expiringSoon = productRepository.getExpiringProducts(daysThreshold = 3)
+        val today = LocalDate.now()
 
-        val all = (expired + expiringSoon).distinctBy { it.id }
-        if (all.isNotEmpty()) {
-            sendExpiryNotification(applicationContext, all)
+        // One query, bounded above only. Already-expired items are included
+        // because they are the ones that most need saying — an earlier version
+        // also bounded below by today, which silently dropped them from every
+        // alert.
+        val due = itemRepository.getItemsDueThrough(today.plusDays(NOTICE_DAYS))
+        if (due.isNotEmpty()) {
+            sendExpiryNotification(applicationContext, due, today)
         }
 
         // Keeps the widget current even if the app is never opened, which is
         // the whole point of having one.
         com.example.freshtrack.widget.WidgetRefresher.refresh(applicationContext)
+    }
+
+    private companion object {
+        /** How far ahead to warn. Matches the urgency bands used on screen. */
+        const val NOTICE_DAYS = 3L
     }
 }
 
@@ -71,9 +77,10 @@ object NotificationHelper {
      */
     fun sendExpiryNotification(
         context: Context,
-        products: List<com.example.freshtrack.domain.model.Product>
+        products: List<com.example.freshtrack.domain.model.Item>,
+        today: LocalDate = LocalDate.now()
     ) {
-        val content = ExpiryNotificationContent.build(products) ?: return
+        val content = ExpiryNotificationContent.build(products, today) ?: return
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -119,7 +126,7 @@ object NotificationHelper {
 
         // Resolving a single item is the common response, so offer it here
         // rather than making the user open the app to do it.
-        content.singleProductId?.let { productId ->
+        content.singleItemId?.let { productId ->
             val markUsedIntent = Intent(context, NotificationActionReceiver::class.java).apply {
                 action = NotificationActionReceiver.ACTION_MARK_USED
                 putExtra(NotificationActionReceiver.EXTRA_PRODUCT_ID, productId)

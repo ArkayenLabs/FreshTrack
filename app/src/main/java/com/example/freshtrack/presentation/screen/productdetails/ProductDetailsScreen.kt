@@ -20,11 +20,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.presentation.component.LoadingState
-import com.example.freshtrack.presentation.viewmodel.ProductDetailsViewModel
+import com.example.freshtrack.presentation.viewmodel.ItemDetailsViewModel
 import org.koin.androidx.compose.koinViewModel
-import java.text.SimpleDateFormat
-import java.util.*
-import java.util.concurrent.TimeUnit
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +35,7 @@ fun ProductDetailsScreen(
     productId: String,
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    viewModel: ProductDetailsViewModel = koinViewModel()
+    viewModel: ItemDetailsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -41,7 +44,7 @@ fun ProductDetailsScreen(
     var selectedQuantity by remember { mutableIntStateOf(1) }
 
     LaunchedEffect(productId) {
-        viewModel.loadProduct(productId)
+        viewModel.loadItem(productId)
     }
 
     Scaffold(
@@ -84,7 +87,7 @@ fun ProductDetailsScreen(
                 LoadingState("Loading product details...")
             }
         } else {
-            uiState.product?.let { product ->
+            uiState.item?.let { product ->
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -106,7 +109,7 @@ fun ProductDetailsScreen(
                         )
 
                         // Expiry Status Badge
-                        ExpiryStatusBadge(expiryDate = product.expiryDate)
+                        ExpiryStatusBadge(expiryDate = product.expiry.value)
                     }
 
                     // Product Information Card
@@ -138,7 +141,7 @@ fun ProductDetailsScreen(
                             InfoRow(
                                 icon = Icons.Outlined.CalendarToday,
                                 label = "Expiry Date",
-                                value = formatDate(product.expiryDate)
+                                value = formatDate(product.expiry.value)
                             )
 
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -147,7 +150,7 @@ fun ProductDetailsScreen(
                             InfoRow(
                                 icon = Icons.Outlined.Schedule,
                                 label = "Added On",
-                                value = formatDate(product.addedDate)
+                                value = formatDateTime(product.addedAt)
                             )
 
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -223,7 +226,7 @@ fun ProductDetailsScreen(
                                     selectedQuantity = 1
                                     showConsumeDialog = true
                                 } else {
-                                    viewModel.markAsConsumed(onSuccess = onNavigateBack)
+                                    viewModel.use(product.quantity, onResolved = onNavigateBack)
                                 }
                             },
                             modifier = Modifier
@@ -250,7 +253,7 @@ fun ProductDetailsScreen(
                                     selectedQuantity = 1
                                     showDiscardDialog = true
                                 } else {
-                                    viewModel.markAsDiscarded(onSuccess = onNavigateBack)
+                                    viewModel.discard(product.quantity, onResolved = onNavigateBack)
                                 }
                             },
                             modifier = Modifier
@@ -320,7 +323,7 @@ fun ProductDetailsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteProduct(onSuccess = onNavigateBack)
+                        viewModel.deleteItem(onSuccess = onNavigateBack)
                         showDeleteDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -348,14 +351,14 @@ fun ProductDetailsScreen(
 
     // Consume Quantity Dialog
     if (showConsumeDialog) {
-        val maxQty = uiState.product?.quantity ?: 1
+        val maxQty = uiState.item?.quantity ?: 1
         QuantityPickerDialog(
             title = "Use How Many?",
             maxQuantity = maxQty,
             selectedQuantity = selectedQuantity,
             onQuantityChange = { selectedQuantity = it },
             onConfirm = {
-                viewModel.consumeQuantity(selectedQuantity, onSuccess = onNavigateBack)
+                viewModel.use(selectedQuantity, onResolved = onNavigateBack)
                 showConsumeDialog = false
             },
             onDismiss = { showConsumeDialog = false },
@@ -367,14 +370,14 @@ fun ProductDetailsScreen(
 
     // Discard Quantity Dialog
     if (showDiscardDialog) {
-        val maxQty = uiState.product?.quantity ?: 1
+        val maxQty = uiState.item?.quantity ?: 1
         QuantityPickerDialog(
             title = "Discard How Many?",
             maxQuantity = maxQty,
             selectedQuantity = selectedQuantity,
             onQuantityChange = { selectedQuantity = it },
             onConfirm = {
-                viewModel.discardQuantity(selectedQuantity, onSuccess = onNavigateBack)
+                viewModel.discard(selectedQuantity, onResolved = onNavigateBack)
                 showDiscardDialog = false
             },
             onDismiss = { showDiscardDialog = false },
@@ -386,23 +389,8 @@ fun ProductDetailsScreen(
 }
 
 @Composable
-fun ExpiryStatusBadge(expiryDate: Long) {
-    // Calculate days using calendar dates (not raw time difference)
-    val calendar = java.util.Calendar.getInstance()
-    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    calendar.set(java.util.Calendar.MINUTE, 0)
-    calendar.set(java.util.Calendar.SECOND, 0)
-    calendar.set(java.util.Calendar.MILLISECOND, 0)
-    val todayMidnight = calendar.timeInMillis
-    
-    calendar.timeInMillis = expiryDate
-    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    calendar.set(java.util.Calendar.MINUTE, 0)
-    calendar.set(java.util.Calendar.SECOND, 0)
-    calendar.set(java.util.Calendar.MILLISECOND, 0)
-    val expiryMidnight = calendar.timeInMillis
-    
-    val daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(expiryMidnight - todayMidnight)
+fun ExpiryStatusBadge(expiryDate: LocalDate) {
+    val daysUntilExpiry = ChronoUnit.DAYS.between(LocalDate.now(), expiryDate)
 
     val (status, color, icon) = when {
         daysUntilExpiry < 0 -> Triple("Expired", MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)
@@ -541,10 +529,15 @@ fun CategoryChipCompact(category: String) {
     }
 }
 
-private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    return sdf.format(Date(timestamp))
-}
+private val displayDateFormat: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault())
+
+private fun formatDate(date: LocalDate): String = date.format(displayDateFormat)
+
+/** For instants such as "added on", which are points in time, not calendar dates. */
+private fun formatDateTime(millis: Long): String =
+    Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+        .format(displayDateFormat)
 
 @Composable
 fun QuantityPickerDialog(

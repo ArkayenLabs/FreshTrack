@@ -4,7 +4,7 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.example.freshtrack.data.repository.ProductRepository
+import com.example.freshtrack.data.repository.ItemRepository
 import com.example.freshtrack.util.AnalyticsHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +21,7 @@ import org.koin.core.component.inject
  */
 class NotificationActionReceiver : BroadcastReceiver(), KoinComponent {
 
-    private val productRepository: ProductRepository by inject()
+    private val itemRepository: ItemRepository by inject()
 
     override fun onReceive(context: Context, intent: Intent) {
         val productId = intent.getStringExtra(EXTRA_PRODUCT_ID) ?: return
@@ -34,7 +34,11 @@ class NotificationActionReceiver : BroadcastReceiver(), KoinComponent {
                 val pending = goAsync()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        productRepository.markAsConsumed(productId)
+                        // Resolves the whole batch: the action says "used
+                        // it", and a partial amount cannot be expressed from a
+                        // notification. Appending the event is idempotent, so a
+                        // double tap records one use.
+                        itemRepository.use(productId, amount = Int.MAX_VALUE)
                         AnalyticsHelper.logItemConsumed("notification", false)
                         if (notificationId != -1) {
                             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE)

@@ -1,6 +1,5 @@
 package com.example.freshtrack.di
 
-import com.example.freshtrack.data.local.FreshTrackDatabase
 import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.data.repository.*
 import com.example.freshtrack.domain.repository.*
@@ -15,12 +14,18 @@ import org.koin.dsl.module
  */
 val databaseModule = module {
 
-    // Singleton Database Instance
-    single { FreshTrackDatabase.getInstance(androidContext()) }
+    // The GoodBefore store. Source of truth for everything on screen.
+    single { com.example.freshtrack.data.local.GoodBeforeDatabase.getInstance(androidContext()) }
 
-    // DAOs
-    single { get<FreshTrackDatabase>().productDao() }
-    single { get<FreshTrackDatabase>().categoryDao() }
+    single { get<com.example.freshtrack.data.local.GoodBeforeDatabase>().itemDao() }
+    single { get<com.example.freshtrack.data.local.GoodBeforeDatabase>().categoryDao() }
+    single { get<com.example.freshtrack.data.local.GoodBeforeDatabase>().locationDao() }
+    single { get<com.example.freshtrack.data.local.GoodBeforeDatabase>().itemEventDao() }
+    single { get<com.example.freshtrack.data.local.GoodBeforeDatabase>().outboxDao() }
+
+    single<com.example.freshtrack.data.local.TransactionRunner> {
+        com.example.freshtrack.data.local.RoomTransactionRunner(get())
+    }
 }
 
 /**
@@ -34,6 +39,12 @@ val repositoryModule = module {
 
     // Repositories
     single { com.example.freshtrack.data.session.UserSession(get()) }
+    // Bound under the interface too. Anything that only needs "which kitchen"
+    // asks for KitchenSession, and Koin resolves by declared type, so without
+    // this the lookup fails at runtime rather than at compile time.
+    single<com.example.freshtrack.data.session.KitchenSession> {
+        get<com.example.freshtrack.data.session.UserSession>()
+    }
 
     // Firestore sync
     single { com.google.firebase.firestore.FirebaseFirestore.getInstance() }
@@ -44,25 +55,30 @@ val repositoryModule = module {
         com.example.freshtrack.data.account.AccountDeleter(
             authRepository = get(),
             remote = get(),
-            productDao = get(),
+            itemDao = get(),
+            eventDao = get(),
+            outboxDao = get(),
             session = get(),
             syncPrefs = get(),
             onboardingPrefs = get()
         )
     }
 
-    single {
-        com.example.freshtrack.data.sync.ProductSyncer(
-            productDao = get(),
-            remote = get(),
+    single<ItemRepository> {
+        ItemRepositoryImpl(
+            itemDao = get(),
+            eventDao = get(),
+            outboxDao = get(),
             session = get(),
-            syncPrefs = get()
+            transactions = get(),
+            clock = com.example.freshtrack.util.AppClock.System,
+            ids = com.example.freshtrack.util.IdGenerator.Uuid,
+            clientId = get<com.example.freshtrack.data.preferences.ClientIdProvider>().clientId,
+            serialise = com.example.freshtrack.data.sync.OutboxPayload::serialise
         )
     }
 
-    single<ProductRepository> {
-        ProductRepositoryImpl(productDao = get(), session = get())
-    }
+    single<LocationRepository> { LocationRepositoryImpl(locationDao = get(), session = get()) }
 
     // Category Repository
     single<CategoryRepository> {
@@ -124,6 +140,9 @@ val preferencesModule = module {
 
     // Sync watermarks
     single { com.example.freshtrack.data.preferences.SyncPreferences(androidContext()) }
+
+    // Stable per-installation id, used to attribute queued changes
+    single { com.example.freshtrack.data.preferences.ClientIdProvider(androidContext()) }
 }
 
 /**
@@ -132,43 +151,29 @@ val preferencesModule = module {
  */
 val viewModelModule = module {
 
-    // Dashboard ViewModel
-    viewModel < DashboardViewModel>{
-        DashboardViewModel(
-            productRepository = get(),
-            categoryRepository = get()
-        )
+    viewModel<DashboardViewModel> {
+        DashboardViewModel(itemRepository = get(), categoryRepository = get())
     }
 
-    // Product List ViewModel
-    viewModel<ProductListViewModel> {
-        ProductListViewModel(
-            productRepository = get(),
-            categoryRepository = get()
-        )
+    viewModel<ItemListViewModel> {
+        ItemListViewModel(itemRepository = get(), categoryRepository = get())
     }
 
-    // Add/Edit Product ViewModel
-    viewModel<AddEditProductViewModel> {
-        AddEditProductViewModel(
-            productRepository = get(),
+    viewModel<AddEditItemViewModel> {
+        AddEditItemViewModel(
+            itemRepository = get(),
             categoryRepository = get(),
+            locationRepository = get(),
             productLookupRepository = get()
         )
     }
 
-    // Product Details ViewModel
-    viewModel<ProductDetailsViewModel> {
-        ProductDetailsViewModel(
-            productRepository = get()
-        )
+    viewModel<ItemDetailsViewModel> {
+        ItemDetailsViewModel(itemRepository = get())
     }
 
-    // Impact ViewModel
     viewModel<ImpactViewModel> {
-        ImpactViewModel(
-            productRepository = get()
-        )
+        ImpactViewModel(itemRepository = get())
     }
 
     // Settings ViewModel
@@ -176,11 +181,8 @@ val viewModelModule = module {
         SettingsViewModel()
     }
 
-    // History ViewModel
     viewModel<HistoryViewModel> {
-        HistoryViewModel(
-            productRepository = get()
-        )
+        HistoryViewModel(itemRepository = get())
     }
 
     // Auth ViewModel

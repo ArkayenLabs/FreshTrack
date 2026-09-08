@@ -1,6 +1,7 @@
 package com.example.freshtrack.data.notification
 
-import com.example.freshtrack.domain.model.Product
+import com.example.freshtrack.domain.model.Item
+import java.time.LocalDate
 
 /**
  * Turns a set of expiring products into notification copy.
@@ -19,20 +20,21 @@ object ExpiryNotificationContent {
         val summary: String,
         val lines: List<String>,
         val urgency: Urgency,
-        /** Set only when a single product is involved, enabling a direct action. */
-        val singleProductId: String?
+        /** Set only when a single item is involved, enabling a direct action. */
+        val singleItemId: String?
     )
 
-    fun urgencyOf(product: Product): Urgency = when (product.daysUntilExpiry()) {
-        in Long.MIN_VALUE..-1L -> Urgency.EXPIRED
-        0L -> Urgency.TODAY
-        1L -> Urgency.TOMORROW
-        else -> Urgency.SOON
-    }
+    fun urgencyOf(product: Item, today: LocalDate): Urgency =
+        when (product.daysUntilExpiry(today)) {
+            in Long.MIN_VALUE..-1L -> Urgency.EXPIRED
+            0L -> Urgency.TODAY
+            1L -> Urgency.TOMORROW
+            else -> Urgency.SOON
+        }
 
     /** "today", "tomorrow", "in 3 days", "2 days ago" — never a bare date. */
-    fun relativeDay(product: Product): String {
-        val days = product.daysUntilExpiry()
+    fun relativeDay(product: Item, today: LocalDate): String {
+        val days = product.daysUntilExpiry(today)
         return when {
             days == 0L -> "today"
             days == 1L -> "tomorrow"
@@ -42,11 +44,11 @@ object ExpiryNotificationContent {
         }
     }
 
-    fun build(products: List<Product>): Content? {
+    fun build(products: List<Item>, today: LocalDate): Content? {
         if (products.isEmpty()) return null
 
-        val sorted = products.sortedBy { it.daysUntilExpiry() }
-        val worst = urgencyOf(sorted.first())
+        val sorted = products.sortedBy { it.daysUntilExpiry(today) }
+        val worst = urgencyOf(sorted.first(), today)
 
         // A single item is named outright. "1 Product Expiring Soon" makes the
         // user open the app just to find out which one.
@@ -56,23 +58,23 @@ object ExpiryNotificationContent {
                 Urgency.EXPIRED -> "${product.name} has expired"
                 Urgency.TODAY -> "${product.name} expires today"
                 Urgency.TOMORROW -> "${product.name} expires tomorrow"
-                Urgency.SOON -> "${product.name} expires ${relativeDay(product)}"
+                Urgency.SOON -> "${product.name} expires ${relativeDay(product, today)}"
             }
             val summary = when (worst) {
-                Urgency.EXPIRED -> "Expired ${relativeDay(product)}. Use it or bin it."
+                Urgency.EXPIRED -> "Expired ${relativeDay(product, today)}. Use it or bin it."
                 Urgency.TODAY -> "Use it today to avoid waste."
-                else -> "Plan to use it before ${relativeDay(product)}."
+                else -> "Plan to use it before ${relativeDay(product, today)}."
             }
             return Content(
                 title = title,
                 summary = summary,
                 lines = emptyList(),
                 urgency = worst,
-                singleProductId = product.id
+                singleItemId = product.id
             )
         }
 
-        val expiredOrToday = sorted.count { urgencyOf(it) <= Urgency.TODAY }
+        val expiredOrToday = sorted.count { urgencyOf(it, today) <= Urgency.TODAY }
         val title = when {
             worst == Urgency.EXPIRED && expiredOrToday == 1 -> "1 item needs attention now"
             worst == Urgency.EXPIRED -> "$expiredOrToday items need attention now"
@@ -84,7 +86,7 @@ object ExpiryNotificationContent {
 
         // Each line carries its own timing, so the list is scannable without
         // opening the app.
-        val lines = sorted.take(MAX_LINES).map { "${it.name} — ${relativeDay(it)}" }
+        val lines = sorted.take(MAX_LINES).map { "${it.name} — ${relativeDay(it, today)}" }
         val remaining = sorted.size - lines.size
         val allLines = if (remaining > 0) lines + "and $remaining more" else lines
 
@@ -93,7 +95,7 @@ object ExpiryNotificationContent {
             summary = "${sorted.size} items to use up",
             lines = allLines,
             urgency = worst,
-            singleProductId = null
+            singleItemId = null
         )
     }
 

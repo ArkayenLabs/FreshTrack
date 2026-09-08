@@ -25,7 +25,8 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.example.freshtrack.MainActivity
-import com.example.freshtrack.data.repository.ProductRepository
+import com.example.freshtrack.data.repository.ItemRepository
+import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -38,13 +39,13 @@ import org.koin.core.component.inject
  */
 class FreshTrackWidget : GlanceAppWidget(), KoinComponent {
 
-    private val productRepository: ProductRepository by inject()
+    private val itemRepository: ItemRepository by inject()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         // Read before provideContent: Glance expects a snapshot, not a stream.
-        val products = runCatching { productRepository.getAllProducts().first() }
+        val products = runCatching { itemRepository.observeActiveItems().first() }
             .getOrDefault(emptyList())
-        val state = WidgetContent.build(products)
+        val state = WidgetContent.build(products, LocalDate.now())
 
         provideContent { WidgetBody(state) }
     }

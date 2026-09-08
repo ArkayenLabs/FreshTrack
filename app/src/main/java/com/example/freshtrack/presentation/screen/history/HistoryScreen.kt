@@ -16,7 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.freshtrack.domain.model.Product
+import com.example.freshtrack.domain.model.Item
+import java.time.format.DateTimeFormatter
 import com.example.freshtrack.presentation.viewmodel.HistoryViewModel
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
@@ -29,7 +30,7 @@ fun HistoryScreen(
     onNavigateBack: () -> Unit,
     viewModel: HistoryViewModel = koinViewModel()
 ) {
-    val consumedProducts by viewModel.consumed.collectAsState()
+    val consumedProducts by viewModel.used.collectAsState()
     val discardedProducts by viewModel.discarded.collectAsState()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
@@ -104,12 +105,12 @@ fun HistoryScreen(
                 0 -> HistoryList(
                     products = consumedProducts,
                     emptyMessage = "No used products yet",
-                    onDelete = { viewModel.deleteProduct(it) }
+                    onDelete = { viewModel.deleteItem(it) }
                 )
                 1 -> HistoryList(
                     products = discardedProducts,
                     emptyMessage = "No discarded products yet",
-                    onDelete = { viewModel.deleteProduct(it) }
+                    onDelete = { viewModel.deleteItem(it) }
                 )
             }
         }
@@ -142,7 +143,7 @@ fun HistoryScreen(
 
 @Composable
 private fun HistoryList(
-    products: List<Product>,
+    products: List<Item>,
     emptyMessage: String,
     onDelete: (String) -> Unit
 ) {
@@ -181,10 +182,9 @@ private fun HistoryList(
 
 @Composable
 private fun HistoryItemCard(
-    product: Product,
+    product: Item,
     onDelete: () -> Unit
 ) {
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -215,7 +215,7 @@ private fun HistoryItemCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Expiry: ${dateFormat.format(Date(product.expiryDate))}",
+                    text = "Expiry: ${product.expiry.value.format(historyDateFormat)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -230,3 +230,7 @@ private fun HistoryItemCard(
         }
     }
 }
+
+/** Matches the "MMM dd, yyyy" style used elsewhere in the app. */
+private val historyDateFormat: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM dd, yyyy", java.util.Locale.getDefault())

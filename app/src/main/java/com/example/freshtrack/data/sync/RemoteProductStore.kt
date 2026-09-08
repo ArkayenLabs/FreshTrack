@@ -1,17 +1,17 @@
 package com.example.freshtrack.data.sync
 
-import com.example.freshtrack.data.local.entities.ProductEntity
-
 /**
- * What the sync engine needs from a remote store, with no mention of the
- * backend that provides it.
+ * What the app needs from the remote store, with no mention of the backend
+ * providing it.
  *
- * The engine depends on this rather than on the Firestore class directly, so the
- * retry and conflict logic can be tested on the JVM without pulling in the
- * Firebase runtime — and so replacing the backend would not touch that logic.
+ * Reduced to account lifecycle. The push and pull methods were shaped around
+ * the previous product schema and have been removed along with it; the
+ * replacement pushes queued outbox operations against the shared cross-platform
+ * contract rather than mirroring rows.
  *
- * Implementations report failures as [RemoteError] so callers can tell a
- * temporary outage from a refused write.
+ * Erasure stays here regardless, because it is a Play requirement rather than a
+ * sync feature: a user must be able to delete their cloud data whether or not
+ * anything is currently syncing.
  */
 interface RemoteProductStore {
 
@@ -21,18 +21,13 @@ interface RemoteProductStore {
         name: String
     ): Result<Unit>
 
-    /** Changes strictly after [since], tombstones included. */
-    suspend fun fetchChangedSince(pantryId: String, since: Long): Result<List<ProductEntity>>
-
-    suspend fun push(pantryId: String, entities: List<ProductEntity>): Result<Unit>
-
     /**
      * Erases everything stored for this user: every product document, the
      * pantry, and the user profile.
      *
-     * Products are deleted individually because Firestore does not cascade into
-     * subcollections — deleting the pantry alone would leave them orphaned in
-     * the database with no owner and no way to reach them.
+     * Documents are deleted individually because Firestore does not cascade
+     * into subcollections — removing the pantry alone would leave them orphaned
+     * with no owner and no way to reach them.
      */
     suspend fun deleteAccountData(pantryId: String, uid: String): Result<Unit>
 }

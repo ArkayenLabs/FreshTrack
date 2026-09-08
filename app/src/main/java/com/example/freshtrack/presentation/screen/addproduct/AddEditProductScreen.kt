@@ -27,12 +27,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.freshtrack.presentation.viewmodel.AddEditProductViewModel
+import com.example.freshtrack.presentation.viewmodel.AddEditItemViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.koin.androidx.compose.koinViewModel
-import java.text.SimpleDateFormat
-import java.util.*
-import java.util.concurrent.TimeUnit
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +44,7 @@ fun AddEditProductScreen(
     onNavigateBack: () -> Unit,
     scannedBarcode: String? = null,
     onNavigateToScanner: () -> Unit,
-    viewModel: AddEditProductViewModel = koinViewModel()
+    viewModel: AddEditItemViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -49,7 +52,7 @@ fun AddEditProductScreen(
 
     // Load product if editing
     LaunchedEffect(productId) {
-        productId?.let { viewModel.loadProduct(it) }
+        productId?.let { viewModel.loadItem(it) }
     }
 
     // Update barcode from scanner
@@ -96,7 +99,7 @@ fun AddEditProductScreen(
             ) {
                 Button(
                     onClick = {
-                        viewModel.saveProduct(onSuccess = onNavigateBack)
+                        viewModel.saveItem(onSuccess = onNavigateBack)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -404,34 +407,28 @@ fun CategoryChip(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpiryDatePicker(
-    expiryDate: Long,
-    onDateSelected: (Long) -> Unit
+    expiryDate: LocalDate?,
+    onDateSelected: (LocalDate) -> Unit
 ) {
-    val todayMillis = remember {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        calendar.timeInMillis
-    }
-    
+    val today = remember { LocalDate.now() }
+
+    // Material's date picker works in UTC millis. Converting through UTC in
+    // both directions keeps the round trip exact; mixing the local zone into
+    // one side is what makes a picked date come back a day earlier.
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = if (expiryDate > 0) expiryDate else System.currentTimeMillis(),
+        initialSelectedDateMillis = (expiryDate ?: today).toUtcMillis(),
         selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return utcTimeMillis >= todayMillis
-            }
-            override fun isSelectableYear(year: Int): Boolean {
-                return year >= Calendar.getInstance().get(Calendar.YEAR)
-            }
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                !utcTimeMillis.toLocalDateUtc().isBefore(today)
+
+            override fun isSelectableYear(year: Int): Boolean = year >= today.year
         }
     )
     var showDatePicker by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
-            value = if (expiryDate > 0) formatDate(expiryDate) else "",
+            value = expiryDate?.let { formatDate(it) } ?: "",
             onValueChange = {},
             readOnly = true,
             label = { Text("Expiry Date") },
@@ -468,19 +465,17 @@ fun ExpiryDatePicker(
             }
         )
 
-        // Expiry Status Indicator
-        if (expiryDate > 0) {
-            ExpiryStatusIndicator(expiryDate)
+        if (expiryDate != null) {
+            ExpiryStatusIndicator(expiryDate, today)
         }
     }
 
     if (showDatePicker) {
-        // Disable haptic feedback for the date picker
+        // Haptics suppressed inside the picker: it fires on every date scrolled
+        // past, which turns choosing a date months out into continuous buzzing.
         CompositionLocalProvider(
             LocalHapticFeedback provides object : HapticFeedback {
-                override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
-                    // No-op to disable vibration
-                }
+                override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) = Unit
             }
         ) {
             DatePickerDialog(
@@ -489,7 +484,7 @@ fun ExpiryDatePicker(
                     TextButton(
                         onClick = {
                             datePickerState.selectedDateMillis?.let {
-                                onDateSelected(it)
+                                onDateSelected(it.toLocalDateUtc())
                             }
                             showDatePicker = false
                         }
@@ -510,29 +505,18 @@ fun ExpiryDatePicker(
 }
 
 @Composable
-fun ExpiryStatusIndicator(expiryDate: Long) {
-    // Calculate days using calendar dates (not raw time difference)
-    val calendar = java.util.Calendar.getInstance()
-    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    calendar.set(java.util.Calendar.MINUTE, 0)
-    calendar.set(java.util.Calendar.SECOND, 0)
-    calendar.set(java.util.Calendar.MILLISECOND, 0)
-    val todayMidnight = calendar.timeInMillis
-    
-    calendar.timeInMillis = expiryDate
-    calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
-    calendar.set(java.util.Calendar.MINUTE, 0)
-    calendar.set(java.util.Calendar.SECOND, 0)
-    calendar.set(java.util.Calendar.MILLISECOND, 0)
-    val expiryMidnight = calendar.timeInMillis
-    
-    val daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(expiryMidnight - todayMidnight)
+fun ExpiryStatusIndicator(expiryDate: LocalDate, today: LocalDate) {
+    val daysUntilExpiry = ChronoUnit.DAYS.between(today, expiryDate)
 
     val (status, color, icon) = when {
-        daysUntilExpiry < 0 -> Triple("Expired", MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)
-        daysUntilExpiry <= 3 -> Triple("Expiring Soon", MaterialTheme.colorScheme.error, Icons.Outlined.Warning)
-        daysUntilExpiry <= 7 -> Triple("Expiring This Week", MaterialTheme.colorScheme.tertiary, Icons.Outlined.Schedule)
-        else -> Triple("Fresh", MaterialTheme.colorScheme.primary, Icons.Outlined.CheckCircle)
+        daysUntilExpiry < 0 ->
+            Triple("Expired", MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)
+        daysUntilExpiry <= 3 ->
+            Triple("Expiring Soon", MaterialTheme.colorScheme.error, Icons.Outlined.Warning)
+        daysUntilExpiry <= 7 ->
+            Triple("Expiring This Week", MaterialTheme.colorScheme.tertiary, Icons.Outlined.Schedule)
+        else ->
+            Triple("Fresh", MaterialTheme.colorScheme.primary, Icons.Outlined.CheckCircle)
     }
 
     Card(
@@ -572,7 +556,13 @@ fun ExpiryStatusIndicator(expiryDate: Long) {
     }
 }
 
-private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    return sdf.format(Date(timestamp))
-}
+private val displayDateFormat: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault())
+
+private fun formatDate(date: LocalDate): String = date.format(displayDateFormat)
+
+private fun LocalDate.toUtcMillis(): Long =
+    atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun Long.toLocalDateUtc(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()

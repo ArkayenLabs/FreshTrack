@@ -48,27 +48,24 @@ class FreshTrackApplication : Application() {
         createNotificationChannels()
         NotificationScheduler.scheduleDailyExpiryCheck(this)
         NotificationScheduler.scheduleWeeklySummary(this)
-        com.example.freshtrack.data.sync.SyncWorker.schedule(this)
 
-        claimGuestDataForSignedInUser()
+        claimLocalDataForSignedInUser()
     }
 
     /**
-     * Adopts any guest-owned rows for the signed-in account.
+     * Adopts anything created before sign-in into the account's own kitchen.
      *
-     * This is not optional. The 5→6 migration backfills every pre-existing row to
-     * 'guest', so a user who was already signed in when they updated would open
-     * the app to an empty inventory until those rows are claimed. Runs on every
-     * start because it is cheap (a COUNT that returns 0 in the common case) and
-     * also covers the guest-then-sign-up path.
+     * Runs on every start because it is cheap — a COUNT that returns zero in the
+     * common case — and it covers the guest-then-sign-up path without needing a
+     * separate hook at the point of sign-in.
      */
-    private fun claimGuestDataForSignedInUser() {
-        val repository: com.example.freshtrack.data.repository.ProductRepository =
+    private fun claimLocalDataForSignedInUser() {
+        val repository: com.example.freshtrack.data.repository.ItemRepository =
             org.koin.java.KoinJavaComponent.get(
-                com.example.freshtrack.data.repository.ProductRepository::class.java
+                com.example.freshtrack.data.repository.ItemRepository::class.java
             )
         CoroutineScope(Dispatchers.IO).launch {
-            runCatching { repository.claimGuestData() }
+            runCatching { repository.claimLocalData() }
                 .onFailure {
                     com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance()
                         .recordException(it)
