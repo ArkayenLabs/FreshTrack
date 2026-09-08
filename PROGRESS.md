@@ -15,15 +15,30 @@ No code here — see the linked documents for detail.
 ## Where we are
 
 Phase 1 retention work is done. The Phase 2 readiness audit is closed except for
-known gaps listed below. Backup & Sync is **built but inert** — nothing grants
-premium yet, so every cloud write is refused by design.
+known gaps listed below.
 
-Last verified state (re-run 7 Sep 2026 at commit af65145, not inherited from
-an earlier session): 69 JVM unit tests pass, 38 Firestore rules tests pass on
-the emulator. The 4 Room migration tests and 2 Compose UI tests were **not
-run** — no device or emulator was attached. `assembleRelease` failed at the
-then-configured 2g heap with an R8 OutOfMemoryError; it succeeds once the
-heap is raised.
+**The app has been migrated from the FreshTrack data model to the GoodBefore
+one.** Expiry is now a calendar date carrying provenance, resolution is a single
+state rather than two booleans, storage location is its own entity, and history
+is an append-only event ledger with a sync outbox. The old Room database, its
+migration chain and the old sync client were deleted rather than adapted; this
+was only safe because there is no installed base to carry forward.
+
+Backup & Sync is **not available**. The old client mirrored the old schema and
+was removed with it. Local changes queue in the outbox and go nowhere until the
+push/pull work lands. The Settings card says so rather than offering a button
+that does nothing.
+
+Last verified state (run 8 Sep 2026, not inherited from an earlier session):
+`./gradlew testDebugUnitTest lintDebug assembleRelease` succeeds — 86 JVM unit
+tests pass, lint reports 0 errors, a signed minified APK is produced. 38
+Firestore rules tests pass on the emulator, though the rules still describe the
+old `/pantries/{id}/products` shape and have not been updated for the new model.
+
+**Nothing has been run on a device.** No emulator or handset was attached at any
+point, so the Koin graph, Room database creation and seeding, the widget,
+notification actions and the CSV file picker are compile- and unit-tested only.
+Treat "it builds" as exactly that.
 
 ---
 
@@ -117,13 +132,21 @@ heap is raised.
 
 ## Next
 
-- [ ] **Play Billing Cloud Function** — nothing sets `isPremium`, so sync is
-      currently inert for every user. This is the blocker.
-- [ ] **Deploy the rules** — `firebase deploy --only firestore:rules`. They exist
-      and pass tests but are not live.
-- [ ] **Legal & compliance** — see `COMPLIANCE.md`. Account deletion is a live
-      Play policy violation; the "no data collection" claim contradicts active
-      analytics.
+- [ ] **Run it on a device.** Highest priority and cheapest. The schema cutover
+      has never executed: nothing has confirmed the database is created, the
+      default categories and locations are seeded, or the dependency graph
+      resolves at startup.
+- [ ] **Rebuild sync on the outbox.** Push queued operations, pull by cursor,
+      order by server revision rather than device clock. The queue and its
+      idempotency keys exist; the transport does not.
+- [ ] **Update the Firestore rules** for kitchens/items/events. The current
+      rules and their 38 tests still describe the old pantry/product shape, so
+      they pass while guarding a schema the client no longer writes.
+- [ ] **Play Billing.** Nothing grants an entitlement, so every paid path is
+      inert by construction.
+- [ ] **Legal & compliance** — see `COMPLIANCE.md`. The listing still claims
+      "no data collection" while consented analytics exists, and the legal
+      templates still carry placeholder dates.
 
 ---
 
@@ -131,24 +154,27 @@ heap is raised.
 
 Not bugs to fix today, but things that are true and should not be forgotten.
 
-- **One-cycle echo.** A row pulled from the server gets pushed back once with
-  identical content on the following sync. Costs a redundant write per pulled
-  row. Proper fix is a per-row pending flag instead of a watermark.
-- **Polling, not live sync.** `sync-design.md` says "listen"; what exists is
-  every 6 hours plus on sign-in. No real-time listener.
+- ~~**One-cycle echo.**~~ Resolved by design: the watermark is gone and an
+  explicit outbox makes the pending set a fact rather than an inference. The
+  transport that consumes it is not written yet.
+- **No sync at all, by choice.** The polling client was deleted with the
+  schema it mirrored. `sync-design.md` now describes neither what exists nor
+  what is planned and needs rewriting against the outbox contract.
 - **No end-to-end test.** The engine is tested with mocks and the rules against
   the emulator, but never the two together.
 - **Cross-account claim edge case.** If a user signs out, updates, and a
   different account signs in as the first action after the update, that account
   claims the previous user's unclaimed rows. Narrow, but real.
-- **Release build never verified.** `isMinifyEnabled = true` and nobody has
-  confirmed the barcode lookup works in a minified release APK.
+- **Release build now builds, but is still unexercised.** A signed minified
+  APK is produced, and the heap that prevented it is fixed. Nobody has
+  installed it and confirmed the barcode lookup survives R8.
 - **Store listing wording still says "no data collection".** Analytics is now
   off-by-default and opt-in, but the listing copy and Data Safety form still
   need updating to match, and the "no data collection" phrase should become
   "offline-first; optional, opt-in analytics".
 - **Duplicate prevention covers import only.** Adding the same item twice by
-  hand is still possible; only CSV import checks for duplicates.
+  hand is still possible. `findDuplicate` exists on the repository and the add
+  flow does not call it.
 - **Widget rendering unverified.** Provider registers and the refresh path runs,
   but it has not been placed on a real home screen.
 - **Notification action unverified.** "Mark as used" is wired but has not been
@@ -177,3 +203,24 @@ Kept because the reasoning matters more than the outcome.
 - **Tombstones were unreachable.** All 16 DAO queries filtered them out, so a
   deletion could never have been pushed. The columns existed; the plumbing did
   not.
+
+---
+
+## Introduced by the migration
+
+Things that are true now and were not before. Recorded so they are not
+rediscovered as surprises.
+
+- **The Firestore rules guard a shape the client no longer writes.** They pass
+  their tests, which makes this easy to miss.
+- **`sync-design.md` is stale in both directions** — it describes an
+  implementation that was deleted and a design that was superseded.
+- **22 tests were deleted, not replaced.** They covered the old syncer,
+  document mapping and repository. The behaviour is gone; the coverage those
+  areas will need in the new model does not exist yet.
+- **No Room migration tests exist.** The old chain was deleted with the old
+  database. Version 1 has no predecessor, so there is nothing to test yet — but
+  the first schema change from here needs both a migration and a test, and
+  destructive fallback must never be added to the builder.
+- **`notificationEnabled` survives with no UI.** Carried deliberately; the
+  expiry query honours it and dropping it would change behaviour silently.

@@ -17,7 +17,7 @@
 | UI / Screens | `presentation/screen/` |
 | Navigation | `presentation/navigation/Navigation.kt` — single NavHost, guest mode routing |
 | ViewModels | `presentation/viewmodel/` |
-| Local DB | `data/local/FreshTrackDatabase.kt` (Room v7), `data/local/entities/ProductEntity.kt` |
+| Local DB | `data/local/GoodBeforeDatabase.kt` (Room v1, `goodbefore_database`), `data/local/entities/ItemEntity.kt` |
 | Repositories | `data/repository/` |
 | DI | `di/KoinModules.kt` (Koin) |
 | Preferences | `data/preferences/OnboardingPreferences.kt` — includes guest mode flag |
@@ -26,7 +26,11 @@
 | Sync | `data/sync/` — ProductSyncer + SyncWorker; `data/remote/firestore/` |
 | Session | `data/session/UserSession.kt` — current uid and active pantry |
 
-**DB version: 7.** Migrations live in `FreshTrackDatabase.kt`. Adding columns always requires a new `Migration(n, n+1)`.
+**DB version: 1** (`goodbefore_database`). The previous `freshtrack_database`
+and its 1→7 migration chain were deleted during the GoodBefore model migration,
+which was only safe because there is no installed base. That is spent: every
+schema change from here needs a real `Migration(n, n+1)` and a test, and
+`fallbackToDestructiveMigration` must never be added.
 
 ---
 
@@ -34,17 +38,28 @@
 
 - **Offline-first.** Room is the source of truth. Firestore mirrors it; a sync
   failure must never block a read. See `sync-design.md`.
-- **`pantryId` is the access key, not `userId`.** Products belong to a pantry so a
-  shared household pantry works. `userId` is attribution only. Never filter
-  user-facing queries by `userId`.
+- **`kitchenId` is the access key, not the creator's uid.** Items belong to a
+  kitchen so a shared household works. `createdBy` is attribution only. Never
+  filter user-facing queries by it.
+- **Expiry is a `LocalDate`, never an instant.** A date pinned to UTC midnight
+  shifts by a day when rendered elsewhere. It travels with its provenance
+  (`dateKind`, `dateSource`, confidence, confirmation) so the UI can separate
+  fact from estimate, and `ExpiryDate.canBeReplacedBy` decides what may
+  overwrite what.
+- **History is an append-only ledger.** Impact is read from `item_events`, not
+  counted off row state, so editing or deleting an item cannot rewrite what the
+  user was told they did. Every mutation writes row, event and outbox entry in
+  one transaction via `ItemRepositoryImpl.record`.
+- **Category and location are different things.** "Dairy" is what it is;
+  "Fridge" is where it is.
 - **Deletes are soft.** Set `isDeleted`; a hard delete cannot propagate to another
-  device. Only the queries under "Sync" in `ProductDao` may see tombstones.
+  device. Only the queries under "Sync" in `ItemDao` may see tombstones.
 - **Free tier is a feature gate, not a quantity cap.** No item limits — capping
   local storage would strand data for existing users and contradict the listing.
 - **`isPremium` is server-written only.** Rules refuse any client write to it.
 - **`COLLATE NOCASE`** on `name` and `category` fields — prevents milk/Milk duplicates.
 - **Categories are food-only:** Fresh Produce, Dairy, Bakery, Beverages, Pantry, Leftovers, Other. No Medicine/Cosmetics.
-- **`notificationEnabled` stays in `ProductEntity`** (DB field) even though the UI toggle was removed — do not drop this column.
+- **`notificationEnabled` stays in `ItemEntity`** (DB field) even though the UI toggle was removed — do not drop this column.
 - **No emoji in UI strings.** Use Material icons only.
 - **Two tiers only: Guest (free) and Premium.** Login is NOT a middle tier — it is the gateway to premium. Guest is the full free offline app with no account; a user signs in only when they buy premium or tap a cloud feature, and their guest data claims into the new account. Do not build "free logged-in" perks — that tier does not exist by design.
 - **Guest mode:** Users can skip login. Flag stored in `OnboardingPreferences.isGuestMode()`. Splash screen checks this.
@@ -111,9 +126,12 @@ India pricing target: ₹299–499/yr. USD base: $3.99/mo · $14.99/yr.
 - Do not re-add notification toggle to Add/Edit Product or Settings.
 - Do not add Medicine/Cosmetics back to categories.
 - Do not use emoji in any UI string.
-- Do not drop `notificationEnabled` from `ProductEntity`.
+- Do not drop `notificationEnabled` from `ItemEntity`.
 - Do not use Hilt, TailwindCSS, or any web framework.
-- Do not filter user-facing product queries by `userId` — use `pantryId`.
-- Do not hard-delete products; set `isDeleted`.
+- Do not filter user-facing item queries by the creator's uid — use `kitchenId`.
+- Do not hard-delete items; set `isDeleted`.
+- Do not store expiry as an instant, and do not let an estimate overwrite a
+  printed or user-confirmed date.
+- Do not derive impact by counting rows; read the event ledger.
 - Do not let a client write `isPremium` or `plan`.
 - Do not add item-count caps to the free tier.
