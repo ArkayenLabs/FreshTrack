@@ -9,6 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.freshtrack.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +37,7 @@ fun TermsOfServiceScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "FreshTrack Terms of Service",
+                text = stringResource(R.string.terms_title),
                 style = MaterialTheme.typography.titleLarge
             )
             Spacer(modifier = Modifier.height(16.dp))

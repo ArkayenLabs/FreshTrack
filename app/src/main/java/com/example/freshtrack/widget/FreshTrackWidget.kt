@@ -30,6 +30,8 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import com.example.freshtrack.R
+import androidx.glance.LocalContext
 
 /**
  * Home-screen widget showing what is about to expire.
@@ -62,7 +64,7 @@ class FreshTrackWidget : GlanceAppWidget(), KoinComponent {
                 .clickable(actionStartActivity<MainActivity>())
         ) {
             Text(
-                text = "FreshTrack",
+                text = LocalContext.current.getString(R.string.app_name),
                 style = TextStyle(
                     fontSize = 11.sp,
                     color = GlanceTheme.colors.onSurfaceVariant

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.freshtrack.R
 import com.example.freshtrack.presentation.viewmodel.AuthViewModel
 import org.koin.androidx.compose.koinViewModel
+import androidx.compose.ui.res.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,14 +69,14 @@ fun ForgotPasswordScreen(
 
             Image(
                 painter = painterResource(id = R.drawable.applogo),
-                contentDescription = "FreshTrack Logo",
+                contentDescription = stringResource(R.string.app_logo_description),
                 modifier = Modifier.size(64.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "FreshTrack",
+                text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground

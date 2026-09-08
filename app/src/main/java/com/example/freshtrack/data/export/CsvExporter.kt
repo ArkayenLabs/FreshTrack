@@ -11,6 +11,7 @@ import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
+import com.example.freshtrack.R
 
 /**
  * Utility class for exporting products to CSV format
@@ -76,7 +77,10 @@ object CsvExporter {
             val csvContent = buildCsv(products, today)
 
             // Create file in cache directory
-            val fileName = "FreshTrack_Export_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.csv"
+            val prefix = context.getString(R.string.export_file_prefix)
+            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+                .format(Date())
+            val fileName = "${prefix}_$stamp.csv"
             val file = File(context.cacheDir, fileName)
             FileWriter(file).use { writer ->
                 writer.write(csvContent)
@@ -92,7 +96,7 @@ object CsvExporter {
             return Intent(Intent.ACTION_SEND).apply {
                 type = "text/csv"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "FreshTrack Products Export")
+                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.export_subject))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.test.rule.GrantPermissionRule
 import org.junit.Rule
 import org.junit.Test
+import com.example.freshtrack.R
 
 class DashboardScreenTest {
 
@@ -64,7 +65,11 @@ class DashboardScreenTest {
         }
 
         // Verify empty state text
-        composeTestRule.onNodeWithText("FreshTrack").assertExists()
+        // Read from resources rather than hardcoded, so the brand can change
+        // in one place without a test asserting the old name.
+        composeTestRule.onNodeWithText(
+            composeTestRule.activity.getString(R.string.app_name)
+        ).assertExists()
         composeTestRule.onNodeWithText("Start Tracking").assertExists()
         composeTestRule.onNodeWithText("Add your first product to reduce waste").assertExists()
     }

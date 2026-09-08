@@ -40,6 +40,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import org.koin.androidx.compose.koinViewModel
+import androidx.compose.ui.res.stringResource
 
 @Composable
 fun RegisterScreen(
@@ -99,14 +100,14 @@ fun RegisterScreen(
 
             Image(
                 painter = painterResource(id = R.drawable.applogo),
-                contentDescription = "FreshTrack Logo",
+                contentDescription = stringResource(R.string.app_logo_description),
                 modifier = Modifier.size(64.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "FreshTrack",
+                text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -130,7 +131,7 @@ fun RegisterScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        "Join FreshTrack today",
+                        stringResource(R.string.register_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)

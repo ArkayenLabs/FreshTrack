@@ -30,6 +30,7 @@ import com.example.freshtrack.presentation.theme.FreshTrackTheme
 import com.example.freshtrack.util.InAppUpdateManager
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
 
 class MainActivity : ComponentActivity() {
     
@@ -75,7 +76,7 @@ class MainActivity : ComponentActivity() {
                     onDismissRequest = { showResetDialog = false },
                     title = { Text("App Reset") },
                     text = { 
-                        Text("FreshTrack encountered repeated issues and has been reset. Your data has been cleared to restore functionality.")
+                        Text(stringResource(R.string.crash_reset_message))
                     },
                     confirmButton = {
                         TextButton(onClick = { showResetDialog = false }) {

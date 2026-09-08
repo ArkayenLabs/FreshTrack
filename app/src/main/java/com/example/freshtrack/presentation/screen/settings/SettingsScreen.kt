@@ -33,6 +33,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import androidx.compose.ui.res.stringResource
+import com.example.freshtrack.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -387,7 +389,7 @@ fun SettingsScreen(
                         val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("mailto:")
                             putExtra(Intent.EXTRA_EMAIL, arrayOf("hello@arkayenlabs.com"))
-                            putExtra(Intent.EXTRA_SUBJECT, "[FreshTrack] Help & Support")
+                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.support_subject))
                             putExtra(Intent.EXTRA_TEXT, "\n\n---\n$deviceInfo")
                         }
                         try {
@@ -474,14 +476,14 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "FreshTrack",
+                    text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Track. Save. Never Waste.",
+                    text = stringResource(R.string.app_tagline),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

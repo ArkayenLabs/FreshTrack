@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.ui.res.stringResource
+import com.example.freshtrack.R
 
 data class License(
     val library: String,
@@ -150,7 +152,7 @@ fun CustomOSSLicensesScreen(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
-                                "FreshTrack uses ${licenses.size} open source libraries",
+                                "${stringResource(R.string.app_name)} uses ${licenses.size} open source libraries",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )

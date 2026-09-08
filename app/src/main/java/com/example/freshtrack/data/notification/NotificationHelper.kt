@@ -117,7 +117,7 @@ object NotificationHelper {
         if (content.lines.isNotEmpty()) {
             val inbox = NotificationCompat.InboxStyle()
                 .setBigContentTitle(content.title)
-                .setSummaryText("FreshTrack")
+                .setSummaryText(context.getString(R.string.app_name))
             content.lines.forEach { inbox.addLine(it) }
             builder.setStyle(inbox)
         } else {
@@ -171,7 +171,7 @@ object NotificationHelper {
 
         val inboxStyle = NotificationCompat.InboxStyle()
             .setBigContentTitle("Daily Summary")
-            .setSummaryText("FreshTrack")
+            .setSummaryText(context.getString(R.string.app_name))
             .addLine("\u2022 $totalProducts products tracked")
             .addLine("\u2022 $expiringCount expiring soon")
 

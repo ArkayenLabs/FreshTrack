@@ -43,14 +43,14 @@ class WeeklySummaryWorker(
         )
 
         val inboxStyle = NotificationCompat.InboxStyle()
-            .setBigContentTitle("Weekly FreshTrack Summary")
+            .setBigContentTitle(context.getString(R.string.weekly_summary_title))
             .addLine("Items Used: $saved")
             .addLine("Items Wasted: $wasted")
             .addLine("Waste-Free Days: $wasteFreeDays")
 
         val notification = NotificationCompat.Builder(context, FreshTrackApplication.CHANNEL_ID_EXPIRY_ALERTS)
             .setSmallIcon(R.drawable.ic_notification) // Ensure this exists, using default from other notifications
-            .setContentTitle("Weekly FreshTrack Summary")
+            .setContentTitle(context.getString(R.string.weekly_summary_title))
             .setContentText("You used $saved items and wasted $wasted so far.")
             .setStyle(inboxStyle)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

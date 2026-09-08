@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.freshtrack.R
 import kotlinx.coroutines.delay
+import androidx.compose.ui.res.stringResource
 
 @Composable
 fun SplashScreen(
@@ -39,7 +40,7 @@ fun SplashScreen(
             // Display the logo from the drawable folder.
             Image(
                 painter = painterResource(id = R.drawable.applogo),
-                contentDescription = "FreshTrack Logo",
+                contentDescription = stringResource(R.string.app_logo_description),
                 modifier = Modifier.size(128.dp) // Made icon slightly larger
             )
 
@@ -47,7 +48,7 @@ fun SplashScreen(
 
             // App Name
             Text(
-                text = "FreshTrack",
+                text = stringResource(R.string.app_name),
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
                 // Use a color that works well on any background
@@ -59,7 +60,7 @@ fun SplashScreen(
 
             // Tagline
             Text(
-                text = "Track. Save. Never Waste.",
+                text = stringResource(R.string.app_tagline),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Normal,
                 // Use a secondary text color for the tagline.

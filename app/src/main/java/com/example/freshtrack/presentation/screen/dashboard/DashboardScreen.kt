@@ -19,6 +19,8 @@ import com.example.freshtrack.presentation.theme.*
 import com.example.freshtrack.presentation.viewmodel.DashboardViewModel
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
+import androidx.compose.ui.res.stringResource
+import com.example.freshtrack.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +51,7 @@ fun DashboardScreen(
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                         Text(
-                            "FreshTrack",
+                            stringResource(R.string.app_name),
                             fontWeight = FontWeight.Bold
                         )
                     }

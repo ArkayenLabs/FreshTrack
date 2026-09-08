@@ -1,4 +1,29 @@
 <resources>
-    <string name="app_name">FreshTrack</string>
+    <!--
+      The brand lives here and nowhere else. It was previously hardcoded in a
+      dozen screens, notifications and export filenames, which is why the name
+      drifted out of sync with the store listing in the first place.
+    -->
+    <string name="app_name">GoodBefore</string>
+
+    <!--
+      Deliberately not "AI Expiry Tracker and Food Saver". That is the store
+      positioning; the AI capabilities it refers to are not built, and the app
+      should not claim them from its own launch screen.
+    -->
+    <string name="app_tagline">Know what to use first.</string>
+
+    <string name="app_logo_description">GoodBefore logo</string>
     <string name="widget_description">See what is expiring soon</string>
+
+    <string name="export_subject">GoodBefore inventory export</string>
+    <string name="export_file_prefix">GoodBefore_Export</string>
+    <string name="support_subject">[GoodBefore] Help &amp; Support</string>
+
+    <string name="weekly_summary_title">Your week with GoodBefore</string>
+
+    <string name="crash_reset_message">GoodBefore encountered repeated issues and has been reset. Your data has been cleared to restore functionality.</string>
+
+    <string name="terms_title">GoodBefore Terms of Service</string>
+    <string name="register_subtitle">Join GoodBefore today</string>
 </resources>
