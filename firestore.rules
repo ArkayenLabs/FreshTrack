@@ -1,20 +1,21 @@
 rules_version = '2';
 
-// FreshTrack Firestore security rules.
+// GoodBefore Firestore security rules.
 //
 // Deny by default: anything not matched below is refused. Every rule assumes a
-// hostile client, because the client is a published app that anyone can decompile
-// and drive with arbitrary requests.
+// hostile client, because the client is a published app that anyone can
+// decompile and drive with arbitrary requests.
 //
 // Shape:
-//   /users/{uid}                          profile, entitlement, pantry ids
-//   /pantries/{pantryId}                  memberUids is the access-control list
-//   /pantries/{pantryId}/products/{id}    the inventory itself
+//   /users/{uid}                        profile, entitlement, kitchen ids
+//   /kitchens/{kitchenId}               memberUids is the access-control list
+//   /kitchens/{kitchenId}/items/{id}    the inventory itself
+//   /kitchens/{kitchenId}/events/{id}   the append-only ledger
 //
-// Note on queries: there is no `list` permission on /pantries anywhere below.
+// Note on queries: there is no `list` permission on /kitchens anywhere below.
 // Rules cannot reliably constrain what a collection query returns, so the client
 // never queries the collection — it reads its own user document, takes the
-// pantry ids, and fetches each pantry by id. That removes a whole class of
+// kitchen ids, and fetches each kitchen by id. That removes a whole class of
 // "accidentally readable by everyone" mistakes.
 
 service cloud.firestore {
@@ -29,28 +30,28 @@ service cloud.firestore {
     }
 
     // Membership lookup for subcollections. Costs one document read per rule
-    // evaluation, which is the price of shared pantries.
-    function pantryData(pantryId) {
-      return get(/databases/$(database)/documents/pantries/$(pantryId)).data;
+    // evaluation, which is the price of shared kitchens.
+    function kitchenData(kitchenId) {
+      return get(/databases/$(database)/documents/kitchens/$(kitchenId)).data;
     }
 
-    function isMemberOf(pantryId) {
-      return isSignedIn() && uid() in pantryData(pantryId).memberUids;
+    function isMemberOf(kitchenId) {
+      return isSignedIn() && uid() in kitchenData(kitchenId).memberUids;
     }
 
-    function isOwnerOf(pantryId) {
-      return isSignedIn() && pantryData(pantryId).ownerUid == uid();
+    function isOwnerOf(kitchenId) {
+      return isSignedIn() && kitchenData(kitchenId).ownerUid == uid();
     }
 
-    // Entitlement lives on the pantry, not the owner's user document, because
-    // the rules already fetch the pantry — checking the owner's profile instead
-    // would cost a second billed read on every product write. A Cloud Function
+    // Entitlement lives on the kitchen, not the owner's user document, because
+    // the rules already fetch the kitchen — checking the owner's profile instead
+    // would cost a second billed read on every item write. A Cloud Function
     // sets this when a Play Billing purchase is verified; clients cannot.
-    function pantryIsPremium(pantryId) {
-      return pantryData(pantryId).get('isPremium', false) == true;
+    function kitchenIsPremium(kitchenId) {
+      return kitchenData(kitchenId).get('isPremium', false) == true;
     }
 
-    // Household size. Free pantries are single-user; premium allows a household.
+    // Household size. Free kitchens are single-user; premium allows a household.
     function memberLimitFor(isPremium) {
       return isPremium ? 6 : 1;
     }
@@ -79,17 +80,17 @@ service cloud.firestore {
       allow delete: if isSignedIn() && uid() == userId;
     }
 
-    // ─── Pantries ───────────────────────────────────────────────────────────
-    match /pantries/{pantryId} {
+    // ─── Kitchens ───────────────────────────────────────────────────────────
+    match /kitchens/{kitchenId} {
 
-      // Read the pantry document directly from `resource`, rather than calling
+      // Read the kitchen document directly from `resource`, rather than calling
       // isMemberOf(), to avoid paying for a second read of the same document.
       allow get: if isSignedIn() && uid() in resource.data.memberUids;
 
-      // A new pantry must be created owned by, and containing only, its creator,
-      // and never pre-flagged as premium. Without this a client could create a
-      // pantry that already lists someone else as a member, or one that has
-      // granted itself a paid entitlement.
+      // A new kitchen must be created owned by, and containing only, its
+      // creator, and never pre-flagged as premium. Without this a client could
+      // create a kitchen that already lists someone else as a member, or one
+      // that has granted itself a paid entitlement.
       allow create: if isSignedIn()
                     && request.resource.data.ownerUid == uid()
                     && request.resource.data.memberUids == [uid()]
@@ -98,33 +99,38 @@ service cloud.firestore {
       // Only the owner changes membership. Ownership and the premium flag are
       // both immutable from a client — otherwise a member could promote
       // themselves and lock the owner out, or anyone could unlock a family plan.
-      allow update: if isOwnerOf(pantryId)
+      allow update: if isOwnerOf(kitchenId)
                     && request.resource.data.ownerUid == resource.data.ownerUid
                     && request.resource.data.get('isPremium', false)
                        == resource.data.get('isPremium', false)
                     && uid() in request.resource.data.memberUids
                     && request.resource.data.memberUids.size()
-                       <= memberLimitFor(pantryIsPremium(pantryId));
+                       <= memberLimitFor(kitchenIsPremium(kitchenId));
 
-      allow delete: if isOwnerOf(pantryId);
+      allow delete: if isOwnerOf(kitchenId);
 
-      // ─── Products ─────────────────────────────────────────────────────────
-      match /products/{productId} {
+      // ─── Items ────────────────────────────────────────────────────────────
+      match /items/{itemId} {
 
         // Reads stay open to members regardless of plan. If a subscription
         // lapses the user can still read back and export what they already
         // uploaded — their data is not held hostage. Only further backup stops.
-        allow get: if isMemberOf(pantryId);
-        allow list: if isMemberOf(pantryId);
+        allow get: if isMemberOf(kitchenId);
+        allow list: if isMemberOf(kitchenId);
 
         // Writing to the cloud is the premium feature. Free accounts are fully
         // functional offline; nothing is capped locally.
         //
-        // updatedAt drives last-write-wins, so a write without a usable
-        // timestamp is rejected rather than silently winning or losing.
-        allow create, update: if isMemberOf(pantryId)
-                              && pantryIsPremium(pantryId)
-                              && request.resource.data.updatedAt is number;
+        // Two shape checks, because a malformed row is worse than a refused
+        // one once several devices are reconciling:
+        //   updatedAt orders writes, so a write without one cannot be ordered.
+        //   expiryDate is an ISO calendar date string, never a number. Rejecting
+        //   a numeric timestamp here stops a client that still thinks in epoch
+        //   millis from writing dates that every other client would misread.
+        allow create, update: if isMemberOf(kitchenId)
+                              && kitchenIsPremium(kitchenId)
+                              && request.resource.data.updatedAt is number
+                              && request.resource.data.expiryDate is string;
 
         // Everyday deletion is soft: the client sets isDeleted so the removal
         // can propagate to other devices. A hard delete would vanish without
@@ -132,14 +138,40 @@ service cloud.firestore {
         //
         // The owner is nonetheless allowed to hard-delete, because account
         // deletion has to actually erase the data. Firestore does not cascade
-        // into subcollections, so deleting the pantry alone would leave every
-        // product orphaned in the database forever — which is precisely the
+        // into subcollections, so deleting the kitchen alone would leave every
+        // item orphaned in the database forever — which is precisely the
         // retention failure the deletion requirement exists to prevent. With no
         // Cloud Function available, the client must do it.
         //
         // Members cannot hard-delete: for them, soft delete remains the only
-        // route, so a shared pantry cannot be quietly emptied.
-        allow delete: if isOwnerOf(pantryId);
+        // route, so a shared kitchen cannot be quietly emptied.
+        allow delete: if isOwnerOf(kitchenId);
+      }
+
+      // ─── Events ───────────────────────────────────────────────────────────
+      //
+      // The ledger. Append-only is the whole point of it: impact and history
+      // are read from these documents, so if a client could edit or remove one
+      // it could rewrite what a household was told it did. There is deliberately
+      // no update rule at all.
+      match /events/{eventId} {
+
+        allow get: if isMemberOf(kitchenId);
+        allow list: if isMemberOf(kitchenId);
+
+        // An event must name its actor honestly. Without this check a member
+        // could append events attributed to someone else in the household.
+        allow create: if isMemberOf(kitchenId)
+                      && kitchenIsPremium(kitchenId)
+                      && request.resource.data.actorUid == uid()
+                      && request.resource.data.occurredAt is number
+                      && request.resource.data.operationId is string;
+
+        // No update, ever. Not even for the owner.
+
+        // Deletion exists only so account erasure can complete, for the same
+        // subcollection-cascade reason as items.
+        allow delete: if isOwnerOf(kitchenId);
       }
     }
   }
