@@ -157,6 +157,9 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation("io.mockk:mockk-android:1.13.10")
     androidTestImplementation("androidx.room:room-testing:2.6.1")
+    // GrantPermissionRule, so a screen that requests a runtime permission
+    // does not block its own UI test behind a system dialog.
+    androidTestImplementation("androidx.test:rules:1.6.1")
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
