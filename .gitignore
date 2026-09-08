@@ -57,6 +57,10 @@ google-services.json
 # === Graphify (tool output, not source) ===
 graphify-out/
 run_graphify.ps1
+# Registers graphify's PreToolUse hooks by absolute path to this machine's
+# interpreter, so it cannot be shared. Each developer runs `graphify claude
+# install` themselves; the committed CLAUDE.md section is the shared part.
+.claude/settings.local.json
 
 # === Node (Firestore rules tests only, not the Android build) ===
 node_modules/
