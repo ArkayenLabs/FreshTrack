@@ -18,6 +18,7 @@ import com.example.freshtrack.presentation.screen.auth.LoginScreen
 import com.example.freshtrack.presentation.screen.auth.RegisterScreen
 import com.example.freshtrack.presentation.screen.auth.TermsOfServiceScreen
 import com.example.freshtrack.presentation.screen.dashboard.DashboardScreen
+import com.example.freshtrack.presentation.screen.today.TodayScreen
 import com.example.freshtrack.presentation.screen.productlist.ProductListScreen
 import com.example.freshtrack.presentation.screen.addproduct.AddEditProductScreen
 import com.example.freshtrack.presentation.screen.licenses.CustomOSSLicensesScreen
@@ -43,6 +44,7 @@ sealed class Screen(val route: String) {
     object Register : Screen("register")
     object ForgotPassword : Screen("forgot_password")
     object TermsOfService : Screen("terms_of_service")
+    object Today : Screen("today")
     object Dashboard : Screen("dashboard")
     object ProductList : Screen("product_list?filter={filter}") {
         fun createRoute(filter: String? = null) = if (filter != null) "product_list?filter=$filter" else "product_list"
@@ -113,16 +115,16 @@ fun FreshTrackNavGraph(
                     // finished onboarding but not signed in is a guest by default;
                     // they reach Login only when they tap a cloud feature.
                     val nextDestination = when {
-                        isLoggedIn -> Screen.Dashboard.route
-                        isGuest -> Screen.Dashboard.route
+                        isLoggedIn -> Screen.Today.route
+                        isGuest -> Screen.Today.route
                         !onboardingDone -> Screen.Onboarding.route
-                        else -> Screen.Dashboard.route
+                        else -> Screen.Today.route
                     }
 
                     // Make the guest state explicit for anyone landing on the
                     // Dashboard without an account, so later launches route the
                     // same way and the guest banner shows correctly.
-                    if (!isLoggedIn && nextDestination == Screen.Dashboard.route) {
+                    if (!isLoggedIn && nextDestination == Screen.Today.route) {
                         onboardingPreferences.setGuestMode(true)
                     }
 
@@ -142,14 +144,14 @@ fun FreshTrackNavGraph(
                 onComplete = {
                     onboardingPreferences.setOnboardingCompleted()
                     onboardingPreferences.setGuestMode(true)
-                    navController.navigate(Screen.Dashboard.route) {
+                    navController.navigate(Screen.Today.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
                 },
                 onSkip = {
                     onboardingPreferences.setOnboardingCompleted()
                     onboardingPreferences.setGuestMode(true)
-                    navController.navigate(Screen.Dashboard.route) {
+                    navController.navigate(Screen.Today.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
                 }
@@ -168,13 +170,13 @@ fun FreshTrackNavGraph(
                 onLoginSuccess = {
                     claimLocalData()
                     onboardingPreferences.setGuestMode(false)
-                    navController.navigate(Screen.Dashboard.route) {
+                    navController.navigate(Screen.Today.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
                 onContinueAsGuest = {
                     onboardingPreferences.setGuestMode(true)
-                    navController.navigate(Screen.Dashboard.route) {
+                    navController.navigate(Screen.Today.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 }
@@ -200,7 +202,7 @@ fun FreshTrackNavGraph(
                 onRegisterSuccess = {
                     claimLocalData()
                     onboardingPreferences.setGuestMode(false)
-                    navController.navigate(Screen.Dashboard.route) {
+                    navController.navigate(Screen.Today.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 }
@@ -211,6 +213,25 @@ fun FreshTrackNavGraph(
         composable(Screen.TermsOfService.route) {
             TermsOfServiceScreen(
                 onNavigateBack = { navController.navigateUp() }
+            )
+        }
+
+        // ─── Today ────────────────────────────────────────────────────────────────
+        composable(Screen.Today.route) {
+            TodayScreen(
+                onNavigateToAddItem = {
+                    scannerState.clear()
+                    navController.navigate(Screen.AddProduct.route)
+                },
+                onNavigateToItemDetails = { itemId ->
+                    navController.navigate(Screen.ProductDetails.createRoute(itemId))
+                },
+                onNavigateToKitchen = {
+                    navController.navigate(Screen.ProductList.createRoute())
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                }
             )
         }
 
@@ -308,7 +329,7 @@ fun FreshTrackNavGraph(
                     // Clear guest mode flag so they land on Login, not Dashboard
                     onboardingPreferences.setGuestMode(false)
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                        popUpTo(Screen.Today.route) { inclusive = true }
                     }
                 }
             )

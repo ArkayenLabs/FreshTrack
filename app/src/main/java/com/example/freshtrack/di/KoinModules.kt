@@ -151,6 +151,10 @@ val preferencesModule = module {
  */
 val viewModelModule = module {
 
+    viewModel<TodayViewModel> {
+        TodayViewModel(itemRepository = get())
+    }
+
     viewModel<DashboardViewModel> {
         DashboardViewModel(itemRepository = get(), categoryRepository = get())
     }
