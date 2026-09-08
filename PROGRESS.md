@@ -29,6 +29,12 @@ was removed with it. Local changes queue in the outbox and go nowhere until the
 push/pull work lands. The Settings card says so rather than offering a button
 that does nothing.
 
+**Today Rescue is built.** The app now answers "what should I do" rather than
+only "what do I have": a deterministic ranked list of what is worth using,
+each row stating its reason. Ranking lives in the domain, separate from
+anything that might later generate suggestions — a model may explain the list
+but must never be able to put an item on it.
+
 Last verified state (run 8 Sep 2026, not inherited from an earlier session):
 `./gradlew testDebugUnitTest lintDebug assembleRelease` succeeds — 86 JVM unit
 tests pass, lint reports 0 errors, a signed minified APK is produced. 38
@@ -50,6 +56,11 @@ old `/pantries/{id}/products` shape and have not been updated for the new model.
 - Using 1 of 3 leaves **one** row at quantity 2, still ACTIVE, and appends
   `QUANTITY_USED` with quantity 1 — no synthetic second row, which is the
   behaviour the ledger was introduced to fix.
+- The rebrand renders: the app shows "GoodBefore" on device.
+- Today Rescue works end to end — empty state, then after adding an item due
+  today it reads "One food is worth using today" with a "Spinach · Due today
+  · x2" row, and "Use one" takes it to quantity 1 with `QUANTITY_USED|1` in
+  the ledger.
 
 Still unverified on a device: the widget, notification delivery and its
 "Mark as used" action, the CSV file picker, Google Sign-In, and the minified
@@ -156,9 +167,11 @@ release APK (only the debug build has been installed).
 - [ ] **Rebuild sync on the outbox.** Push queued operations, pull by cursor,
       order by server revision rather than device clock. The queue and its
       idempotency keys exist; the transport does not.
-- [ ] **Update the Firestore rules** for kitchens/items/events. The current
-      rules and their 38 tests still describe the old pantry/product shape, so
-      they pass while guarding a schema the client no longer writes.
+- [x] ~~**Update the Firestore rules.**~~ Done — kitchens/items/events, with
+      the ledger append-only (no update rule at all) and items required to
+      carry a string expiry so an epoch-millis client is refused. 48 tests,
+      verified meaningful by deliberately weakening three rules and confirming
+      exactly three failed. Still **not deployed**.
 - [ ] **Play Billing.** Nothing grants an entitlement, so every paid path is
       inert by construction.
 - [ ] **Legal & compliance** — see `COMPLIANCE.md`. The listing still claims
@@ -247,3 +260,10 @@ rediscovered as surprises.
   been shown any reason to say yes, and the target flow calls for asking only
   after they choose a reminder. Worth revisiting with the Today work rather
   than in isolation.
+- **Today has no undo.** Reversing a resolution has to net the use back out of
+  the ledger, which needs the reversal recorded on the event and therefore a
+  schema change. Snooze covers "not now" without destroying anything. Until
+  undo exists, an accidental "Use" can only be corrected by editing the item.
+- **Dashboard is now unreachable in normal use** but still routable and still
+  has its ViewModel and tests. Removing it belongs with the navigation rework,
+  not with the Today commit.
