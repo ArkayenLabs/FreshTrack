@@ -29,25 +29,40 @@ was removed with it. Local changes queue in the outbox and go nowhere until the
 push/pull work lands. The Settings card says so rather than offering a button
 that does nothing.
 
+**The app has a shell.** Today, Kitchen and Progress are three tabs in a bottom
+bar rather than one screen with links out of it, and the Dashboard is gone
+rather than merely unreachable — screen, ViewModel, Koin registration and its
+two tests all removed, net −358 lines. `ItemListViewModel` outlived the file it
+was named after and now has its own. Verified on a device, not only compiled:
+all three tabs switch, Kitchen keeps its tab highlighted despite its route
+carrying an optional argument, and system back from a tab returns to Today
+instead of leaving the app.
+
 **Today Rescue is built.** The app now answers "what should I do" rather than
 only "what do I have": a deterministic ranked list of what is worth using,
 each row stating its reason. Ranking lives in the domain, separate from
 anything that might later generate suggestions — a model may explain the list
 but must never be able to put an item on it.
 
-Last verified state (run 8 Sep 2026, not inherited from an earlier session):
-`./gradlew testDebugUnitTest lintDebug assembleRelease` succeeds — 86 JVM unit
-tests pass, lint reports 0 errors, a signed minified APK is produced. 38
-Firestore rules tests pass on the emulator, though the rules still describe the
-old `/pantries/{id}/products` shape and have not been updated for the new model.
+Last verified state (all four gates re-run 8 Sep 2026, against a clean tree):
+`./gradlew testDebugUnitTest lintDebug assembleRelease` succeeds — **117** JVM
+unit tests pass, lint reports 0 errors and 119 warnings, and a signed minified
+APK is produced. **48** Firestore rules tests pass on the emulator, against the
+current `kitchens/items/events` rules. The unit tests were re-run with
+`--rerun-tasks`; an up-to-date task is not a pass.
+
+The three figures above previously read 86, 38 and "the old
+`/pantries/{id}/products` shape". All three were stale — the undo commit added
+tests and the rules were rewritten — which is the recurring lesson that this
+paragraph is the easiest thing in the file to leave behind.
 
 **Verified on a Pixel_35 API 35 emulator**, not just compiled:
 
-- `connectedDebugAndroidTest` — 6 tests, 0 failures. These had never passed
-  before; see the commit for the three separate reasons.
+- `connectedDebugAndroidTest` — **10** tests, 0 failures. These had never
+  passed before the migration; see that commit for the three separate reasons.
 - The database is created with all five tables, and the seed callback
   populates all seven categories and four locations. Enums store by name.
-- Guest route works: onboarding Skip lands on the Dashboard with no account.
+- Guest route works: onboarding Skip lands on Today with no account.
 - Adding an item writes row, event and outbox entry together, with the event
   and the outbox entry sharing one operation id.
 - A date picked as 11 Sep is stored as `2026-09-11` and reads back as
@@ -167,11 +182,20 @@ release APK (only the debug build has been installed).
 - [ ] **Rebuild sync on the outbox.** Push queued operations, pull by cursor,
       order by server revision rather than device clock. The queue and its
       idempotency keys exist; the transport does not.
-- [x] ~~**Update the Firestore rules.**~~ Done — kitchens/items/events, with
-      the ledger append-only (no update rule at all) and items required to
-      carry a string expiry so an epoch-millis client is refused. 48 tests,
-      verified meaningful by deliberately weakening three rules and confirming
-      exactly three failed. Still **not deployed**.
+- [ ] **Deploy the Firestore rules.** Written, 48 tests, verified meaningful by
+      deliberately weakening three rules and confirming exactly three failed.
+      Still **not deployed**, but no longer an unknown: the live ruleset was
+      read back from the Rules API on 8 Sep 2026 and is the *old* FreshTrack
+      `pantries/products` version, published 5 Aug 2026. It is deny-by-default
+      throughout with no `allow ... if true` anywhere, so production is closed,
+      not open — this is housekeeping rather than a live exposure. `.firebaserc`
+      now names `freshtrack-3c379` so the deploy target is explicit instead of
+      living implicitly in a gitignored `google-services.json`.
+
+      Worth deciding rather than doing reflexively: the new rules cover
+      kitchens/items/events only, while the target model in the upgrade pack
+      also has locations, invites, entitlements and aiJobs. Deploying now means
+      deploying again when sync and household land.
 - [ ] **Play Billing.** Nothing grants an entitlement, so every paid path is
       inert by construction.
 - [ ] **Legal & compliance** — see `COMPLIANCE.md`. The listing still claims
@@ -213,6 +237,21 @@ Not bugs to fix today, but things that are true and should not be forgotten.
 - **CSV file picker unverified.** Parsing and dedupe are tested; choosing a real
   file through the picker is not.
 - **Store listing statistic** still uses the US figure. Play Console task.
+- **Progress still shows a sparkle icon in its empty state.** The tab icon was
+  moved off `Insights` because a sparkle motif as permanent navigation is
+  exactly what the design system rules out; the illustration inside the screen
+  is the same icon and was left for the design pass rather than widened into
+  the navigation commit.
+- **History is still reached from Settings**, not from Progress, though the two
+  answer the same question. Deliberately not moved with the navigation change;
+  it is a Progress-screen design decision, not a routing one.
+- **The theme is dark-only** and sets `window.statusBarColor`, which is
+  deprecated and ignored from API 35 where edge-to-edge is enforced — and the
+  app targets 36. There is no light scheme at all. This is the substance of the
+  design pass, not a cosmetic preference.
+- **The notification permission is still requested at first composition**, now
+  visibly: on a fresh install the system dialog appears over the onboarding
+  carousel, before the user has been shown any reason to say yes.
 
 ---
 
@@ -263,6 +302,6 @@ rediscovered as surprises.
 - ~~**Today has no undo.**~~ Built. Room is at **version 2**; the reversal is
   recorded as an event pointing at what it reverses, and the impact sums and
   the waste-free streak both net it out. `Migration(1, 2)` has a device test.
-- **Dashboard is now unreachable in normal use** but still routable and still
-  has its ViewModel and tests. Removing it belongs with the navigation rework,
-  not with the Today commit.
+- ~~**Dashboard is now unreachable in normal use**~~ Removed with the
+  navigation rework, as planned: route, screen, ViewModel, Koin registration
+  and its two instrumentation tests.
