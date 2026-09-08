@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,10 +36,7 @@ import com.example.freshtrack.R
 import com.example.freshtrack.domain.rescue.RescueEntry
 import com.example.freshtrack.domain.rescue.RescueList
 import com.example.freshtrack.domain.rescue.RescueReason
-import com.example.freshtrack.presentation.theme.UrgencyCritical
-import com.example.freshtrack.presentation.theme.UrgencyExpired
-import com.example.freshtrack.presentation.theme.UrgencySafe
-import com.example.freshtrack.presentation.theme.UrgencyWarning
+import com.example.freshtrack.presentation.theme.GoodBefore
 import com.example.freshtrack.presentation.viewmodel.TodayViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -268,11 +266,16 @@ private fun describe(entry: RescueEntry): String {
     return timing + qualifier
 }
 
-private fun accentFor(reason: RescueReason.Primary) = when (reason) {
-    is RescueReason.Overdue -> UrgencyExpired
-    RescueReason.DueToday -> UrgencyCritical
-    RescueReason.DueTomorrow -> UrgencyCritical
-    is RescueReason.DueInDays -> if (reason.days <= 3) UrgencyWarning else UrgencySafe
+@Composable
+private fun accentFor(reason: RescueReason.Primary): Color {
+    val urgency = GoodBefore.urgency
+    return when (reason) {
+        is RescueReason.Overdue -> urgency.expired
+        RescueReason.DueToday -> urgency.critical
+        RescueReason.DueTomorrow -> urgency.critical
+        is RescueReason.DueInDays ->
+            if (reason.days <= 3) urgency.warning else urgency.safe
+    }
 }
 
 /**
@@ -293,7 +296,7 @@ private fun NothingToRescue(
                 Icons.Outlined.CheckCircle,
                 contentDescription = null,
                 modifier = Modifier.size(56.dp),
-                tint = UrgencySafe
+                tint = GoodBefore.urgency.safe
             )
             Text(
                 text = "Nothing needs using yet",

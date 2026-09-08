@@ -162,11 +162,15 @@ fun ExpiryBadge(
     urgency: ExpiryUrgency,
     modifier: Modifier = Modifier
 ) {
+    // The text colour travels with the fill rather than being assumed white:
+    // the dark theme puts dark text on a light badge, and hard-coding white
+    // here is what made these unreadable in one theme or the other.
+    val palette = GoodBefore.urgency
     val (backgroundColor, textColor) = when (urgency) {
-        ExpiryUrgency.SAFE -> UrgencySafe to Color.White
-        ExpiryUrgency.WARNING -> UrgencyWarning to Color.White
-        ExpiryUrgency.CRITICAL -> UrgencyCritical to Color.White
-        ExpiryUrgency.EXPIRED -> UrgencyExpired to Color.White
+        ExpiryUrgency.SAFE -> palette.safe to palette.onSafe
+        ExpiryUrgency.WARNING -> palette.warning to palette.onWarning
+        ExpiryUrgency.CRITICAL -> palette.critical to palette.onCritical
+        ExpiryUrgency.EXPIRED -> palette.expired to palette.onExpired
     }
 
     val text = when {
