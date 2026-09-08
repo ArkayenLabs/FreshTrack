@@ -260,10 +260,9 @@ rediscovered as surprises.
   been shown any reason to say yes, and the target flow calls for asking only
   after they choose a reminder. Worth revisiting with the Today work rather
   than in isolation.
-- **Today has no undo.** Reversing a resolution has to net the use back out of
-  the ledger, which needs the reversal recorded on the event and therefore a
-  schema change. Snooze covers "not now" without destroying anything. Until
-  undo exists, an accidental "Use" can only be corrected by editing the item.
+- ~~**Today has no undo.**~~ Built. Room is at **version 2**; the reversal is
+  recorded as an event pointing at what it reverses, and the impact sums and
+  the waste-free streak both net it out. `Migration(1, 2)` has a device test.
 - **Dashboard is now unreachable in normal use** but still routable and still
   has its ViewModel and tests. Removing it belongs with the navigation rework,
   not with the Today commit.

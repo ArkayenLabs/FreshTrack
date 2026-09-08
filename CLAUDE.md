@@ -26,10 +26,12 @@
 | Sync | `data/sync/` — ProductSyncer + SyncWorker; `data/remote/firestore/` |
 | Session | `data/session/UserSession.kt` — current uid and active pantry |
 
-**DB version: 1** (`goodbefore_database`). The previous `freshtrack_database`
+**DB version: 2** (`goodbefore_database`). The previous `freshtrack_database`
 and its 1→7 migration chain were deleted during the GoodBefore model migration,
-which was only safe because there is no installed base. That is spent: every
-schema change from here needs a real `Migration(n, n+1)` and a test, and
+which was only safe because there is no installed base. That freedom is spent:
+`Migration(1, 2)` (undo's reversal columns) is the pattern to follow — every
+schema change needs a real `Migration(n, n+1)` plus a device test that proves
+existing rows survive and still mean the same thing.
 `fallbackToDestructiveMigration` must never be added.
 
 ---
@@ -46,6 +48,9 @@ schema change from here needs a real `Migration(n, n+1)` and a test, and
   (`dateKind`, `dateSource`, confidence, confirmation) so the UI can separate
   fact from estimate, and `ExpiryDate.canBeReplacedBy` decides what may
   overwrite what.
+- **A resolution can be undone, but nothing is erased.** The reversal is its
+  own event pointing at what it reverses; impact and the waste-free streak net
+  the two. Never implement undo by deleting the original event.
 - **History is an append-only ledger.** Impact is read from `item_events`, not
   counted off row state, so editing or deleting an item cannot rewrite what the
   user was told they did. Every mutation writes row, event and outbox entry in
