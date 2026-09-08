@@ -47,7 +47,8 @@ enum class ItemEventType {
         Index(value = ["itemId"]),
         Index(value = ["kitchenId", "occurredAt"]),
         // Idempotency. Replaying a sync operation must not double-count a use.
-        Index(value = ["operationId"], unique = true)
+        Index(value = ["operationId"], unique = true),
+        Index(value = ["reversesEventId"])
     ]
 )
 data class ItemEventEntity(
@@ -76,6 +77,21 @@ data class ItemEventEntity(
      * push, a replayed pull, a notification action tapped twice — inserts once.
      */
     val operationId: String,
+
+    /**
+     * The event this one reverses, for an [ItemEventType.ITEM_RESTORED].
+     *
+     * A reversal is recorded as a new event rather than by deleting the
+     * original, because the original did happen — the user really did tap
+     * "used", and then corrected it. Deleting it would make the ledger disagree
+     * with its own history, which is the property the ledger exists to have.
+     *
+     * The id lets an undone resolution be excluded exactly once. The type is
+     * carried alongside so the impact sums can net used and discarded totals
+     * separately without joining the table to itself.
+     */
+    val reversesEventId: String? = null,
+    val reversesEventType: ItemEventType? = null,
 
     /** Small JSON blob for event-specific detail. Never user content. */
     val metadata: String? = null,

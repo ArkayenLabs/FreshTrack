@@ -12,8 +12,10 @@ import com.example.freshtrack.domain.model.ExpiryDate
 import com.example.freshtrack.domain.model.Item
 import com.example.freshtrack.util.AppClock
 import com.example.freshtrack.util.IdGenerator
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -336,6 +338,115 @@ class ItemRepositoryImplTest {
         assertTrue(itemDao.rows.values.all { it.kitchenId == "personal-alice" })
         assertTrue(eventDao.events.all { it.kitchenId == "personal-alice" })
         assertTrue(outboxDao.operations.all { it.kitchenId == "personal-alice" })
+    }
+
+    // ─── Undo ────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `undoing a partial use puts the units back`() = runTest {
+        val id = repository.add(sampleItem(quantity = 3))
+        repository.use(id, amount = 2)
+
+        assertTrue(repository.undoLastResolution(id))
+
+        assertEquals(3, itemDao.rows.getValue(id).quantity)
+        assertEquals(ItemState.ACTIVE, itemDao.rows.getValue(id).state)
+    }
+
+    @Test
+    fun `undoing a full use makes the item active again`() = runTest {
+        val id = repository.add(sampleItem(quantity = 2))
+        repository.use(id, amount = 2)
+
+        assertTrue(repository.undoLastResolution(id))
+
+        val row = itemDao.rows.getValue(id)
+        assertEquals(ItemState.ACTIVE, row.state)
+        assertNull(row.resolvedAt)
+        assertEquals(2, row.quantity)
+    }
+
+    @Test
+    fun `undo records a reversal rather than deleting the original`() = runTest {
+        val id = repository.add(sampleItem(quantity = 3))
+        repository.use(id, amount = 1)
+        val use = eventDao.events.single { it.type == ItemEventType.QUANTITY_USED }
+
+        repository.undoLastResolution(id)
+
+        // The use did happen and then was corrected. Erasing it would leave a
+        // ledger that disagrees with its own history.
+        assertTrue(eventDao.events.any { it.id == use.id })
+        val reversal = eventDao.events.single { it.type == ItemEventType.ITEM_RESTORED }
+        assertEquals(use.id, reversal.reversesEventId)
+        assertEquals(ItemEventType.QUANTITY_USED, reversal.reversesEventType)
+        assertEquals(1, reversal.quantity)
+    }
+
+    @Test
+    fun `an undone use stops counting towards impact`() = runTest {
+        val id = repository.add(sampleItem(quantity = 3))
+        repository.use(id, amount = 2)
+        assertEquals(2, repository.observeImpact().first().itemsSaved)
+
+        repository.undoLastResolution(id)
+
+        assertEquals(0, repository.observeImpact().first().itemsSaved)
+    }
+
+    @Test
+    fun `an undone discard stops counting as waste`() = runTest {
+        val id = repository.add(sampleItem(quantity = 2))
+        repository.discard(id, amount = 1)
+        assertEquals(1, repository.observeImpact().first().itemsWasted)
+
+        repository.undoLastResolution(id)
+
+        assertEquals(0, repository.observeImpact().first().itemsWasted)
+    }
+
+    @Test
+    fun `the same resolution cannot be undone twice`() = runTest {
+        val id = repository.add(sampleItem(quantity = 3))
+        repository.use(id, amount = 1)
+
+        assertTrue(repository.undoLastResolution(id))
+        // A second tap must not keep crediting quantity that was never taken.
+        assertFalse(repository.undoLastResolution(id))
+        assertEquals(3, itemDao.rows.getValue(id).quantity)
+    }
+
+    @Test
+    fun `undo steps back one resolution at a time`() = runTest {
+        val id = repository.add(sampleItem(quantity = 5))
+        repository.use(id, amount = 1)
+        repository.use(id, amount = 2)
+
+        repository.undoLastResolution(id)
+
+        assertEquals(4, itemDao.rows.getValue(id).quantity)
+        assertEquals(1, repository.observeImpact().first().itemsSaved)
+    }
+
+    @Test
+    fun `undo reports nothing to do when there is no resolution`() = runTest {
+        val id = repository.add(sampleItem())
+
+        assertFalse(repository.undoLastResolution(id))
+    }
+
+    @Test
+    fun `undo queues a sync operation like any other change`() = runTest {
+        val id = repository.add(sampleItem(quantity = 2))
+        repository.use(id, amount = 1)
+        outboxDao.operations.clear()
+
+        repository.undoLastResolution(id)
+
+        assertEquals(
+            OutboxOperationType.RESTORE,
+            outboxDao.operations.single().operationType
+        )
     }
 
     @Test

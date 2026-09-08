@@ -240,17 +240,43 @@ class FakeItemEventDao : ItemEventDao {
     override suspend fun findByOperationId(operationId: String): ItemEventEntity? =
         events.firstOrNull { it.operationId == operationId }
 
+    /** Nets reversals out, mirroring the subtraction the SQL does. */
     override fun sumQuantityForType(kitchenId: String, type: ItemEventType): Flow<Int> =
         changes.map {
-            events.filter { it.kitchenId == kitchenId && it.type == type }
+            val resolved = events
+                .filter { it.kitchenId == kitchenId && it.type == type }
                 .sumOf { it.quantity ?: 0 }
+            val reversed = events
+                .filter {
+                    it.kitchenId == kitchenId &&
+                        it.type == ItemEventType.ITEM_RESTORED &&
+                        it.reversesEventType == type
+                }
+                .sumOf { it.quantity ?: 0 }
+            resolved - reversed
         }
 
     override fun getLastDiscardAt(kitchenId: String): Flow<Long?> = changes.map {
         events.filter {
-            it.kitchenId == kitchenId && it.type == ItemEventType.QUANTITY_DISCARDED
+            it.kitchenId == kitchenId &&
+                it.type == ItemEventType.QUANTITY_DISCARDED &&
+                !isReversed(it.id)
         }.maxOfOrNull { it.occurredAt }
     }
+
+    /** Insertion order is the tiebreak, mirroring the query's ORDER BY rowid. */
+    override suspend fun findLatestUnreversedResolution(itemId: String): ItemEventEntity? =
+        events.withIndex()
+            .filter { (_, e) ->
+                e.itemId == itemId &&
+                    (e.type == ItemEventType.QUANTITY_USED ||
+                        e.type == ItemEventType.QUANTITY_DISCARDED) &&
+                    !isReversed(e.id)
+            }
+            .maxWithOrNull(compareBy({ it.value.occurredAt }, { it.index }))
+            ?.value
+
+    private fun isReversed(eventId: String) = events.any { it.reversesEventId == eventId }
 
     override fun getFirstEventAt(kitchenId: String): Flow<Long?> = changes.map {
         events.filter { it.kitchenId == kitchenId }.minOfOrNull { it.occurredAt }

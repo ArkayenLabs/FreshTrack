@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.freshtrack.data.local.dao.CategoryDao
@@ -47,7 +48,7 @@ import kotlinx.coroutines.launch
         ItemEventEntity::class,
         OutboxEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -62,6 +63,33 @@ abstract class GoodBeforeDatabase : RoomDatabase() {
     companion object {
         const val DATABASE_NAME = "goodbefore_database"
 
+        /**
+         * Adds the two columns that let a resolution be undone.
+         *
+         * Additive and nullable, so every existing event stays valid and simply
+         * reverses nothing — which is exactly what those events mean.
+         *
+         * The index is not decoration: the queries that exclude an undone
+         * resolution look for the absence of a row pointing at it, and without
+         * it that becomes a scan of the whole ledger on every impact read.
+         */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE item_events ADD COLUMN reversesEventId TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE item_events ADD COLUMN reversesEventType TEXT DEFAULT NULL")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_item_events_reversesEventId " +
+                        "ON item_events(reversesEventId)"
+                )
+            }
+        }
+
+        /**
+         * Every migration, in one place, so the app and the migration test can
+         * never disagree about which migrations exist.
+         */
+        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2)
+
         @Volatile
         private var INSTANCE: GoodBeforeDatabase? = null
 
@@ -73,6 +101,7 @@ abstract class GoodBeforeDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                     .addCallback(SeedCallback())
+                    .addMigrations(*ALL_MIGRATIONS)
                     .build()
                     .also { INSTANCE = it }
             }

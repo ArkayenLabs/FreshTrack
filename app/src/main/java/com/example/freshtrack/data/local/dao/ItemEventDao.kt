@@ -47,26 +47,74 @@ interface ItemEventDao {
     // ─── Impact, derived from the ledger ─────────────────────────────────────
 
     /**
-     * Units resolved one way or the other.
+     * Units resolved one way or the other, net of anything undone.
      *
      * Sums quantity rather than counting rows, so using two of three units is
-     * two, not one. COALESCE because SUM over no rows is null, not zero.
+     * two, not one. Subtracts reversals, because an undone use is food the user
+     * explicitly told us they had not eaten after all — leaving it in would make
+     * impact disagree with the history it is derived from.
+     *
+     * COALESCE twice because SUM over no rows is null, not zero.
      */
     @Query(
         """
-        SELECT COALESCE(SUM(quantity), 0) FROM item_events
-        WHERE kitchenId = :kitchenId AND type = :type
+        SELECT COALESCE(
+            (SELECT SUM(quantity) FROM item_events
+             WHERE kitchenId = :kitchenId AND type = :type), 0
+        ) - COALESCE(
+            (SELECT SUM(quantity) FROM item_events
+             WHERE kitchenId = :kitchenId
+             AND type = 'ITEM_RESTORED'
+             AND reversesEventType = :type), 0
+        )
         """
     )
     fun sumQuantityForType(kitchenId: String, type: ItemEventType): Flow<Int>
 
+    /**
+     * When the user last actually threw something away.
+     *
+     * Excludes discards that were undone. Without that, tapping "Bin" by
+     * mistake would reset a waste-free streak that was never broken, and the
+     * correction would not bring it back.
+     */
     @Query(
         """
-        SELECT MAX(occurredAt) FROM item_events
-        WHERE kitchenId = :kitchenId AND type = 'QUANTITY_DISCARDED'
+        SELECT MAX(e.occurredAt) FROM item_events e
+        WHERE e.kitchenId = :kitchenId
+        AND e.type = 'QUANTITY_DISCARDED'
+        AND NOT EXISTS (
+            SELECT 1 FROM item_events r WHERE r.reversesEventId = e.id
+        )
         """
     )
     fun getLastDiscardAt(kitchenId: String): Flow<Long?>
+
+    /**
+     * The most recent resolution of this item that has not already been undone.
+     *
+     * Undo reverses one step at a time, so an already-reversed event must not be
+     * offered again — otherwise repeated taps would keep crediting quantity back
+     * that was never taken.
+     *
+     * Ordered by rowid as well as time, because two resolutions of the same item
+     * can land in the same millisecond — a fast double action, or a replayed
+     * batch — and "the latest" then has no answer. rowid is insertion order,
+     * which is exactly the tiebreak wanted.
+     */
+    @Query(
+        """
+        SELECT * FROM item_events e
+        WHERE e.itemId = :itemId
+        AND e.type IN ('QUANTITY_USED', 'QUANTITY_DISCARDED')
+        AND NOT EXISTS (
+            SELECT 1 FROM item_events r WHERE r.reversesEventId = e.id
+        )
+        ORDER BY e.occurredAt DESC, e.rowid DESC
+        LIMIT 1
+        """
+    )
+    suspend fun findLatestUnreversedResolution(itemId: String): ItemEventEntity?
 
     @Query("SELECT MIN(occurredAt) FROM item_events WHERE kitchenId = :kitchenId")
     fun getFirstEventAt(kitchenId: String): Flow<Long?>

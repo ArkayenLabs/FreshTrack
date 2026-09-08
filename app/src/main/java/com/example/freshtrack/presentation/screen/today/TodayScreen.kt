@@ -21,8 +21,10 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,8 +59,23 @@ fun TodayScreen(
     viewModel: TodayViewModel = koinViewModel()
 ) {
     val rescue by viewModel.rescue.collectAsState()
+    val undoPrompt by viewModel.undoPrompt.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Shown as a snackbar rather than an inline control: undo is a correction,
+    // not a step in the flow, and it should disappear once the moment passes.
+    LaunchedEffect(undoPrompt) {
+        val prompt = undoPrompt ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = prompt.message,
+            actionLabel = "Undo",
+            duration = SnackbarDuration.Short
+        )
+        if (result == SnackbarResult.ActionPerformed) viewModel.undo() else viewModel.dismissUndo()
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
@@ -107,8 +124,8 @@ fun TodayScreen(
                 RescueRow(
                     entry = entry,
                     onOpen = { onNavigateToItemDetails(entry.item.id) },
-                    onUse = { viewModel.use(entry.item.id) },
-                    onDiscard = { viewModel.discard(entry.item.id) },
+                    onUse = { viewModel.use(entry.item.id, entry.item.name) },
+                    onDiscard = { viewModel.discard(entry.item.id, entry.item.name) },
                     onSnooze = { viewModel.snoozeUntilTomorrow(entry.item.id) }
                 )
             }

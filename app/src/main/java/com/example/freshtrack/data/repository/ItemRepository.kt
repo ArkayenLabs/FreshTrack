@@ -73,6 +73,15 @@ interface ItemRepository {
     /** Accepts a recognised date as correct, pinning it against weaker sources. */
     suspend fun confirmDate(itemId: String)
 
+    /**
+     * Reverses the most recent use or discard of this item.
+     *
+     * Returns false when there is nothing left to undo. Reverses one step at a
+     * time, so calling it twice undoes two separate resolutions rather than
+     * crediting the same one back twice.
+     */
+    suspend fun undoLastResolution(itemId: String): Boolean
+
     suspend fun findDuplicate(name: String, expiry: LocalDate): Item?
     suspend fun import(items: List<Item>): ImportSummary
     suspend fun clearHistory()
@@ -343,6 +352,51 @@ class ItemRepositoryImpl(
         }
     }
 
+    /**
+     * Undoes a resolution by putting the units back and recording that we did.
+     *
+     * The reversal is a new event, not a deletion of the original. The original
+     * happened — the user really did tap "used" and then correct it — and
+     * removing it would leave a ledger that disagrees with its own history. The
+     * impact sums net the two, so the figures match what the user actually did
+     * without anything being erased.
+     */
+    override suspend fun undoLastResolution(itemId: String): Boolean {
+        val existing = itemDao.getItemByIdOnce(kitchen(), itemId) ?: return false
+        val resolution = eventDao.findLatestUnreversedResolution(itemId) ?: return false
+        val restored = resolution.quantity ?: return false
+        val now = clock.nowMillis()
+
+        // Two shapes to reverse. Resolving the whole batch changed the state and
+        // left the quantity alone; a partial use decremented it.
+        val row = if (existing.state != ItemState.ACTIVE) {
+            existing.copy(
+                state = ItemState.ACTIVE,
+                resolvedAt = null,
+                lastEditedBy = uid(),
+                updatedAt = now
+            )
+        } else {
+            existing.copy(
+                quantity = existing.quantity + restored,
+                lastEditedBy = uid(),
+                updatedAt = now
+            )
+        }
+
+        record(
+            row = row,
+            eventType = ItemEventType.ITEM_RESTORED,
+            quantity = restored,
+            operationType = OutboxOperationType.RESTORE,
+            at = now,
+            reversesEventId = resolution.id,
+            reversesEventType = resolution.type
+        ) { itemDao.update(row) }
+
+        return true
+    }
+
     override suspend fun import(items: List<Item>): ImportSummary {
         var imported = 0
         var skipped = 0
@@ -399,6 +453,8 @@ class ItemRepositoryImpl(
         quantity: Int?,
         operationType: OutboxOperationType,
         at: Long,
+        reversesEventId: String? = null,
+        reversesEventType: ItemEventType? = null,
         applyChange: suspend () -> Unit
     ) {
         val operationId = ids.newId()
@@ -413,7 +469,9 @@ class ItemRepositoryImpl(
                     actorUid = uid(),
                     quantity = quantity,
                     occurredAt = at,
-                    operationId = operationId
+                    operationId = operationId,
+                    reversesEventId = reversesEventId,
+                    reversesEventType = reversesEventType
                 )
             )
             outboxDao.enqueue(
