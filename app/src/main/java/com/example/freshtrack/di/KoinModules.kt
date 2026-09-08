@@ -155,10 +155,6 @@ val viewModelModule = module {
         TodayViewModel(itemRepository = get())
     }
 
-    viewModel<DashboardViewModel> {
-        DashboardViewModel(itemRepository = get(), categoryRepository = get())
-    }
-
     viewModel<ItemListViewModel> {
         ItemListViewModel(itemRepository = get(), categoryRepository = get())
     }

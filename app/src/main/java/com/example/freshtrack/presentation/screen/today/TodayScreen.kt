@@ -56,6 +56,7 @@ fun TodayScreen(
     onNavigateToItemDetails: (String) -> Unit,
     onNavigateToKitchen: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    bottomBar: @Composable () -> Unit = {},
     viewModel: TodayViewModel = koinViewModel()
 ) {
     val rescue by viewModel.rescue.collectAsState()
@@ -76,6 +77,7 @@ fun TodayScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = bottomBar,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },

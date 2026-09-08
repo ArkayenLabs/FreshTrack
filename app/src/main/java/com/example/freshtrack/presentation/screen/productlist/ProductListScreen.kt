@@ -27,10 +27,10 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductListScreen(
-    onNavigateBack: () -> Unit,
     onNavigateToAddProduct: () -> Unit,
     onNavigateToProductDetails: (String) -> Unit,
     initialFilter: String? = null,
+    bottomBar: @Composable () -> Unit = {},
     viewModel: ItemListViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -47,19 +47,15 @@ fun ProductListScreen(
     }
 
     Scaffold(
+        bottomBar = bottomBar,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "All Products",
+                        "Kitchen",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
                 },
                 actions = {
                     // Filter Button

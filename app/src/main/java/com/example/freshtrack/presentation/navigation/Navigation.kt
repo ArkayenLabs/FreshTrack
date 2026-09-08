@@ -17,7 +17,6 @@ import com.example.freshtrack.presentation.screen.auth.ForgotPasswordScreen
 import com.example.freshtrack.presentation.screen.auth.LoginScreen
 import com.example.freshtrack.presentation.screen.auth.RegisterScreen
 import com.example.freshtrack.presentation.screen.auth.TermsOfServiceScreen
-import com.example.freshtrack.presentation.screen.dashboard.DashboardScreen
 import com.example.freshtrack.presentation.screen.today.TodayScreen
 import com.example.freshtrack.presentation.screen.productlist.ProductListScreen
 import com.example.freshtrack.presentation.screen.addproduct.AddEditProductScreen
@@ -45,7 +44,6 @@ sealed class Screen(val route: String) {
     object ForgotPassword : Screen("forgot_password")
     object TermsOfService : Screen("terms_of_service")
     object Today : Screen("today")
-    object Dashboard : Screen("dashboard")
     object ProductList : Screen("product_list?filter={filter}") {
         fun createRoute(filter: String? = null) = if (filter != null) "product_list?filter=$filter" else "product_list"
     }
@@ -98,6 +96,24 @@ fun FreshTrackNavGraph(
         appScope.launch { runCatching { itemRepository.claimLocalData() } }
     }
 
+    // Tabs are places, not steps. Switching between them must not grow the back
+    // stack, and returning to one should find it as it was left — hence saveState
+    // and restoreState rather than a plain navigate.
+    fun navigateToTab(destination: TopLevelDestination) {
+        navController.navigate(destination.navRoute) {
+            popUpTo(Screen.Today.route) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    fun bottomBarFor(current: TopLevelDestination): @Composable () -> Unit = {
+        GoodBeforeBottomBar(
+            currentRoute = current.matchRoute,
+            onNavigate = ::navigateToTab
+        )
+    }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
@@ -121,8 +137,8 @@ fun FreshTrackNavGraph(
                         else -> Screen.Today.route
                     }
 
-                    // Make the guest state explicit for anyone landing on the
-                    // Dashboard without an account, so later launches route the
+                    // Make the guest state explicit for anyone landing on
+                    // Today without an account, so later launches route the
                     // same way and the guest banner shows correctly.
                     if (!isLoggedIn && nextDestination == Screen.Today.route) {
                         onboardingPreferences.setGuestMode(true)
@@ -226,34 +242,11 @@ fun FreshTrackNavGraph(
                 onNavigateToItemDetails = { itemId ->
                     navController.navigate(Screen.ProductDetails.createRoute(itemId))
                 },
-                onNavigateToKitchen = {
-                    navController.navigate(Screen.ProductList.createRoute())
-                },
+                onNavigateToKitchen = { navigateToTab(TopLevelDestination.KITCHEN) },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
-                }
-            )
-        }
-
-        // ─── Dashboard ────────────────────────────────────────────────────────────
-        composable(Screen.Dashboard.route) {
-            DashboardScreen(
-                onNavigateToProductList = {
-                    navController.navigate(Screen.ProductList.createRoute())
                 },
-                onNavigateToExpiringProducts = {
-                    navController.navigate(Screen.ProductList.createRoute("expiring"))
-                },
-                onNavigateToAddProduct = {
-                    scannerState.clear()
-                    navController.navigate(Screen.AddProduct.route)
-                },
-                onNavigateToProductDetails = { productId ->
-                    navController.navigate(Screen.ProductDetails.createRoute(productId))
-                },
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
-                }
+                bottomBar = bottomBarFor(TopLevelDestination.TODAY)
             )
         }
 
@@ -270,7 +263,6 @@ fun FreshTrackNavGraph(
         ) { backStackEntry ->
             val filter = backStackEntry.arguments?.getString("filter")
             ProductListScreen(
-                onNavigateBack = { navController.navigateUp() },
                 onNavigateToAddProduct = {
                     scannerState.clear()
                     navController.navigate(Screen.AddProduct.route)
@@ -278,7 +270,8 @@ fun FreshTrackNavGraph(
                 onNavigateToProductDetails = { productId ->
                     navController.navigate(Screen.ProductDetails.createRoute(productId))
                 },
-                initialFilter = filter
+                initialFilter = filter,
+                bottomBar = bottomBarFor(TopLevelDestination.KITCHEN)
             )
         }
 
@@ -324,9 +317,8 @@ fun FreshTrackNavGraph(
                 onNavigateBack = { navController.navigateUp() },
                 onNavigateToLicenses = { navController.navigate(Screen.OpenSourceLicenses.route) },
                 onNavigateToHistory = { navController.navigate(Screen.History.route) },
-                onNavigateToImpact = { navController.navigate(Screen.Impact.route) },
                 onSignOut = {
-                    // Clear guest mode flag so they land on Login, not Dashboard
+                    // Clear guest mode flag so they land on Login, not Today
                     onboardingPreferences.setGuestMode(false)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Today.route) { inclusive = true }
@@ -349,10 +341,10 @@ fun FreshTrackNavGraph(
             )
         }
 
-        // ─── Impact Dashboard ─────────────────────────────────────────────────────
+        // ─── Progress ─────────────────────────────────────────────────────────────
         composable(Screen.Impact.route) {
             ImpactScreen(
-                onNavigateBack = { navController.navigateUp() }
+                bottomBar = bottomBarFor(TopLevelDestination.PROGRESS)
             )
         }
 

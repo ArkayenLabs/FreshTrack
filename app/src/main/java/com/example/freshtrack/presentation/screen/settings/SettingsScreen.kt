@@ -42,7 +42,6 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToLicenses: () -> Unit,
     onNavigateToHistory: () -> Unit = {},
-    onNavigateToImpact: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel(),
     authViewModel: AuthViewModel = koinViewModel()
@@ -261,12 +260,6 @@ fun SettingsScreen(
                 title = "Data & Storage",
                 icon = Icons.Outlined.Storage
             ) {
-                SettingsItemCard(
-                    icon = Icons.Outlined.Insights,
-                    title = "Your Impact",
-                    description = "Waste-free days and used vs. wasted",
-                    onClick = onNavigateToImpact
-                )
                 SettingsItemCard(
                     icon = Icons.Outlined.History,
                     title = "History",
