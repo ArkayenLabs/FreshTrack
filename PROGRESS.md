@@ -35,10 +35,25 @@ tests pass, lint reports 0 errors, a signed minified APK is produced. 38
 Firestore rules tests pass on the emulator, though the rules still describe the
 old `/pantries/{id}/products` shape and have not been updated for the new model.
 
-**Nothing has been run on a device.** No emulator or handset was attached at any
-point, so the Koin graph, Room database creation and seeding, the widget,
-notification actions and the CSV file picker are compile- and unit-tested only.
-Treat "it builds" as exactly that.
+**Verified on a Pixel_35 API 35 emulator**, not just compiled:
+
+- `connectedDebugAndroidTest` — 6 tests, 0 failures. These had never passed
+  before; see the commit for the three separate reasons.
+- The database is created with all five tables, and the seed callback
+  populates all seven categories and four locations. Enums store by name.
+- Guest route works: onboarding Skip lands on the Dashboard with no account.
+- Adding an item writes row, event and outbox entry together, with the event
+  and the outbox entry sharing one operation id.
+- A date picked as 11 Sep is stored as `2026-09-11` and reads back as
+  "Sep 11, 2026 / 3 days". The UTC round trip through Material's picker does
+  not shift the day.
+- Using 1 of 3 leaves **one** row at quantity 2, still ACTIVE, and appends
+  `QUANTITY_USED` with quantity 1 — no synthetic second row, which is the
+  behaviour the ledger was introduced to fix.
+
+Still unverified on a device: the widget, notification delivery and its
+"Mark as used" action, the CSV file picker, Google Sign-In, and the minified
+release APK (only the debug build has been installed).
 
 ---
 
@@ -132,10 +147,12 @@ Treat "it builds" as exactly that.
 
 ## Next
 
-- [ ] **Run it on a device.** Highest priority and cheapest. The schema cutover
-      has never executed: nothing has confirmed the database is created, the
-      default categories and locations are seeded, or the dependency graph
-      resolves at startup.
+- [x] ~~**Run it on a device.**~~ Done — see the verified list above. The
+      cutover executes: database created and seeded, DI graph resolves, and the
+      write path behaves as designed.
+- [ ] **Exercise the surfaces the emulator run did not reach**: widget
+      placement and refresh, notification delivery and its action, the CSV
+      picker, Google Sign-In, and the *release* APK rather than the debug one.
 - [ ] **Rebuild sync on the outbox.** Push queued operations, pull by cursor,
       order by server revision rather than device clock. The queue and its
       idempotency keys exist; the transport does not.
@@ -166,8 +183,9 @@ Not bugs to fix today, but things that are true and should not be forgotten.
   different account signs in as the first action after the update, that account
   claims the previous user's unclaimed rows. Narrow, but real.
 - **Release build now builds, but is still unexercised.** A signed minified
-  APK is produced, and the heap that prevented it is fixed. Nobody has
-  installed it and confirmed the barcode lookup survives R8.
+  APK is produced, and the heap that prevented it is fixed. Only the debug
+  build has been installed, so nobody has confirmed the barcode lookup or
+  Room's generated code survive R8.
 - **Store listing wording still says "no data collection".** Analytics is now
   off-by-default and opt-in, but the listing copy and Data Safety form still
   need updating to match, and the "no data collection" phrase should become
@@ -176,7 +194,7 @@ Not bugs to fix today, but things that are true and should not be forgotten.
   hand is still possible. `findDuplicate` exists on the repository and the add
   flow does not call it.
 - **Widget rendering unverified.** Provider registers and the refresh path runs,
-  but it has not been placed on a real home screen.
+  but it has not been placed on a home screen, on the emulator or otherwise.
 - **Notification action unverified.** "Mark as used" is wired but has not been
   tapped on a device.
 - **CSV file picker unverified.** Parsing and dedupe are tested; choosing a real
@@ -224,3 +242,8 @@ rediscovered as surprises.
   destructive fallback must never be added to the builder.
 - **`notificationEnabled` survives with no UI.** Carried deliberately; the
   expiry query honours it and dropping it would change behaviour silently.
+- **Notification permission is requested at first composition**, from both
+  MainActivity and DashboardScreen. It works, but it asks before the user has
+  been shown any reason to say yes, and the target flow calls for asking only
+  after they choose a reminder. Worth revisiting with the Today work rather
+  than in isolation.
