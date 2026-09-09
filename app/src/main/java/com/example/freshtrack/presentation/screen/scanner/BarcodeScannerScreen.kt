@@ -21,21 +21,44 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.example.freshtrack.domain.capture.DateCandidate
+import com.example.freshtrack.domain.capture.PrintedDateParser
+import com.example.freshtrack.domain.model.ConfidenceBand
+import com.example.freshtrack.domain.model.DateKind
+import com.example.freshtrack.domain.model.DateSource
+import com.example.freshtrack.domain.model.ExpiryDate
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import kotlinx.coroutines.launch
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
+
+/**
+ * What the camera is being pointed at.
+ *
+ * One screen rather than two because the camera plumbing, the permission
+ * handling and the torch are identical; only the analyzer and what comes back
+ * differ.
+ */
+enum class ScanMode { BARCODE, DATE }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BarcodeScannerScreen(
     onBarcodeScanned: (String) -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    mode: ScanMode = ScanMode.BARCODE,
+    onDateScanned: (ExpiryDate) -> Unit = {},
+    today: LocalDate = LocalDate.now()
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Holding a reading freezes the analyzer, so what is on screen stays the
+    // thing being asked about rather than shifting under the question.
+    var reading by remember { mutableStateOf<DateReading?>(null) }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -66,7 +89,11 @@ fun BarcodeScannerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan Barcode") },
+                title = {
+                    Text(
+                        if (mode == ScanMode.DATE) "Scan date label" else "Scan barcode"
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, "Back")
@@ -97,20 +124,38 @@ fun BarcodeScannerScreen(
         ) {
             if (hasCameraPermission) {
                 CameraPreview(
-                    onBarcodeScanned = { barcode ->
-                        kotlinx.coroutines.MainScope().launch {
-                            snackbarHostState.showSnackbar("Barcode: $barcode")
+                    mode = mode,
+                    paused = reading != null,
+                    onBarcodeScanned = onBarcodeScanned,
+                    onTextRecognised = { text ->
+                        val candidates = PrintedDateParser.parse(text, today)
+                        if (candidates.isNotEmpty()) {
+                            reading = DateReading(text = text, candidates = candidates)
                         }
-                        // Navigation is handled by onBarcodeScanned callback in Navigation.kt
-                        onBarcodeScanned(barcode)
                     },
                     onCameraControlReady = { control ->
                         cameraControl = control
                     }
                 )
 
-                // Scanning overlay
-                ScanningOverlay()
+                ScanningOverlay(mode)
+
+                reading?.let { found ->
+                    DateReviewSheet(
+                        reading = found,
+                        onDismiss = { reading = null },
+                        onConfirm = { candidate ->
+                            onDateScanned(
+                                ExpiryDate.recognised(
+                                    value = candidate.value,
+                                    kind = candidate.kind,
+                                    source = DateSource.PRINTED_OCR,
+                                    confidence = candidate.confidence
+                                ).confirmedAt(System.currentTimeMillis())
+                            )
+                        }
+                    )
+                }
 
             } else {
                 // Permission denied state
@@ -127,7 +172,11 @@ fun BarcodeScannerScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = "Please grant camera permission to scan barcodes",
+                        text = if (mode == ScanMode.DATE) {
+                            "Grant camera access to read the date printed on a packet"
+                        } else {
+                            "Grant camera access to scan a barcode"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -147,20 +196,34 @@ fun BarcodeScannerScreen(
 
 @Composable
 private fun CameraPreview(
+    mode: ScanMode,
+    paused: Boolean,
     onBarcodeScanned: (String) -> Unit,
+    onTextRecognised: (String) -> Unit,
     onCameraControlReady: (CameraControl) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val barcodeScanner = remember { BarcodeScanning.getClient() }
+    val textRecogniser = remember {
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
 
     var isScanning by remember { mutableStateOf(false) }
+
+    // The analyzer runs on a camera thread and reads these, so they have to be
+    // the live values rather than the ones captured when the view was built.
+    val pausedNow by rememberUpdatedState(paused)
+    val modeNow by rememberUpdatedState(mode)
+    val onBarcode by rememberUpdatedState(onBarcodeScanned)
+    val onText by rememberUpdatedState(onTextRecognised)
 
     DisposableEffect(Unit) {
         onDispose {
             cameraExecutor.shutdown()
             barcodeScanner.close()
+            textRecogniser.close()
         }
     }
 
@@ -183,17 +246,22 @@ private fun CameraPreview(
                     .build()
                     .also { analysis ->
                         analysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                            if (!isScanning) {
-                                processImageProxy(
+                            when {
+                                pausedNow -> imageProxy.close()
+                                modeNow == ScanMode.DATE -> recogniseText(
+                                    imageProxy = imageProxy,
+                                    recogniser = textRecogniser,
+                                    onText = { onText(it) }
+                                )
+                                isScanning -> imageProxy.close()
+                                else -> processImageProxy(
                                     imageProxy = imageProxy,
                                     barcodeScanner = barcodeScanner,
                                     onBarcodeDetected = { barcode ->
                                         isScanning = true
-                                        onBarcodeScanned(barcode)
+                                        onBarcode(barcode)
                                     }
                                 )
-                            } else {
-                                imageProxy.close()
                             }
                         }
                     }
@@ -225,7 +293,7 @@ private fun CameraPreview(
 }
 
 @Composable
-private fun ScanningOverlay() {
+private fun ScanningOverlay(mode: ScanMode) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -248,7 +316,11 @@ private fun ScanningOverlay() {
                 )
             ) {
                 Text(
-                    text = "Point camera at barcode",
+                    text = if (mode == ScanMode.DATE) {
+                        "Point the camera at the printed date"
+                    } else {
+                        "Point camera at barcode"
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(16.dp)
                 )
@@ -288,4 +360,165 @@ private fun processImageProxy(
     } else {
         imageProxy.close()
     }
+}
+/** A frozen reading: what the camera saw, and what it could mean. */
+private data class DateReading(
+    val text: String,
+    val candidates: List<DateCandidate>
+)
+
+/**
+ * The confirmation step between reading a date and believing it.
+ *
+ * Nothing recognised becomes inventory truth without passing through here.
+ * The recognised text is shown alongside the candidates because the failure
+ * this is guarding against is not a bad parse — it is a misread digit, and the
+ * only person who can catch that is the one holding the packet.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateReviewSheet(
+    reading: DateReading,
+    onDismiss: () -> Unit,
+    onConfirm: (DateCandidate) -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = if (reading.candidates.size > 1) {
+                    "This date can be read two ways"
+                } else {
+                    "Is this the date?"
+                },
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            if (reading.candidates.size > 1) {
+                Text(
+                    text = "The label does not say which comes first, the day or " +
+                        "the month. Pick the one that matches the packet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Read from the packet",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = reading.text.trim().take(120),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
+            reading.candidates.forEach { candidate ->
+                CandidateRow(candidate = candidate, onConfirm = { onConfirm(candidate) })
+            }
+
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text("None of these — scan again")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CandidateRow(candidate: DateCandidate, onConfirm: () -> Unit) {
+    val date = ExpiryDate.recognised(
+        value = candidate.value,
+        kind = candidate.kind,
+        source = DateSource.PRINTED_OCR,
+        confidence = candidate.confidence
+    )
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        onClick = onConfirm
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = candidate.value.format(REVIEW_DATE_FORMAT),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    // Kind and confidence together, because "best before" and
+                    // "use by" are different promises and a medium-confidence
+                    // read is exactly the one that looks right and is not.
+                    text = "${kindLabel(candidate.kind)} · ${bandLabel(date.band)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = "Use this",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+private val REVIEW_DATE_FORMAT: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM yyyy")
+
+private fun kindLabel(kind: DateKind): String = when (kind) {
+    DateKind.BEST_BEFORE -> "Best before"
+    DateKind.USE_BY -> "Use by"
+    DateKind.SELL_BY -> "Sell by"
+    DateKind.OPENED_UNTIL -> "Once opened"
+    DateKind.FROZEN_UNTIL -> "Once frozen"
+    DateKind.ESTIMATED -> "Estimated"
+    // The label carried a date but did not say which kind, and saying so is
+    // more honest than picking one.
+    DateKind.UNKNOWN -> "Date kind not stated"
+}
+
+private fun bandLabel(band: ConfidenceBand): String = when (band) {
+    ConfidenceBand.HIGH -> "clear read"
+    ConfidenceBand.MEDIUM -> "worth checking"
+    ConfidenceBand.LOW -> "unsure"
+}
+
+/**
+ * Runs text recognition over one frame and hands back everything it read.
+ *
+ * The whole block goes to the parser rather than a single line, because a date
+ * and the label introducing it are frequently recognised as separate lines and
+ * the association between them is what tells a best-before from a packing date.
+ */
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
+private fun recogniseText(
+    imageProxy: ImageProxy,
+    recogniser: com.google.mlkit.vision.text.TextRecognizer,
+    onText: (String) -> Unit
+) {
+    val mediaImage = imageProxy.image
+    if (mediaImage == null) {
+        imageProxy.close()
+        return
+    }
+    val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+    recogniser.process(image)
+        .addOnSuccessListener { result -> if (result.text.isNotBlank()) onText(result.text) }
+        .addOnCompleteListener { imageProxy.close() }
 }

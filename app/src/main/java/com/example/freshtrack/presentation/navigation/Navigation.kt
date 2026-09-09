@@ -23,7 +23,9 @@ import com.example.freshtrack.presentation.screen.addproduct.AddEditProductScree
 import com.example.freshtrack.presentation.screen.licenses.CustomOSSLicensesScreen
 import com.example.freshtrack.presentation.screen.productdetails.ProductDetailsScreen
 import com.example.freshtrack.presentation.screen.settings.SettingsScreen
+import com.example.freshtrack.domain.model.ExpiryDate
 import com.example.freshtrack.presentation.screen.scanner.BarcodeScannerScreen
+import com.example.freshtrack.presentation.screen.scanner.ScanMode
 import com.example.freshtrack.presentation.screen.onboarding.OnboardingScreen
 import com.example.freshtrack.presentation.screen.splash.SplashScreen
 import com.example.freshtrack.presentation.screen.history.HistoryScreen
@@ -57,7 +59,9 @@ sealed class Screen(val route: String) {
         fun createRoute(productId: String) = "product_details/$productId"
     }
     object Settings : Screen("settings")
-    object BarcodeScanner : Screen("barcode_scanner")
+    object Scanner : Screen("scanner?mode={mode}") {
+        fun createRoute(mode: ScanMode) = "scanner?mode=${mode.name}"
+    }
     object History : Screen("history")
     object Impact : Screen("impact")
 }
@@ -69,12 +73,21 @@ class ScannerState {
     var scannedBarcode by mutableStateOf<String?>(null)
         private set
 
+    /** A date read off a packet and confirmed by the user in the review sheet. */
+    var scannedExpiry by mutableStateOf<ExpiryDate?>(null)
+        private set
+
     fun setBarcode(barcode: String) {
         scannedBarcode = barcode
     }
 
+    fun setExpiry(expiry: ExpiryDate) {
+        scannedExpiry = expiry
+    }
+
     fun clear() {
         scannedBarcode = null
+        scannedExpiry = null
     }
 }
 
@@ -280,12 +293,16 @@ fun FreshTrackNavGraph(
             AddEditProductScreen(
                 productId = null,
                 scannedBarcode = scannerState.scannedBarcode,
+                scannedExpiry = scannerState.scannedExpiry,
                 onNavigateBack = {
                     scannerState.clear()
                     navController.navigateUp()
                 },
                 onNavigateToScanner = {
-                    navController.navigate(Screen.BarcodeScanner.route)
+                    navController.navigate(Screen.Scanner.createRoute(ScanMode.BARCODE))
+                },
+                onNavigateToDateScanner = {
+                    navController.navigate(Screen.Scanner.createRoute(ScanMode.DATE))
                 }
             )
         }
@@ -301,12 +318,16 @@ fun FreshTrackNavGraph(
             AddEditProductScreen(
                 productId = productId,
                 scannedBarcode = scannerState.scannedBarcode,
+                scannedExpiry = scannerState.scannedExpiry,
                 onNavigateBack = {
                     scannerState.clear()
                     navController.navigateUp()
                 },
                 onNavigateToScanner = {
-                    navController.navigate(Screen.BarcodeScanner.route)
+                    navController.navigate(Screen.Scanner.createRoute(ScanMode.BARCODE))
+                },
+                onNavigateToDateScanner = {
+                    navController.navigate(Screen.Scanner.createRoute(ScanMode.DATE))
                 }
             )
         }
@@ -366,10 +387,27 @@ fun FreshTrackNavGraph(
         }
 
         // ─── Barcode Scanner ──────────────────────────────────────────────────────
-        composable(Screen.BarcodeScanner.route) {
+        composable(
+            route = Screen.Scanner.route,
+            arguments = listOf(
+                navArgument("mode") {
+                    type = NavType.StringType
+                    defaultValue = ScanMode.BARCODE.name
+                }
+            )
+        ) { backStackEntry ->
+            val mode = backStackEntry.arguments?.getString("mode")
+                ?.let { runCatching { ScanMode.valueOf(it) }.getOrNull() }
+                ?: ScanMode.BARCODE
+
             BarcodeScannerScreen(
+                mode = mode,
                 onBarcodeScanned = { barcode ->
                     scannerState.setBarcode(barcode)
+                    navController.navigateUp()
+                },
+                onDateScanned = { expiry ->
+                    scannerState.setExpiry(expiry)
                     navController.navigateUp()
                 },
                 onNavigateBack = { navController.navigateUp() }

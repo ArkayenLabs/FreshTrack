@@ -78,7 +78,7 @@ class AddEditItemViewModel(
                     expiryDate = item.expiry.value,
                     // Carried so an unchanged date keeps the provenance it had
                     // instead of being downgraded to "the user typed this".
-                    loadedExpiry = item.expiry,
+                    carriedExpiry = item.expiry,
                     quantity = item.quantity.toString(),
                     notes = item.notes.orEmpty(),
                     imageUri = item.imageUri,
@@ -125,10 +125,27 @@ class AddEditItemViewModel(
 
     fun updateExpiryDate(date: LocalDate) = _uiState.update {
         // Picking a date makes it the user's, superseding whatever it was.
-        it.copy(expiryDate = date, loadedExpiry = null)
+        it.copy(expiryDate = date, carriedExpiry = null)
     }
 
     fun updateDateKind(kind: DateKind) = _uiState.update { it.copy(dateKind = kind) }
+
+    /**
+     * Takes a date the user confirmed in the capture review sheet.
+     *
+     * It fills the picker like any other date, but it also carries its own
+     * provenance, so saving without touching it again records that this came
+     * off a packet rather than out of someone's head. Editing the date
+     * afterwards drops that, which is [updateExpiryDate]'s existing behaviour
+     * and the correct one: a changed date is the user's.
+     */
+    fun applyScannedExpiry(expiry: ExpiryDate) = _uiState.update {
+        it.copy(
+            expiryDate = expiry.value,
+            carriedExpiry = expiry,
+            dateKind = expiry.kind
+        )
+    }
 
     fun updateQuantity(quantity: String) {
         if (quantity.isEmpty() || quantity.all(Char::isDigit)) {
@@ -168,7 +185,7 @@ class AddEditItemViewModel(
                 val now = clock.nowMillis()
                 // Keep the loaded provenance when the date was not touched;
                 // otherwise this is the user's own date.
-                val expiryDate = state.loadedExpiry?.takeIf { it.value == expiry }
+                val expiryDate = state.carriedExpiry?.takeIf { it.value == expiry }
                     ?: ExpiryDate.enteredByUser(expiry, state.dateKind, now)
 
                 val item = Item(
@@ -212,7 +229,8 @@ data class AddEditItemUiState(
     val expiryDate: LocalDate? = null,
     val dateKind: DateKind = DateKind.BEST_BEFORE,
     /** Provenance of a date loaded for editing, kept while it is unchanged. */
-    val loadedExpiry: ExpiryDate? = null,
+    /** Provenance to keep if the date is saved unchanged, from load or capture. */
+    val carriedExpiry: ExpiryDate? = null,
     val quantity: String = "",
     val notes: String = "",
     val imageUri: String? = null,

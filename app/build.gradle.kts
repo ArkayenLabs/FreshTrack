@@ -122,6 +122,10 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.5.1")
     implementation("androidx.camera:camera-view:1.5.1")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    // Bundled rather than the Play Services variant: the unbundled one downloads
+    // its model on first use, and reading a date off a packet is a free,
+    // offline-first capability that must work the first time with no network.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 
     // Home-screen widget
     implementation(libs.glance.appwidget)

@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.freshtrack.domain.model.DateSource
+import com.example.freshtrack.domain.model.ExpiryDate
 import com.example.freshtrack.presentation.viewmodel.AddEditItemViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.koin.androidx.compose.koinViewModel
@@ -43,7 +45,9 @@ fun AddEditProductScreen(
     productId: String?,
     onNavigateBack: () -> Unit,
     scannedBarcode: String? = null,
+    scannedExpiry: ExpiryDate? = null,
     onNavigateToScanner: () -> Unit,
+    onNavigateToDateScanner: () -> Unit = {},
     viewModel: AddEditItemViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -56,6 +60,10 @@ fun AddEditProductScreen(
     }
 
     // Update barcode from scanner
+    LaunchedEffect(scannedExpiry) {
+        scannedExpiry?.let { viewModel.applyScannedExpiry(it) }
+    }
+
     LaunchedEffect(scannedBarcode) {
         scannedBarcode?.let { viewModel.updateBarcode(it) }
     }
@@ -214,6 +222,34 @@ fun AddEditProductScreen(
                         expiryDate = uiState.expiryDate,
                         onDateSelected = { viewModel.updateExpiryDate(it) }
                     )
+
+                    // Reading the date off the packet is the fast path, but it
+                    // sits beside the picker rather than replacing it: the
+                    // manual route stays one tap away, which is what makes it
+                    // safe for the camera to refuse an unclear label.
+                    OutlinedButton(
+                        onClick = onNavigateToDateScanner,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.DocumentScanner,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Scan the printed date")
+                    }
+
+                    if (uiState.carriedExpiry?.source == DateSource.PRINTED_OCR) {
+                        // Says where the date came from, so an item whose date
+                        // was read rather than typed is visibly so.
+                        Text(
+                            text = "Read from the packet and confirmed by you.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
                     // Quantity
                     OutlinedTextField(
