@@ -64,9 +64,11 @@ object ReceiptParser {
      * is the only thing here that survives to be shown or stored.
      */
     private val SENSITIVE = listOf(
-        "VISA", "MASTERCARD", "MAESTRO", "RUPAY", "AMEX", "CREDIT", "DEBIT",
-        "CARD", "AID", "AUTH", "APPROVAL", "TERMINAL", "MERCHANT", "MID", "TID",
-        "GSTIN", "GST NO", "PAN NO", "VAT NO", "TIN", "UPI", "ACCOUNT", "IBAN"
+        "VISA", "MASTERCARD", "MAESTRO", "AMEX", "AMERICAN EXPRESS", "DISCOVER",
+        "CREDIT", "DEBIT", "CARD", "CHIP", "CONTACTLESS", "PIN VERIFIED",
+        "AID", "AUTH", "APPROVAL", "TERMINAL", "MERCHANT", "MID", "TID",
+        "EBT", "SNAP", "ACCOUNT", "IBAN", "SORT CODE",
+        "VAT NO", "VAT REG", "TAX ID", "EIN"
     )
 
     /** A masked card number in any of the usual shapes, plus long digit runs. */
@@ -77,24 +79,34 @@ object ReceiptParser {
     /** Real lines on a receipt that are simply not shopping. */
     private val NOT_AN_ITEM = listOf(
         "SUBTOTAL", "SUB TOTAL", "TOTAL", "GRAND TOTAL", "NET", "GROSS",
-        "TAX", "CGST", "SGST", "IGST", "VAT", "DISCOUNT", "SAVINGS", "SAVED",
-        "ROUND OFF", "ROUNDING", "AMOUNT DUE", "BALANCE", "CHANGE", "CASH",
-        "TENDER", "TENDERED", "PAID", "REFUND", "INVOICE", "BILL NO", "RECEIPT",
-        "CASHIER", "COUNTER", "TILL", "STORE", "BRANCH", "THANK", "VISIT",
-        "WELCOME", "CUSTOMER COPY", "WWW", "HTTP", "QTY", "ITEM", "DESCRIPTION",
-        "PRICE", "RATE", "MRP"
+        "TAX", "SALES TAX", "VAT", "DISCOUNT", "SAVINGS", "SAVED", "COUPON",
+        "ROUND", "AMOUNT DUE", "BALANCE", "CHANGE", "CASH", "TENDER",
+        "TENDERED", "PAID", "REFUND", "VOID", "INVOICE", "RECEIPT", "ORDER NO",
+        "CASHIER", "CHECKOUT", "TILL", "LANE", "STORE", "BRANCH", "THANK",
+        "VISIT", "WELCOME", "CUSTOMER COPY", "WWW", "HTTP",
+        "LOYALTY", "CLUBCARD", "NECTAR", "MEMBER", "POINTS", "REWARDS",
+        "QTY", "ITEM", "DESCRIPTION", "PRICE", "RATE"
     )
 
+    // Deliberately short. "$" is read as USD, which is right far more often
+    // than not for this product's markets but is a real assumption: a Canadian
+    // or Australian receipt prints the same symbol. Currency is only ever used
+    // for display, never for arithmetic across currencies.
     private val CURRENCIES = mapOf(
-        "₹" to "INR", "RS." to "INR", "RS " to "INR", "INR" to "INR",
         "$" to "USD", "USD" to "USD",
         "£" to "GBP", "GBP" to "GBP",
         "€" to "EUR", "EUR" to "EUR"
     )
 
-    /** A trailing amount, with or without a symbol in front of it. */
+    /**
+     * A trailing amount, with or without a symbol in front of it.
+     *
+     * The symbol class is every currency sign rather than the handful this
+     * product targets, so that an unexpected one is stripped off the price
+     * instead of being left stuck to the end of the item's name.
+     */
     private val TRAILING_PRICE =
-        Regex("""[₹$£€]?\s*(\d{1,3}(?:,\d{3})*|\d+)(?:[.](\d{1,2}))?\s*$""")
+        Regex("""\p{Sc}?\s*(\d{1,3}(?:,\d{3})*|\d+)(?:[.](\d{1,2}))?\s*$""")
 
     /** "2 x ", "3 @ ", "2 * " at the start of a line. */
     private val LEADING_COUNT = Regex("""^(\d{1,4})\s*[xX*@]\s*""")
@@ -112,25 +124,28 @@ object ReceiptParser {
      */
     private val CATEGORY_WORDS = listOf(
         "Dairy" to listOf(
-            "MILK", "CURD", "DAHI", "CHEESE", "PANEER", "BUTTER", "GHEE",
-            "YOGURT", "YOGHURT", "CREAM", "LASSI"
+            "MILK", "CHEESE", "CHEDDAR", "BRIE", "BUTTER", "YOGHURT", "YOGURT",
+            "CREAM", "EGG", "EGGS"
         ),
         "Bakery" to listOf(
-            "BREAD", "BUN", "PAV", "ROTI", "NAAN", "CROISSANT", "CAKE",
-            "BISCUIT", "COOKIE", "RUSK", "MUFFIN"
+            "BREAD", "LOAF", "BAGUETTE", "BUN", "ROLL", "BAGEL", "CROISSANT",
+            "CAKE", "MUFFIN", "SCONE", "PASTRY", "BISCUIT", "COOKIE"
         ),
         "Beverages" to listOf(
-            "JUICE", "WATER", "COLA", "SODA", "TEA", "COFFEE", "BEER",
-            "WINE", "DRINK", "SQUASH"
+            "JUICE", "WATER", "COLA", "SODA", "LEMONADE", "SQUASH", "TEA",
+            "COFFEE", "BEER", "WINE", "CIDER", "DRINK"
         ),
         "Fresh Produce" to listOf(
-            "TOMATO", "ONION", "POTATO", "APPLE", "BANANA", "SPINACH", "PALAK",
-            "CARROT", "CUCUMBER", "LEMON", "MANGO", "GRAPE", "CHILLI",
-            "CORIANDER", "FRUIT", "VEG", "LETTUCE", "BROCCOLI"
+            "TOMATO", "ONION", "POTATO", "APPLE", "BANANA", "SPINACH", "KALE",
+            "CARROT", "CUCUMBER", "LEMON", "LIME", "ORANGE", "GRAPE", "BERRY",
+            "BERRIES", "STRAWBERR", "LETTUCE", "SALAD", "BROCCOLI", "PEPPER",
+            "COURGETTE", "ZUCCHINI", "AUBERGINE", "EGGPLANT", "PARSNIP",
+            "CELERY", "MUSHROOM", "AVOCADO", "CORIANDER", "CILANTRO"
         ),
         "Pantry" to listOf(
-            "RICE", "DAL", "ATTA", "FLOUR", "OIL", "SUGAR", "SALT", "PASTA",
-            "NOODLE", "MASALA", "SPICE", "PULSE", "CEREAL", "OATS", "HONEY"
+            "RICE", "PASTA", "NOODLE", "FLOUR", "SUGAR", "SALT", "OIL",
+            "CEREAL", "OATS", "GRANOLA", "HONEY", "LENTIL", "BEANS", "TINNED",
+            "CANNED"
         )
     )
 

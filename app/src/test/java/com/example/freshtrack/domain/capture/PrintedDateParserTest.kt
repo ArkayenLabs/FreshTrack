@@ -8,6 +8,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.util.Locale
 
 class PrintedDateParserTest {
 
@@ -95,8 +96,8 @@ class PrintedDateParserTest {
 
     @Test
     fun `a packing date is not offered as an expiry`() {
-        // Indian packaging routinely prints both. Reading the packing date as
-        // the expiry would report fresh food as long overdue.
+        // Plenty of packaging prints a packed-on date beside the expiry.
+        // Reading the wrong one reports fresh food as long overdue.
         val candidates = parse("MFD 12/03/2025 EXP 12/03/2027")
 
         assertTrue(candidates.none { it.value.year == 2025 })
@@ -148,6 +149,34 @@ class PrintedDateParserTest {
     fun `text with no date in it yields nothing`() {
         assertTrue(parse("KEEP REFRIGERATED BELOW 5 C").isEmpty())
         assertTrue(parse("").isEmpty())
+    }
+
+    // ─── Where the reader is ────────────────────────────────────────────────
+
+    @Test
+    fun `the preferred reading follows the locale`() {
+        // The United States writes the month first and the United Kingdom does
+        // not, so the same label means two different dates depending on who is
+        // holding it. Defaulting to one of them would quietly be wrong for the
+        // other half of the audience.
+        assertEquals(DateOrdering.MONTH_FIRST, DateOrdering.forLocale(Locale.US))
+        assertEquals(DateOrdering.DAY_FIRST, DateOrdering.forLocale(Locale.UK))
+        assertEquals(DateOrdering.DAY_FIRST, DateOrdering.forLocale(Locale("en", "AU")))
+        assertEquals(DateOrdering.DAY_FIRST, DateOrdering.forLocale(Locale("en", "IE")))
+    }
+
+    @Test
+    fun `an American and a British reader see different first choices`() {
+        val label = "BEST BEFORE 03/04/27"
+
+        assertEquals(
+            LocalDate.of(2027, 3, 4),
+            parse(label, DateOrdering.forLocale(Locale.US)).first().value
+        )
+        assertEquals(
+            LocalDate.of(2027, 4, 3),
+            parse(label, DateOrdering.forLocale(Locale.UK)).first().value
+        )
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.example.freshtrack.domain.capture
 import com.example.freshtrack.domain.model.DateKind
 import java.time.DateTimeException
 import java.time.LocalDate
+import java.util.Locale
 
 /**
  * Which way round an all-numeric date is written.
@@ -12,7 +13,24 @@ import java.time.LocalDate
  * says which reading to *prefer*, never which to assume — an ambiguous date
  * still produces both candidates.
  */
-enum class DateOrdering { DAY_FIRST, MONTH_FIRST }
+enum class DateOrdering {
+    DAY_FIRST,
+    MONTH_FIRST;
+
+    companion object {
+        /**
+         * The convention where [locale] is spoken.
+         *
+         * The United States writes the month first; the United Kingdom, and
+         * almost everywhere else, writes the day first. This is derived rather
+         * than fixed because a wrong default here is not a cosmetic problem —
+         * it silently prefers the wrong one of two real dates, and 03/04 is
+         * five weeks out either way.
+         */
+        fun forLocale(locale: Locale): DateOrdering =
+            if (locale.country.equals("US", ignoreCase = true)) MONTH_FIRST else DAY_FIRST
+    }
+}
 
 /**
  * One reading of a date found in text, with why it was read that way.
@@ -74,10 +92,10 @@ object PrintedDateParser {
         EXPIRY(DateKind.UNKNOWN, listOf("EXPIRY DATE", "EXPIRES", "EXPIRY", "EXP DATE", "EXP")),
 
         /**
-         * Not an expiry at all. A packing date sits next to an expiry on most
-         * Indian packaging, and reading it as one would report food as months
-         * out of date the moment it was bought — so dates this label introduces
-         * are dropped rather than ranked low.
+         * Not an expiry at all. A packed-on date sits beside the expiry on a
+         * great deal of packaging, and reading it as one would report food as
+         * months out of date the moment it was bought — so dates this label
+         * introduces are dropped rather than ranked low.
          */
         MANUFACTURE(
             null,
@@ -113,7 +131,7 @@ object PrintedDateParser {
     fun parse(
         text: String,
         today: LocalDate,
-        ordering: DateOrdering = DateOrdering.DAY_FIRST
+        ordering: DateOrdering = DateOrdering.forLocale(Locale.getDefault())
     ): List<DateCandidate> {
         val normalised = text.uppercase().replace(Regex("""\s+"""), " ")
         val labels = findLabels(normalised)

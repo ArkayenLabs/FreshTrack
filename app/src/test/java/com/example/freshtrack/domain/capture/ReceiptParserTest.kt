@@ -18,56 +18,59 @@ class ReceiptParserTest {
 
     // ─── Ordinary receipts ──────────────────────────────────────────────────
 
-    private val indianReceipt = """
-        FRESH MART
-        Bill No: 4471
-        AMUL MILK 500ML          45.00
-        BROWN BREAD              38.50
-        2 x TOMATO               60.00
-        BASMATI RICE 1KG        189.00
-        SUBTOTAL                332.50
-        CGST                      8.31
-        TOTAL                   349.12
-        CASH                    400.00
-        CHANGE                   50.88
-        THANK YOU VISIT AGAIN
+    private val receipt = """
+        GREENFIELD MARKET
+        Order No: 4471
+        SEMI-SKIMMED MILK 2L      1.85
+        SOURDOUGH LOAF            2.40
+        2 x TOMATOES              1.50
+        BASMATI RICE 1KG          3.99
+        SUBTOTAL                  9.74
+        VAT                       0.00
+        TOTAL                     9.74
+        CARD                     10.00
+        CHANGE                    0.26
+        THANK YOU
     """.trimIndent()
 
     @Test
     fun `reads the shopping off a receipt`() {
-        val items = ReceiptParser.parse(indianReceipt).items
+        val items = ReceiptParser.parse(receipt).items
 
-        assertEquals(listOf("AMUL MILK 500ML", "BROWN BREAD", "TOMATO", "BASMATI RICE 1KG"), items.map { it.name })
+        assertEquals(
+            listOf("SEMI-SKIMMED MILK 2L", "SOURDOUGH LOAF", "TOMATOES", "BASMATI RICE 1KG"),
+            items.map { it.name }
+        )
     }
 
     @Test
     fun `keeps money in minor units`() {
-        val milk = ReceiptParser.parse(indianReceipt).items.first()
-        assertEquals(4500, milk.priceMinor)
+        val milk = ReceiptParser.parse(receipt).items.first()
+        assertEquals(185, milk.priceMinor)
     }
 
     @Test
     fun `reads a leading count as quantity`() {
-        val tomato = ReceiptParser.parse(indianReceipt).items.first { it.name == "TOMATO" }
+        val tomato = ReceiptParser.parse(receipt).items.first { it.name == "TOMATOES" }
         assertEquals(2.0, tomato.quantity, 0.0)
-        assertEquals(6000, tomato.priceMinor)
+        assertEquals(150, tomato.priceMinor)
     }
 
     @Test
     fun `guesses a category where the name gives one away`() {
-        val items = ReceiptParser.parse(indianReceipt).items.associateBy { it.name }
+        val items = ReceiptParser.parse(receipt).items.associateBy { it.name }
 
-        assertEquals("Dairy", items["AMUL MILK 500ML"]?.categoryGuess)
-        assertEquals("Bakery", items["BROWN BREAD"]?.categoryGuess)
-        assertEquals("Fresh Produce", items["TOMATO"]?.categoryGuess)
+        assertEquals("Dairy", items["SEMI-SKIMMED MILK 2L"]?.categoryGuess)
+        assertEquals("Bakery", items["SOURDOUGH LOAF"]?.categoryGuess)
+        assertEquals("Fresh Produce", items["TOMATOES"]?.categoryGuess)
         assertEquals("Pantry", items["BASMATI RICE 1KG"]?.categoryGuess)
     }
 
     @Test
     fun `totals and tax are not shopping`() {
-        val everything = everything(indianReceipt)
+        val everything = everything(receipt)
 
-        listOf("SUBTOTAL", "CGST", "TOTAL", "CASH", "CHANGE").forEach {
+        listOf("SUBTOTAL", "VAT", "TOTAL", "CARD", "CHANGE").forEach {
             assertTrue("$it should not survive", !everything.contains(it))
         }
     }
@@ -76,16 +79,16 @@ class ReceiptParserTest {
     fun `currency is only known when the receipt says so`() {
         // Plenty of tills print bare amounts. Guessing a currency from the
         // shape of the numbers would be inventing a fact about someone's money.
-        assertNull(ReceiptParser.parse(indianReceipt).currency)
+        assertNull(ReceiptParser.parse(receipt).currency)
 
-        assertEquals("INR", ReceiptParser.parse("MILK ₹ 45.00").currency)
         assertEquals("USD", ReceiptParser.parse("MILK $2.49").currency)
         assertEquals("GBP", ReceiptParser.parse("MILK £1.15").currency)
+        assertEquals("EUR", ReceiptParser.parse("MILK €1.10").currency)
     }
 
     @Test
     fun `reads a weighed line`() {
-        val item = ReceiptParser.parse("1.5 KG ONIONS 72.00").items.single()
+        val item = ReceiptParser.parse("1.5 KG ONIONS 2.40").items.single()
 
         assertEquals("ONIONS", item.name)
         assertEquals(1.5, item.quantity, 0.0)
@@ -104,15 +107,15 @@ class ReceiptParserTest {
             VISA ************4471
             AUTH CODE 883021
             CARD ENDING 4471
-            GSTIN 29AABCU9603R1ZJ
+            VAT REG 123456789
             hello@cornerstore.example
-            +91 98765 43210
-            MILK 45.00
+            +44 7700 900123
+            MILK 1.85
         """.trimIndent()
 
         val everything = everything(receipt)
 
-        listOf("4471", "883021", "29AABCU", "hello@", "98765").forEach {
+        listOf("4471", "883021", "123456789", "hello@", "7700").forEach {
             assertTrue("$it leaked into the output", !everything.contains(it))
         }
         assertEquals(listOf("MILK"), names(receipt))
@@ -187,7 +190,7 @@ class ReceiptParserTest {
 
     @Test
     fun `candidate ids are unique within a parse`() {
-        val ids = ReceiptParser.parse(indianReceipt).items.map { it.candidateId }
+        val ids = ReceiptParser.parse(receipt).items.map { it.candidateId }
         assertEquals(ids.size, ids.toSet().size)
     }
 }

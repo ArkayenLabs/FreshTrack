@@ -6,7 +6,7 @@
 
 ## What This App Is
 
-**FreshTrack** — Android food expiry tracker (Kotlin, Jetpack Compose). Live on Google Play. India-first audience. Core promise: track groceries, get expiry alerts, reduce food waste. **Offline-first, privacy-preserving — no cloud data collection.**
+**FreshTrack** — Android food expiry tracker (Kotlin, Jetpack Compose). Live on Google Play. English-speaking markets first — US and UK, then other en- locales. India is deliberately not a launch market: the barcode and product-data coverage there is too thin to build capture on. Core promise: track groceries, get expiry alerts, reduce food waste. **Offline-first, privacy-preserving — no cloud data collection.**
 
 ---
 
@@ -66,6 +66,13 @@ existing rows survive and still mean the same thing.
 - **Categories are food-only:** Fresh Produce, Dairy, Bakery, Beverages, Pantry, Leftovers, Other. No Medicine/Cosmetics.
 - **`notificationEnabled` stays in `ItemEntity`** (DB field) even though the UI toggle was removed — do not drop this column.
 - **No emoji in UI strings.** Use Material icons only.
+- **English only for now, but structured for more later.** User-facing text
+  belongs in `res/values/strings.xml`, not hardcoded in Kotlin, so adding a
+  locale is a translation job rather than a refactor. `values/` is en; en-GB
+  spelling differences get `values-en-rGB` when they arise. Do not add other
+  languages yet.
+- **Never hardcode a date order.** `03/04` is March in the US and April in the
+  UK. Use `DateOrdering.forLocale`.
 - **Two tiers only: Guest (free) and Premium.** Login is NOT a middle tier — it is the gateway to premium. Guest is the full free offline app with no account; a user signs in only when they buy premium or tap a cloud feature, and their guest data claims into the new account. Do not build "free logged-in" perks — that tier does not exist by design.
 - **Guest mode:** Users can skip login. Flag stored in `OnboardingPreferences.isGuestMode()`. Splash screen checks this.
 - **`toggleNotification()` has been removed** from `AddEditProductViewModel` — do not re-add.
@@ -109,7 +116,7 @@ Free tier: full local inventory, barcode scan, notifications, CSV export, guest 
 (Receipt scanning is *planned*, not built — there is no ML Kit text-recognition
 dependency in the project. Do not describe it as shipped.)
 Premium (planned): Backup/Sync, AI recipes, family sharing, storage zones, extended history.
-India pricing target: ₹299–499/yr. USD base: $3.99/mo · $14.99/yr.
+USD base: $3.99/mo · $14.99/yr. Localised prices per market when Play Billing lands; no India-specific target while it is not a launch market.
 
 ---
 
