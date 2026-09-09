@@ -29,6 +29,20 @@ was removed with it. Local changes queue in the outbox and go nowhere until the
 push/pull work lands. The Settings card says so rather than offering a button
 that does nothing.
 
+**Date-label capture works end to end.** Point the camera at a printed date,
+confirm what it read, and the item carries a date that says it came off a
+packet rather than out of someone's head. The deterministic parser came first
+and stands alone: it is the fallback the AI contract requires and the check on
+a model when one arrives. An ambiguous numeric date returns both readings and
+neither can be saved without being shown to someone. A packing date is dropped
+rather than ranked low. Provenance survives to the saved row, so a confirmed
+scan can afterwards only be changed by the user.
+
+Not yet: photographs of real packets. Recognition is exercised against rendered
+labels, which proves the pipeline is joined, not that it copes with glare,
+curved film or dot-matrix printing. That fixture set is the next honest step
+before any accuracy claim.
+
 **The app has a shell.** Today, Kitchen and Progress are three tabs in a bottom
 bar rather than one screen with links out of it, and the Dashboard is gone
 rather than merely unreachable — screen, ViewModel, Koin registration and its
@@ -44,9 +58,9 @@ each row stating its reason. Ranking lives in the domain, separate from
 anything that might later generate suggestions — a model may explain the list
 but must never be able to put an item on it.
 
-Last verified state (all four gates re-run 8 Sep 2026, against a clean tree):
-`./gradlew testDebugUnitTest lintDebug assembleRelease` succeeds — **117** JVM
-unit tests pass, lint reports 0 errors and 119 warnings, and a signed minified
+Last verified state (all four gates re-run 9 Sep 2026, against a clean tree):
+`./gradlew testDebugUnitTest lintDebug assembleRelease` succeeds — **142** JVM
+unit tests pass, lint reports 0 errors and 120 warnings, and a signed minified
 APK is produced. **48** Firestore rules tests pass on the emulator, against the
 current `kitchens/items/events` rules. The unit tests were re-run with
 `--rerun-tasks`; an up-to-date task is not a pass.
@@ -58,7 +72,7 @@ paragraph is the easiest thing in the file to leave behind.
 
 **Verified on a Pixel_35 API 35 emulator**, not just compiled:
 
-- `connectedDebugAndroidTest` — **10** tests, 0 failures. These had never
+- `connectedDebugAndroidTest` — **14** tests, 0 failures. These had never
   passed before the migration; see that commit for the three separate reasons.
 - The database is created with all five tables, and the seed callback
   populates all seven categories and four locations. Enums store by name.
@@ -237,6 +251,22 @@ Not bugs to fix today, but things that are true and should not be forgotten.
 - **CSV file picker unverified.** Parsing and dedupe are tested; choosing a real
   file through the picker is not.
 - **Store listing statistic** still uses the US figure. Play Console task.
+- **Date capture has no fixture set.** Recognition is tested against text
+  rendered onto a bitmap, not photographs of packets. No accuracy figure may be
+  claimed, in the listing or anywhere else, until real fixtures exist.
+- **Bare six- and eight-digit dates are not parsed**, because they cannot be
+  told from batch codes, and neither is MM/YY without a century. Both would
+  trade a visible failure for a confident wrong answer.
+- **The release APK is now 77.1MB**, up from 34.5MB, because bundled ML Kit
+  text recognition ships an 11.1MB native pipeline per ABI. That number is a
+  universal APK carrying four ABIs and is *not* what Play distributes — a
+  single-ABI install is about 31.6MB, so the real cost is roughly 12MB. Worth
+  knowing that `assembleRelease` therefore measures an artifact nobody ships;
+  `bundleRelease` is the one that matches distribution and is not in the gate.
+- **Lint can fail spuriously** when `lintAnalyze*` runs in the same invocation
+  as `assembleRelease`: lint reads KSP-generated release sources while that
+  task is regenerating them, and dies with a FileNotFoundException that reads
+  like a lint bug. Seen once on 9 Sep 2026 and clean on an immediate re-run.
 - **Progress still shows a sparkle icon in its empty state.** The tab icon was
   moved off `Insights` because a sparkle motif as permanent navigation is
   exactly what the design system rules out; the illustration inside the screen
