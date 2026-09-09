@@ -51,8 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.freshtrack.R
+import com.example.freshtrack.domain.capture.ReceiptLines
 import com.example.freshtrack.domain.capture.ReceiptRow
 import com.example.freshtrack.domain.capture.RowDecision
+import com.example.freshtrack.domain.capture.TextFragment
 import com.example.freshtrack.presentation.viewmodel.ReceiptError
 import com.example.freshtrack.presentation.viewmodel.ReceiptPhase
 import com.example.freshtrack.presentation.viewmodel.ReceiptReviewUiState
@@ -846,7 +848,26 @@ private fun recogniseReceipt(
 
     recogniser.process(image)
         .addOnSuccessListener { result ->
-            if (result.text.isBlank()) onFailure() else onText(result.text)
+            // Rebuilt from where the text sat rather than taken as result.text.
+            // A receipt is two columns, and a recogniser may hand back all the
+            // names and then all the prices — an order in which no row has a
+            // price and the parser finds no shopping at all.
+            val fragments = result.textBlocks
+                .flatMap { block -> block.lines }
+                .mapNotNull { line ->
+                    line.boundingBox?.let { box ->
+                        TextFragment(
+                            text = line.text,
+                            top = box.top,
+                            bottom = box.bottom,
+                            left = box.left
+                        )
+                    }
+                }
+            // Geometry is optional in the API. Without it the flat text is all
+            // there is, and it is still better than refusing to read anything.
+            val text = if (fragments.isEmpty()) result.text else ReceiptLines.assemble(fragments)
+            if (text.isBlank()) onFailure() else onText(text)
         }
         .addOnFailureListener { onFailure() }
         .addOnCompleteListener {

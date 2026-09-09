@@ -237,11 +237,25 @@ by breaking them — removing the unresolved-row guard from `commit`, and
 replacing the merge-quantity sum with "last wins", failed exactly the two tests
 covering those and nothing else.
 
-What is not: **none of it has been run on a device.** The camera path, the file
-picker, and ML Kit against a photograph of a real receipt are all unexercised.
-Recognition here has never seen a receipt — only text the parser was handed
-directly — which is the same gap date capture has, and the same rule applies:
-no accuracy claim, anywhere, until real fixtures exist.
+A real hazard was found and closed before it could be discovered on a device.
+`ReceiptParser` needs an item and its price on one line, and every test of it
+supplied text typed by hand in exactly that shape. A recogniser is under no
+obligation to oblige: a receipt is two columns with a wide gap, and reading it
+as two blocks — every name, then every price — is entirely reasonable, at which
+point no row has a price and the sheet opens empty with every unit test still
+green. `ReceiptLines.assemble` now rebuilds rows from where the text physically
+sat, so the pipeline is correct whichever way ML Kit behaves; text that already
+arrived as whole lines passes through untouched. That property is what makes it
+a fix rather than a bet, and it is checked on the JVM rather than needing a
+device.
+
+What is not verified: **none of it has been run on a device.** The camera path,
+the file picker, and ML Kit against a photograph of a real receipt are all
+unexercised. `ReceiptRecognitionTest` exists for exactly this and **has never
+been run** — it renders a two-column receipt and puts a real recogniser through
+the assembly path, but rendered text is not a photograph. The fixture debt owed
+for date capture is owed here too, and the same rule applies: no accuracy claim,
+anywhere, until real fixtures exist.
 
 `ItemRepository.import` turned out not to be usable for the commit, which the
 previous note assumed it would be. Two reasons, both of which would have been
