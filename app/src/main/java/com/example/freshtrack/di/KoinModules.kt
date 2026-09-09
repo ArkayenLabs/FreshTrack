@@ -172,6 +172,14 @@ val viewModelModule = module {
         ItemDetailsViewModel(itemRepository = get())
     }
 
+    viewModel<ReceiptReviewViewModel> {
+        ReceiptReviewViewModel(
+            itemRepository = get(),
+            categoryRepository = get(),
+            locationRepository = get()
+        )
+    }
+
     viewModel<ImpactViewModel> {
         ImpactViewModel(itemRepository = get())
     }

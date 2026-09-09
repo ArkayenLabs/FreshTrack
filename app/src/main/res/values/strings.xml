@@ -378,4 +378,72 @@
     <string name="crash_reset_title">App reset</string>
     <string name="action_ok">OK</string>
     <string name="weekly_summary_body">You used %1$d items and wasted %2$d so far.</string>
+
+    <!--
+      Receipt review. The language here avoids claiming the app knows anything
+      it does not: a shelf-life figure is "roughly", never "expires on".
+    -->
+    <string name="kitchen_scan_receipt">Add from a receipt</string>
+    <string name="receipt_title">Add from a receipt</string>
+    <string name="receipt_capture_explainer">The photo is read on this device and deleted straight afterwards. Nothing is sent anywhere.</string>
+    <string name="receipt_take_photo">Take a photo</string>
+    <string name="receipt_choose_image">Choose an image</string>
+    <string name="receipt_permission_body">Grant camera access to photograph a receipt, or choose an image you already have.</string>
+    <string name="receipt_reading">Reading the receipt…</string>
+    <string name="receipt_review_subtitle">Nothing is saved until you say so. Check each row — a receipt says what you bought, not how long it keeps.</string>
+    <string name="receipt_row_name">Item</string>
+    <string name="receipt_row_quantity">Quantity</string>
+    <string name="receipt_quantity_less">One fewer</string>
+    <string name="receipt_quantity_more">One more</string>
+    <string name="receipt_row_category">Category</string>
+    <string name="receipt_row_location">Kept in</string>
+    <string name="receipt_not_chosen">Not set</string>
+    <string name="receipt_no_location">Anywhere</string>
+    <string name="receipt_needs_a_date">Needs a date</string>
+    <string name="receipt_no_basis">Nothing here says how long this keeps. Pick a date to save it.</string>
+    <string name="receipt_date_you_chose">You chose this date</string>
+    <string name="receipt_date_estimated">Roughly, going by %1$s. An estimate, not a printed date.</string>
+    <string name="receipt_pick_date">Pick a date</string>
+    <string name="receipt_line_total">Line total on the receipt: %1$s</string>
+    <string name="receipt_worth_a_look">Read with less confidence — worth a look.</string>
+    <string name="receipt_duplicate_merge">Add to that one</string>
+    <string name="receipt_duplicate_separate">Keep separate</string>
+    <string name="receipt_duplicate_skip">Leave out</string>
+    <string name="receipt_leave_out">Leave this row out</string>
+    <string name="receipt_put_back">Put this row back</string>
+    <string name="receipt_unreadable_body">These were not added. Add anything you want to keep by hand.</string>
+    <string name="receipt_start_over">Photograph the receipt again</string>
+    <string name="receipt_commit_blocked">Finish the rows marked above, or leave them out.</string>
+    <string name="receipt_saved_title">Saved</string>
+    <string name="receipt_error_nothing_readable">Nothing readable in that image. Try again with more light, or a straighter angle.</string>
+    <string name="receipt_error_no_shopping">That image had text on it, but nothing that looked like shopping.</string>
+    <string name="receipt_error_save_failed">Nothing was saved. Nothing was half-saved either — try again.</string>
+    <plurals name="receipt_unresolved_banner">
+        <item quantity="one">1 row still needs a date, or leaving out.</item>
+        <item quantity="other">%1$d rows still need a date, or leaving out.</item>
+    </plurals>
+    <plurals name="receipt_duplicate_title">
+        <item quantity="one">You already have 1 of these, due the same day.</item>
+        <item quantity="other">You already have %1$d of these, due the same day.</item>
+    </plurals>
+    <plurals name="receipt_unreadable_title">
+        <item quantity="one">1 line could not be read</item>
+        <item quantity="other">%1$d lines could not be read</item>
+    </plurals>
+    <plurals name="receipt_commit">
+        <item quantity="one">Save 1 item</item>
+        <item quantity="other">Save %1$d items</item>
+    </plurals>
+    <plurals name="receipt_saved_added">
+        <item quantity="one">1 item added</item>
+        <item quantity="other">%1$d items added</item>
+    </plurals>
+    <plurals name="receipt_saved_merged">
+        <item quantity="one">1 more added to a batch you already had</item>
+        <item quantity="other">%1$d more added to batches you already had</item>
+    </plurals>
+    <plurals name="receipt_saved_left">
+        <item quantity="one">1 row left out</item>
+        <item quantity="other">%1$d rows left out</item>
+    </plurals>
 </resources>

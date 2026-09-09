@@ -24,6 +24,7 @@ import com.example.freshtrack.presentation.screen.licenses.CustomOSSLicensesScre
 import com.example.freshtrack.presentation.screen.productdetails.ProductDetailsScreen
 import com.example.freshtrack.presentation.screen.settings.SettingsScreen
 import com.example.freshtrack.domain.model.ExpiryDate
+import com.example.freshtrack.presentation.screen.receipt.ReceiptCaptureScreen
 import com.example.freshtrack.presentation.screen.scanner.BarcodeScannerScreen
 import com.example.freshtrack.presentation.screen.scanner.ScanMode
 import com.example.freshtrack.presentation.screen.onboarding.OnboardingScreen
@@ -64,6 +65,15 @@ sealed class Screen(val route: String) {
     }
     object History : Screen("history")
     object Impact : Screen("impact")
+
+    /**
+     * Capture and review are one destination, not two.
+     *
+     * A reviewed sheet is far too much state to hand across a route argument,
+     * and "photograph it again" is a step back inside the flow rather than a
+     * new journey into it.
+     */
+    object Receipt : Screen("receipt")
 }
 
 /**
@@ -283,8 +293,16 @@ fun FreshTrackNavGraph(
                 onNavigateToProductDetails = { productId ->
                     navController.navigate(Screen.ProductDetails.createRoute(productId))
                 },
+                onNavigateToReceipt = { navController.navigate(Screen.Receipt.route) },
                 initialFilter = filter,
                 bottomBar = bottomBarFor(TopLevelDestination.KITCHEN)
+            )
+        }
+
+        // ─── Receipt capture and review ───────────────────────────────────────────
+        composable(Screen.Receipt.route) {
+            ReceiptCaptureScreen(
+                onNavigateBack = { navController.navigateUp() }
             )
         }
 

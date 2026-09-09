@@ -31,6 +31,7 @@ import org.koin.androidx.compose.koinViewModel
 fun ProductListScreen(
     onNavigateToAddProduct: () -> Unit,
     onNavigateToProductDetails: (String) -> Unit,
+    onNavigateToReceipt: () -> Unit = {},
     initialFilter: String? = null,
     bottomBar: @Composable () -> Unit = {},
     viewModel: ItemListViewModel = koinViewModel()
@@ -60,6 +61,14 @@ fun ProductListScreen(
                     )
                 },
                 actions = {
+                    // A whole shop at once, which is the other way food arrives.
+                    IconButton(onClick = onNavigateToReceipt) {
+                        Icon(
+                            Icons.Outlined.ReceiptLong,
+                            stringResource(R.string.kitchen_scan_receipt)
+                        )
+                    }
+
                     // Filter Button
                     IconButton(onClick = { showFilterMenu = true }) {
                         Icon(Icons.Default.FilterList, stringResource(R.string.action_filter))
