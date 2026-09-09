@@ -84,6 +84,22 @@ interface ItemRepository {
 
     suspend fun findDuplicate(name: String, expiry: LocalDate): Item?
     suspend fun import(items: List<Item>): ImportSummary
+
+    /**
+     * Writes a whole reviewed receipt, or none of it.
+     *
+     * Separate from [import] for two reasons, both of which would be bugs if
+     * this reused it. [import] decides for itself what is a duplicate and skips
+     * it, which would silently discard a row the person had just looked at and
+     * explicitly chosen to keep as its own batch; here every duplicate has
+     * already been resolved by a human, so nothing is re-judged. And [import]
+     * commits row by row, so a receipt interrupted halfway through leaves half
+     * a shop in the kitchen and no way to tell which half.
+     *
+     * [additions] maps an existing item id to the units being folded into it.
+     */
+    suspend fun commitReceipt(newItems: List<Item>, additions: Map<String, Int>)
+
     suspend fun clearHistory()
 
     /** Adopts items created before sign-in. Returns how many. No-op if signed out. */
@@ -415,6 +431,37 @@ class ItemRepositoryImpl(
         }
 
         return ImportSummary(imported = imported, skippedDuplicates = skipped)
+    }
+
+    /**
+     * One transaction for the whole sheet.
+     *
+     * [record] opens a transaction of its own for each write; Room joins a
+     * nested one to the outer, so every row, event and outbox entry from this
+     * receipt lands together or not at all.
+     */
+    override suspend fun commitReceipt(newItems: List<Item>, additions: Map<String, Int>) {
+        if (newItems.isEmpty() && additions.isEmpty()) return
+        transactions.run {
+            additions.forEach { (itemId, amount) ->
+                if (amount <= 0) return@forEach
+                val existing = itemDao.getItemByIdOnce(kitchen(), itemId) ?: return@forEach
+                val now = clock.nowMillis()
+                // Both quantities move: the batch is bigger, and it always was
+                // bigger than the history screen would otherwise report once it
+                // is used up.
+                val row = existing.copy(
+                    quantity = existing.quantity + amount,
+                    originalQuantity = existing.originalQuantity + amount,
+                    lastEditedBy = uid(),
+                    updatedAt = now
+                )
+                record(row, ItemEventType.ITEM_EDITED, null, OutboxOperationType.UPDATE, now) {
+                    itemDao.update(row)
+                }
+            }
+            newItems.forEach { add(it) }
+        }
     }
 
     override suspend fun clearHistory() {
