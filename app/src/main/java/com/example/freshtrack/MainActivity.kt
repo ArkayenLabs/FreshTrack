@@ -73,13 +73,13 @@ class MainActivity : ComponentActivity() {
             if (showResetDialog) {
                 AlertDialog(
                     onDismissRequest = { showResetDialog = false },
-                    title = { Text("App Reset") },
+                    title = { Text(stringResource(R.string.crash_reset_title)) },
                     text = { 
                         Text(stringResource(R.string.crash_reset_message))
                     },
                     confirmButton = {
                         TextButton(onClick = { showResetDialog = false }) {
-                            Text("OK")
+                            Text(stringResource(R.string.action_ok))
                         }
                     }
                 )

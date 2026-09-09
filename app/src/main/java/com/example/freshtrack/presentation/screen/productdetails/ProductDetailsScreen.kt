@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.example.freshtrack.R
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.presentation.component.LoadingState
@@ -26,6 +28,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
@@ -52,22 +55,22 @@ fun ProductDetailsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Product Details",
+                        stringResource(R.string.details_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { onNavigateToEdit(productId) }) {
-                        Icon(Icons.Default.Edit, "Edit")
+                        Icon(Icons.Default.Edit, stringResource(R.string.action_edit))
                     }
                     IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, "Delete")
+                        Icon(Icons.Default.Delete, stringResource(R.string.action_delete))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -84,7 +87,7 @@ fun ProductDetailsScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                LoadingState("Loading product details...")
+                LoadingState(stringResource(R.string.details_loading))
             }
         } else {
             uiState.item?.let { product ->
@@ -130,7 +133,7 @@ fun ProductDetailsScreen(
                             // Category
                             InfoRow(
                                 icon = Icons.Outlined.Category,
-                                label = "Category",
+                                label = stringResource(R.string.add_section_category),
                                 value = product.category,
                                 showCategoryChip = true
                             )
@@ -140,7 +143,7 @@ fun ProductDetailsScreen(
                             // Expiry Date
                             InfoRow(
                                 icon = Icons.Outlined.CalendarToday,
-                                label = "Expiry Date",
+                                label = stringResource(R.string.add_expiry_label),
                                 value = formatDate(product.expiry.value)
                             )
 
@@ -149,7 +152,7 @@ fun ProductDetailsScreen(
                             // Added On
                             InfoRow(
                                 icon = Icons.Outlined.Schedule,
-                                label = "Added On",
+                                label = stringResource(R.string.details_added_on),
                                 value = formatDateTime(product.addedAt)
                             )
 
@@ -158,7 +161,7 @@ fun ProductDetailsScreen(
                             // Quantity
                             InfoRow(
                                 icon = Icons.Outlined.Inventory,
-                                label = "Quantity",
+                                label = stringResource(R.string.add_quantity_label),
                                 value = product.quantity.toString()
                             )
 
@@ -167,7 +170,7 @@ fun ProductDetailsScreen(
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                                 InfoRow(
                                     icon = Icons.Outlined.QrCode,
-                                    label = "Barcode",
+                                    label = stringResource(R.string.add_barcode_label),
                                     value = barcode
                                 )
                             }
@@ -200,7 +203,7 @@ fun ProductDetailsScreen(
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     Text(
-                                        text = "Notes",
+                                        text = stringResource(R.string.add_notes_label),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface
@@ -241,7 +244,7 @@ fun ProductDetailsScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Used",
+                                stringResource(R.string.details_used),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -274,7 +277,7 @@ fun ProductDetailsScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Discarded",
+                                stringResource(R.string.details_discarded),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -308,14 +311,14 @@ fun ProductDetailsScreen(
             },
             title = {
                 Text(
-                    "Delete Product?",
+                    stringResource(R.string.kitchen_delete_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    "Are you sure you want to delete this product? This action cannot be undone.",
+                    stringResource(R.string.kitchen_delete_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -332,7 +335,7 @@ fun ProductDetailsScreen(
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Delete", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_delete), fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -340,7 +343,7 @@ fun ProductDetailsScreen(
                     onClick = { showDeleteDialog = false },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_cancel), fontWeight = FontWeight.SemiBold)
                 }
             },
             shape = RoundedCornerShape(28.dp),
@@ -353,7 +356,7 @@ fun ProductDetailsScreen(
     if (showConsumeDialog) {
         val maxQty = uiState.item?.quantity ?: 1
         QuantityPickerDialog(
-            title = "Use How Many?",
+            title = stringResource(R.string.details_use_how_many),
             maxQuantity = maxQty,
             selectedQuantity = selectedQuantity,
             onQuantityChange = { selectedQuantity = it },
@@ -362,7 +365,7 @@ fun ProductDetailsScreen(
                 showConsumeDialog = false
             },
             onDismiss = { showConsumeDialog = false },
-            confirmText = "Use",
+            confirmText = stringResource(R.string.details_use),
             icon = Icons.Default.CheckCircle,
             iconTint = MaterialTheme.colorScheme.primary
         )
@@ -372,7 +375,7 @@ fun ProductDetailsScreen(
     if (showDiscardDialog) {
         val maxQty = uiState.item?.quantity ?: 1
         QuantityPickerDialog(
-            title = "Discard How Many?",
+            title = stringResource(R.string.details_discard_how_many),
             maxQuantity = maxQty,
             selectedQuantity = selectedQuantity,
             onQuantityChange = { selectedQuantity = it },
@@ -381,7 +384,7 @@ fun ProductDetailsScreen(
                 showDiscardDialog = false
             },
             onDismiss = { showDiscardDialog = false },
-            confirmText = "Discard",
+            confirmText = stringResource(R.string.details_discard),
             icon = Icons.Outlined.Delete,
             iconTint = MaterialTheme.colorScheme.error
         )
@@ -393,11 +396,11 @@ fun ExpiryStatusBadge(expiryDate: LocalDate) {
     val daysUntilExpiry = ChronoUnit.DAYS.between(LocalDate.now(), expiryDate)
 
     val (status, color, icon) = when {
-        daysUntilExpiry < 0 -> Triple("Expired", MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)
-        daysUntilExpiry == 0L -> Triple("Expires Today", MaterialTheme.colorScheme.error, Icons.Outlined.Warning)
-        daysUntilExpiry <= 3 -> Triple("Expiring Soon", MaterialTheme.colorScheme.error, Icons.Outlined.Warning)
-        daysUntilExpiry <= 7 -> Triple("Expiring This Week", MaterialTheme.colorScheme.tertiary, Icons.Outlined.Schedule)
-        else -> Triple("Fresh", MaterialTheme.colorScheme.primary, Icons.Outlined.CheckCircle)
+        daysUntilExpiry < 0 -> Triple(stringResource(R.string.status_expired), MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)
+        daysUntilExpiry == 0L -> Triple(stringResource(R.string.status_expires_today), MaterialTheme.colorScheme.error, Icons.Outlined.Warning)
+        daysUntilExpiry <= 3 -> Triple(stringResource(R.string.status_expiring_soon), MaterialTheme.colorScheme.error, Icons.Outlined.Warning)
+        daysUntilExpiry <= 7 -> Triple(stringResource(R.string.status_expiring_this_week), MaterialTheme.colorScheme.tertiary, Icons.Outlined.Schedule)
+        else -> Triple(stringResource(R.string.status_fresh), MaterialTheme.colorScheme.primary, Icons.Outlined.CheckCircle)
     }
 
     Surface(
@@ -435,8 +438,8 @@ fun ExpiryStatusBadge(expiryDate: LocalDate) {
                 Text(
                     text = if (daysUntilExpiry >= 0) {
                         when (daysUntilExpiry) {
-                            0L -> "Today"
-                            1L -> "Tomorrow"
+                            0L -> stringResource(R.string.details_today)
+                            1L -> stringResource(R.string.details_tomorrow)
                             else -> "$daysUntilExpiry days remaining"
                         }
                     } else {
@@ -529,8 +532,8 @@ fun CategoryChipCompact(category: String) {
     }
 }
 
-private val displayDateFormat: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault())
+private val displayDateFormat: DateTimeFormatter
+    get() = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
 private fun formatDate(date: LocalDate): String = date.format(displayDateFormat)
 
@@ -554,6 +557,12 @@ fun QuantityPickerDialog(
     var textValue by remember { mutableStateOf(selectedQuantity.toString()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // Resolved in composition: the validator below is an ordinary local
+    // function and cannot read resources itself.
+    val invalidNumber = stringResource(R.string.details_invalid_number)
+    val minimumOne = stringResource(R.string.details_minimum_one)
+    val maximumIs = stringResource(R.string.details_maximum_is, maxQuantity)
+
     fun validateAndUpdate(input: String) {
         textValue = input
         val qty = input.toIntOrNull()
@@ -562,13 +571,13 @@ fun QuantityPickerDialog(
                 errorMessage = null
             }
             qty == null -> {
-                errorMessage = "Enter a valid number"
+                errorMessage = invalidNumber
             }
             qty < 1 -> {
-                errorMessage = "Minimum is 1"
+                errorMessage = minimumOne
             }
             qty > maxQuantity -> {
-                errorMessage = "Maximum is $maxQuantity"
+                errorMessage = maximumIs
             }
             else -> {
                 errorMessage = null
@@ -610,14 +619,14 @@ fun QuantityPickerDialog(
                 OutlinedTextField(
                     value = textValue,
                     onValueChange = { validateAndUpdate(it) },
-                    label = { Text("Quantity") },
+                    label = { Text(stringResource(R.string.add_quantity_label)) },
                     placeholder = { Text("1-$maxQuantity") },
                     isError = errorMessage != null,
                     supportingText = {
                         if (errorMessage != null) {
                             Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
                         } else {
-                            Text("Available: $maxQuantity")
+                            Text(stringResource(R.string.details_available, maxQuantity))
                         }
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -655,13 +664,13 @@ fun QuantityPickerDialog(
                     FilterChip(
                         selected = textValue == maxQuantity.toString(),
                         onClick = { validateAndUpdate(maxQuantity.toString()) },
-                        label = { Text("All") }
+                        label = { Text(stringResource(R.string.details_all)) }
                     )
                 }
 
                 if (textValue == maxQuantity.toString() && errorMessage == null) {
                     Text(
-                        "This will remove the product completely",
+                        stringResource(R.string.details_remove_completely),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.fillMaxWidth(),
@@ -687,7 +696,7 @@ fun QuantityPickerDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Cancel", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.action_cancel), fontWeight = FontWeight.SemiBold)
             }
         },
         shape = RoundedCornerShape(28.dp),

@@ -83,7 +83,7 @@ class FreshTrackWidget : GlanceAppWidget(), KoinComponent {
             if (state.isAllClear) {
                 Spacer(GlanceModifier.height(6.dp))
                 Text(
-                    text = "Nothing needs using up in the next week.",
+                    text = LocalContext.current.getString(R.string.widget_nothing_soon),
                     style = TextStyle(
                         fontSize = 12.sp,
                         color = GlanceTheme.colors.onSurfaceVariant

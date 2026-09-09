@@ -51,7 +51,13 @@ class WeeklySummaryWorker(
         val notification = NotificationCompat.Builder(context, FreshTrackApplication.CHANNEL_ID_EXPIRY_ALERTS)
             .setSmallIcon(R.drawable.ic_notification) // Ensure this exists, using default from other notifications
             .setContentTitle(context.getString(R.string.weekly_summary_title))
-            .setContentText("You used $saved items and wasted $wasted so far.")
+            .setContentText(
+                applicationContext.getString(
+                    R.string.weekly_summary_body,
+                    saved,
+                    wasted
+                )
+            )
             .setStyle(inboxStyle)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)

@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import com.example.freshtrack.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,31 +43,32 @@ fun OnboardingScreen(
     onComplete: () -> Unit,
     onSkip: () -> Unit = {}
 ) {
-    val pages = remember {
-        listOf(
+    // Not remembered: the titles are string resources, and a remember lambda is
+    // not composition so it cannot read them. Three small objects per
+    // recomposition is cheaper than the indirection needed to keep the cache.
+    val pages = listOf(
             OnboardingPage(
-                title = "Track Your Food",
-                description = "Keep track of all your groceries and food items in one place. Know exactly what you have and when it expires.",
+                title = stringResource(R.string.onboarding_track_title),
+                description = stringResource(R.string.onboarding_track_body),
                 icon = Icons.Outlined.Inventory2,
                 backgroundColor = androidx.compose.ui.graphics.Color(0xFF4CAF50),
                 iconBackgroundColor = androidx.compose.ui.graphics.Color(0xFF81C784)
             ),
             OnboardingPage(
-                title = "Smart Expiry Alerts",
-                description = "Get timely notifications before your products expire. Stay informed and save money by using items on time.",
+                title = stringResource(R.string.onboarding_alerts_title),
+                description = stringResource(R.string.onboarding_alerts_body),
                 icon = Icons.Outlined.NotificationsActive,
                 backgroundColor = androidx.compose.ui.graphics.Color(0xFFFF9800),
                 iconBackgroundColor = androidx.compose.ui.graphics.Color(0xFFFFB74D)
             ),
             OnboardingPage(
-                title = "Stay Organized",
-                description = "Organize by categories, scan barcodes, and manage quantities effortlessly. Make expiry tracking simple and stress-free!",
+                title = stringResource(R.string.onboarding_organise_title),
+                description = stringResource(R.string.onboarding_organise_body),
                 icon = Icons.Outlined.CheckCircle,
                 backgroundColor = androidx.compose.ui.graphics.Color(0xFF2196F3),
                 iconBackgroundColor = androidx.compose.ui.graphics.Color(0xFF64B5F6)
-            )
         )
-    }
+    )
 
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
@@ -98,7 +101,7 @@ fun OnboardingScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            "Skip",
+                            stringResource(R.string.onboarding_skip),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -176,7 +179,7 @@ fun OnboardingScreen(
                     )
                 ) {
                     Text(
-                        text = if (pagerState.currentPage < pages.size - 1) "Next" else "Get Started",
+                        text = if (pagerState.currentPage < pages.size - 1) stringResource(R.string.onboarding_next) else stringResource(R.string.onboarding_get_started),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

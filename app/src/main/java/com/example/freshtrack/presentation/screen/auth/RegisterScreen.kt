@@ -125,7 +125,7 @@ fun RegisterScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "Create Account",
+                        stringResource(R.string.auth_create_account),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -141,7 +141,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Email") },
+                        label = { Text(stringResource(R.string.auth_email)) },
                         leadingIcon = { Icon(Icons.Default.Email, null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -156,7 +156,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+                        label = { Text(stringResource(R.string.auth_password)) },
                         leadingIcon = { Icon(Icons.Default.Lock, null) },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -180,7 +180,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
-                        label = { Text("Confirm Password") },
+                        label = { Text(stringResource(R.string.auth_confirm_password)) },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Lock,
@@ -201,7 +201,7 @@ fun RegisterScreen(
                         shape = RoundedCornerShape(14.dp),
                         isError = passwordMismatch,
                         supportingText = if (passwordMismatch) {
-                            { Text("Passwords do not match", color = MaterialTheme.colorScheme.error) }
+                            { Text(stringResource(R.string.auth_passwords_mismatch), color = MaterialTheme.colorScheme.error) }
                         } else null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
@@ -219,19 +219,19 @@ fun RegisterScreen(
                             checked = agreeToTerms,
                             onCheckedChange = { agreeToTerms = it }
                         )
-                        Text("I agree to the ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                        Text(stringResource(R.string.auth_agree_to), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                         TextButton(
                             onClick = onNavigateToTerms,
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("Terms of Service", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.terms_screen_title), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
                     // Error
                     AnimatedVisibility(visible = uiState.error != null, enter = fadeIn(), exit = fadeOut()) {
                         Text(
-                            text = uiState.error ?: "",
+                            text = uiState.error?.let { stringResource(messageFor(it)) } ?: "",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 8.dp),
@@ -257,7 +257,7 @@ fun RegisterScreen(
                                 strokeWidth = 2.5.dp
                             )
                         } else {
-                            Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(stringResource(R.string.auth_create_account), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
 
@@ -269,7 +269,7 @@ fun RegisterScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         HorizontalDivider(modifier = Modifier.weight(1f))
-                        Text("  OR  ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        Text(stringResource(R.string.auth_or), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         HorizontalDivider(modifier = Modifier.weight(1f))
                     }
 
@@ -298,7 +298,7 @@ fun RegisterScreen(
                                 tint = androidx.compose.ui.graphics.Color.Unspecified
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("Continue with Google", fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                            Text(stringResource(R.string.auth_continue_google), fontWeight = FontWeight.Medium, fontSize = 15.sp)
                         }
                     }
                 }
@@ -307,8 +307,8 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             TextButton(onClick = onNavigateToLogin) {
-                Text("Already have an account? ", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.bodyMedium)
-                Text("Sign In", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.auth_have_account), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.settings_sign_in), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
             }
 
             Spacer(modifier = Modifier.height(32.dp))

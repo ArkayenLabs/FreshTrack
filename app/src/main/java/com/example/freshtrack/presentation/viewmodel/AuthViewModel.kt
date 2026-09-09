@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
-    val error: String? = null
+    val error: AuthError? = null
 )
 
 class AuthViewModel(
@@ -98,29 +98,40 @@ class AuthViewModel(
      * "wrong password" — telling them apart lets anyone probe which email
      * addresses are registered.
      */
-    private fun friendlyAuthError(e: Throwable): String = when (e) {
+    private fun friendlyAuthError(e: Throwable): AuthError = when (e) {
         // Must be checked before FirebaseAuthInvalidCredentialsException, which it
         // extends — otherwise a weak password reports as a wrong password.
-        is FirebaseAuthWeakPasswordException ->
-            "Password must be at least 6 characters."
+        is FirebaseAuthWeakPasswordException -> AuthError.WEAK_PASSWORD
 
         is FirebaseAuthInvalidUserException,
-        is FirebaseAuthInvalidCredentialsException ->
-            "Incorrect email or password."
+        is FirebaseAuthInvalidCredentialsException -> AuthError.INVALID_CREDENTIALS
 
-        is FirebaseAuthUserCollisionException ->
-            "An account already exists for this email."
+        is FirebaseAuthUserCollisionException -> AuthError.EMAIL_IN_USE
 
-        is FirebaseNetworkException ->
-            "No internet connection. Check your network and try again."
+        is FirebaseNetworkException -> AuthError.NO_NETWORK
 
-        is FirebaseTooManyRequestsException ->
-            "Too many attempts. Please try again in a few minutes."
+        is FirebaseTooManyRequestsException -> AuthError.TOO_MANY_ATTEMPTS
 
-        else -> "Something went wrong. Please try again."
+        else -> AuthError.GENERIC
     }
 
     fun resetState() {
         _uiState.update { AuthUiState() }
     }
+}
+
+/**
+ * Why signing in failed, as a fact rather than a sentence.
+ *
+ * Note what is missing: there is no "no account for that email". Telling a
+ * wrong password apart from an unknown address lets anyone probe which
+ * addresses are registered, so both arrive here as INVALID_CREDENTIALS.
+ */
+enum class AuthError {
+    WEAK_PASSWORD,
+    INVALID_CREDENTIALS,
+    EMAIL_IN_USE,
+    NO_NETWORK,
+    TOO_MANY_ATTEMPTS,
+    GENERIC
 }

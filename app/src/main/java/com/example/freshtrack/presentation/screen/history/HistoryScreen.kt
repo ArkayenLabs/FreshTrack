@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.domain.model.Item
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import com.example.freshtrack.R
 import com.example.freshtrack.presentation.viewmodel.HistoryViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -217,7 +218,10 @@ private fun HistoryItemCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Expiry: ${product.expiry.value.format(historyDateFormat)}",
+                    text = stringResource(
+                        R.string.history_expiry,
+                        product.expiry.value.format(historyDateFormat)
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -234,5 +238,5 @@ private fun HistoryItemCard(
 }
 
 /** Matches the "MMM dd, yyyy" style used elsewhere in the app. */
-private val historyDateFormat: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("MMM dd, yyyy", java.util.Locale.getDefault())
+private val historyDateFormat: DateTimeFormatter
+    get() = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)

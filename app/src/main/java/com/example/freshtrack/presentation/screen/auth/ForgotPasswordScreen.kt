@@ -47,7 +47,7 @@ fun ForgotPasswordScreen(
                 title = { Text("") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -94,13 +94,13 @@ fun ForgotPasswordScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "Reset Password",
+                        stringResource(R.string.auth_reset_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        "Enter your email to receive a password reset link.",
+                        stringResource(R.string.auth_reset_body),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -111,7 +111,7 @@ fun ForgotPasswordScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Email") },
+                        label = { Text(stringResource(R.string.auth_email)) },
                         leadingIcon = { Icon(Icons.Default.Email, null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -133,7 +133,7 @@ fun ForgotPasswordScreen(
                     // Error message
                     AnimatedVisibility(visible = uiState.error != null, enter = fadeIn(), exit = fadeOut()) {
                         Text(
-                            text = uiState.error ?: "",
+                            text = uiState.error?.let { stringResource(messageFor(it)) } ?: "",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 8.dp),
@@ -144,7 +144,7 @@ fun ForgotPasswordScreen(
                     // Success message
                     AnimatedVisibility(visible = uiState.isSuccess, enter = fadeIn(), exit = fadeOut()) {
                         Text(
-                            text = "If an account exists for that email, a reset link is on its way.",
+                            text = stringResource(R.string.auth_reset_sent),
                             color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
@@ -174,7 +174,7 @@ fun ForgotPasswordScreen(
                                 strokeWidth = 2.5.dp
                             )
                         } else {
-                            Text("Send Link", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(stringResource(R.string.auth_send_link), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
                 }

@@ -40,6 +40,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
@@ -87,14 +88,14 @@ fun AddEditProductScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (productId == null) "Add Product" else "Edit Product",
+                        if (productId == null) stringResource(R.string.add_title) else stringResource(R.string.edit_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -136,7 +137,7 @@ fun AddEditProductScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = if (productId == null) "Add Product" else "Save Changes",
+                            text = if (productId == null) stringResource(R.string.add_title) else stringResource(R.string.add_save_changes),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -157,14 +158,14 @@ fun AddEditProductScreen(
             Spacer(Modifier.height(4.dp))
 
             // SECTION 1: Basic Information
-            SectionCard(title = "Basic Information", icon = Icons.Outlined.Info) {
+            SectionCard(title = stringResource(R.string.add_section_basic), icon = Icons.Outlined.Info) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Product Name
                     OutlinedTextField(
                         value = uiState.name,
                         onValueChange = { viewModel.updateName(it) },
-                        label = { Text("Product Name") },
-                        placeholder = { Text("e.g., Fresh Milk") },
+                        label = { Text(stringResource(R.string.add_name_label)) },
+                        placeholder = { Text(stringResource(R.string.add_name_hint)) },
                         leadingIcon = {
                             Icon(Icons.Outlined.ShoppingBag, "Product")
                         },
@@ -185,10 +186,10 @@ fun AddEditProductScreen(
                         OutlinedTextField(
                             value = uiState.barcode ?: "",
                             onValueChange = { viewModel.updateBarcode(it) },
-                            label = { Text("Barcode") },
-                            placeholder = { Text("Optional") },
+                            label = { Text(stringResource(R.string.add_barcode_label)) },
+                            placeholder = { Text(stringResource(R.string.add_barcode_hint)) },
                             leadingIcon = {
-                                Icon(Icons.Outlined.QrCode, "Barcode")
+                                Icon(Icons.Outlined.QrCode, stringResource(R.string.add_barcode_label))
                             },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
@@ -205,14 +206,14 @@ fun AddEditProductScreen(
                             modifier = Modifier.height(56.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.QrCodeScanner, "Scan", modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.QrCodeScanner, stringResource(R.string.add_scan), modifier = Modifier.size(20.dp))
                         }
                     }
                 }
             }
 
             // SECTION 2: Category Selection
-            SectionCard(title = "Category", icon = Icons.Outlined.Category) {
+            SectionCard(title = stringResource(R.string.add_section_category), icon = Icons.Outlined.Category) {
                 CategoryChipGroup(
                     categories = uiState.availableCategories,
                     selectedCategory = uiState.selectedCategory,
@@ -221,7 +222,7 @@ fun AddEditProductScreen(
             }
 
             // SECTION 3: Expiry & Quantity
-            SectionCard(title = "Expiry & Quantity", icon = Icons.Outlined.Schedule) {
+            SectionCard(title = stringResource(R.string.add_section_expiry), icon = Icons.Outlined.Schedule) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Expiry Date Picker
                     ExpiryDatePicker(
@@ -244,14 +245,14 @@ fun AddEditProductScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Scan the printed date")
+                        Text(stringResource(R.string.add_scan_date))
                     }
 
                     if (uiState.carriedExpiry?.source == DateSource.PRINTED_OCR) {
                         // Says where the date came from, so an item whose date
                         // was read rather than typed is visibly so.
                         Text(
-                            text = "Read from the packet and confirmed by you.",
+                            text = stringResource(R.string.add_scanned_note),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -261,17 +262,17 @@ fun AddEditProductScreen(
                     OutlinedTextField(
                         value = uiState.quantity,
                         onValueChange = { viewModel.updateQuantity(it) },
-                        label = { Text("Quantity") },
-                        placeholder = { Text("Enter quantity") },
+                        label = { Text(stringResource(R.string.add_quantity_label)) },
+                        placeholder = { Text(stringResource(R.string.add_quantity_hint)) },
                         leadingIcon = {
-                            Icon(Icons.Outlined.Inventory, "Quantity")
+                            Icon(Icons.Outlined.Inventory, stringResource(R.string.add_quantity_label))
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         supportingText = {
                             Text(
-                                "Range: 1-999",
+                                stringResource(R.string.add_quantity_range),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -286,12 +287,12 @@ fun AddEditProductScreen(
             }
 
             // SECTION 4: Additional Details
-            SectionCard(title = "Additional Details(Optional)", icon = Icons.Outlined.Description) {
+            SectionCard(title = stringResource(R.string.add_section_notes), icon = Icons.Outlined.Description) {
                 OutlinedTextField(
                     value = uiState.notes,
                     onValueChange = { viewModel.updateNotes(it) },
-                    label = { Text("Notes") },
-                    placeholder = { Text("Add any additional information...") },
+                    label = { Text(stringResource(R.string.add_notes_label)) },
+                    placeholder = { Text(stringResource(R.string.add_notes_hint)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),
@@ -473,14 +474,14 @@ fun ExpiryDatePicker(
             value = expiryDate?.let { formatDate(it) } ?: "",
             onValueChange = {},
             readOnly = true,
-            label = { Text("Expiry Date") },
-            placeholder = { Text("Select expiry date") },
+            label = { Text(stringResource(R.string.add_expiry_label)) },
+            placeholder = { Text(stringResource(R.string.add_expiry_hint)) },
             leadingIcon = {
                 Icon(Icons.Outlined.CalendarToday, "Calendar")
             },
             trailingIcon = {
                 IconButton(onClick = { showDatePicker = true }) {
-                    Icon(Icons.Default.Edit, "Pick Date")
+                    Icon(Icons.Default.Edit, stringResource(R.string.add_pick_date))
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -531,12 +532,12 @@ fun ExpiryDatePicker(
                             showDatePicker = false
                         }
                     ) {
-                        Text("Confirm")
+                        Text(stringResource(R.string.action_confirm))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDatePicker = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             ) {
@@ -552,13 +553,13 @@ fun ExpiryStatusIndicator(expiryDate: LocalDate, today: LocalDate) {
 
     val (status, color, icon) = when {
         daysUntilExpiry < 0 ->
-            Triple("Expired", MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)
+            Triple(stringResource(R.string.status_expired), MaterialTheme.colorScheme.error, Icons.Outlined.ErrorOutline)
         daysUntilExpiry <= 3 ->
-            Triple("Expiring Soon", MaterialTheme.colorScheme.error, Icons.Outlined.Warning)
+            Triple(stringResource(R.string.status_expiring_soon), MaterialTheme.colorScheme.error, Icons.Outlined.Warning)
         daysUntilExpiry <= 7 ->
-            Triple("Expiring This Week", MaterialTheme.colorScheme.tertiary, Icons.Outlined.Schedule)
+            Triple(stringResource(R.string.status_expiring_this_week), MaterialTheme.colorScheme.tertiary, Icons.Outlined.Schedule)
         else ->
-            Triple("Fresh", MaterialTheme.colorScheme.primary, Icons.Outlined.CheckCircle)
+            Triple(stringResource(R.string.status_fresh), MaterialTheme.colorScheme.primary, Icons.Outlined.CheckCircle)
     }
 
     Card(
@@ -590,7 +591,7 @@ fun ExpiryStatusIndicator(expiryDate: LocalDate, today: LocalDate) {
                 )
             }
             Text(
-                text = if (daysUntilExpiry >= 0) "$daysUntilExpiry days" else "Expired",
+                text = if (daysUntilExpiry >= 0) "$daysUntilExpiry days" else stringResource(R.string.status_expired),
                 style = MaterialTheme.typography.bodySmall,
                 color = color
             )
@@ -598,8 +599,8 @@ fun ExpiryStatusIndicator(expiryDate: LocalDate, today: LocalDate) {
     }
 }
 
-private val displayDateFormat: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("MMM dd, yyyy", Locale.getDefault())
+private val displayDateFormat: DateTimeFormatter
+    get() = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
 private fun formatDate(date: LocalDate): String = date.format(displayDateFormat)
 

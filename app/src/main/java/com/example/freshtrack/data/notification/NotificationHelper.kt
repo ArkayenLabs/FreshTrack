@@ -134,7 +134,7 @@ object NotificationHelper {
             }
             builder.addAction(
                 R.drawable.ic_notification,
-                "Mark as used",
+                context.getString(R.string.notification_mark_used),
                 PendingIntent.getBroadcast(
                     context,
                     productId.hashCode(),
@@ -144,7 +144,11 @@ object NotificationHelper {
             )
         }
 
-        builder.addAction(R.drawable.ic_notification, "View items", pendingIntent)
+        builder.addAction(
+            R.drawable.ic_notification,
+            context.getString(R.string.notification_view_items),
+            pendingIntent
+        )
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE)
                 as NotificationManager
@@ -170,18 +174,28 @@ object NotificationHelper {
         )
 
         val inboxStyle = NotificationCompat.InboxStyle()
-            .setBigContentTitle("Daily Summary")
+            .setBigContentTitle(context.getString(R.string.notification_channel_summary))
             .setSummaryText(context.getString(R.string.app_name))
-            .addLine("\u2022 $totalProducts products tracked")
-            .addLine("\u2022 $expiringCount expiring soon")
+            .addLine(context.resources.getQuantityString(
+                R.plurals.notification_summary_tracked,
+                totalProducts,
+                totalProducts
+            ))
+            .addLine(context.getString(R.string.notification_summary_expiring, expiringCount))
 
         val notification = NotificationCompat.Builder(
             context,
             FreshTrackApplication.CHANNEL_ID_EXPIRY_ALERTS
         )
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Daily Summary")
-            .setContentText("$expiringCount of $totalProducts products expiring soon")
+            .setContentTitle(context.getString(R.string.notification_channel_summary))
+            .setContentText(
+                context.getString(
+                    R.string.notification_summary_body,
+                    expiringCount,
+                    totalProducts
+                )
+            )
             .setStyle(inboxStyle)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)

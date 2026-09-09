@@ -128,13 +128,13 @@ fun LoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "Welcome Back",
+                        stringResource(R.string.auth_welcome_back),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        "Sign in to continue",
+                        stringResource(R.string.auth_sign_in_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
@@ -144,7 +144,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Email") },
+                        label = { Text(stringResource(R.string.auth_email)) },
                         leadingIcon = { Icon(Icons.Default.Email, null) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -164,7 +164,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+                        label = { Text(stringResource(R.string.auth_password)) },
                         leadingIcon = { Icon(Icons.Default.Lock, null) },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -196,7 +196,7 @@ fun LoginScreen(
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                         TextButton(onClick = onNavigateToForgotPassword) {
                             Text(
-                                "Forgot Password?",
+                                stringResource(R.string.auth_forgot_password),
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 13.sp
@@ -207,7 +207,7 @@ fun LoginScreen(
                     // Error
                     AnimatedVisibility(visible = uiState.error != null, enter = fadeIn(), exit = fadeOut()) {
                         Text(
-                            text = uiState.error ?: "",
+                            text = uiState.error?.let { stringResource(messageFor(it)) } ?: "",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 8.dp),
@@ -233,7 +233,7 @@ fun LoginScreen(
                                 strokeWidth = 2.5.dp
                             )
                         } else {
-                            Text("Sign In", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(stringResource(R.string.settings_sign_in), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
 
@@ -245,7 +245,7 @@ fun LoginScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         HorizontalDivider(modifier = Modifier.weight(1f))
-                        Text("  OR  ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        Text(stringResource(R.string.auth_or), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         HorizontalDivider(modifier = Modifier.weight(1f))
                     }
 
@@ -274,7 +274,7 @@ fun LoginScreen(
                                 tint = androidx.compose.ui.graphics.Color.Unspecified
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("Continue with Google", fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                            Text(stringResource(R.string.auth_continue_google), fontWeight = FontWeight.Medium, fontSize = 15.sp)
                         }
                     }
                 }
@@ -284,12 +284,12 @@ fun LoginScreen(
 
             TextButton(onClick = onNavigateToRegister) {
                 Text(
-                    "Don't have an account? ",
+                    stringResource(R.string.auth_no_account),
                     color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "Sign Up",
+                    stringResource(R.string.auth_sign_up),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyMedium
@@ -298,7 +298,7 @@ fun LoginScreen(
 
             TextButton(onClick = onContinueAsGuest) {
                 Text(
-                    "Continue without account",
+                    stringResource(R.string.auth_continue_without_account),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 13.sp

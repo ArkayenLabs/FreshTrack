@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.data.export.CsvExporter
@@ -56,6 +57,22 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val itemRepository: ItemRepository = koinInject()
 
+    // Resolved here because the places that show them — coroutines, activity
+    // result callbacks, catch blocks — are not composition and cannot read
+    // resources themselves.
+    val fileEmptyMessage = stringResource(R.string.settings_file_empty)
+    val exportEmptyMessage = stringResource(R.string.settings_export_empty)
+    val exportChooserTitle = stringResource(R.string.settings_export_chooser)
+    val exportFailedMessage = stringResource(R.string.settings_export_failed)
+    val supportChooserTitle = stringResource(R.string.settings_help_chooser)
+    val noEmailAppMessage = stringResource(R.string.settings_no_email_app)
+    val accountDeletedMessage = stringResource(R.string.settings_delete_done)
+    // The word someone must type to confirm deletion. A resource so it can
+    // be translated, since asking for an English word in a German app is a
+    // trap rather than a safeguard.
+    val deleteKeyword = stringResource(R.string.settings_delete_keyword)
+    val reauthNeededMessage = stringResource(R.string.settings_delete_reauth)
+
     val consentPreferences: com.example.freshtrack.data.preferences.ConsentPreferences = koinInject()
     var analyticsConsent by remember { mutableStateOf(consentPreferences.isAnalyticsGranted()) }
 
@@ -83,7 +100,7 @@ fun SettingsScreen(
                     context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                 }
                 if (text.isNullOrBlank()) {
-                    Toast.makeText(context, "That file is empty", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, fileEmptyMessage, Toast.LENGTH_SHORT).show()
                 } else {
                     val parsed = com.example.freshtrack.data.export.CsvImporter.parse(text)
                     val summary = itemRepository.import(parsed.products)
@@ -106,14 +123,14 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Settings",
+                        stringResource(R.string.settings_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -171,7 +188,7 @@ fun SettingsScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = displayName ?: "Add your name",
+                                text = displayName ?: stringResource(R.string.settings_add_name),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = if (displayName != null)
@@ -196,7 +213,7 @@ fun SettingsScreen(
                         ) {
                             Icon(
                                 Icons.Default.Edit,
-                                contentDescription = "Edit name",
+                                contentDescription = stringResource(R.string.settings_edit_name),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
@@ -234,19 +251,19 @@ fun SettingsScreen(
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Using as Guest",
+                                stringResource(R.string.settings_guest_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                "Sign in to unlock backup & sync",
+                                stringResource(R.string.settings_guest_body),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                         TextButton(onClick = onSignOut, shape = RoundedCornerShape(10.dp)) {
-                            Text("Sign In", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(R.string.settings_sign_in), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -257,19 +274,19 @@ fun SettingsScreen(
 
             // Data & Storage Section
             SettingsSection(
-                title = "Data & Storage",
+                title = stringResource(R.string.settings_section_data),
                 icon = Icons.Outlined.Storage
             ) {
                 SettingsItemCard(
                     icon = Icons.Outlined.History,
-                    title = "History",
-                    description = "View used & discarded items",
+                    title = stringResource(R.string.history_title),
+                    description = stringResource(R.string.settings_history_body),
                     onClick = onNavigateToHistory
                 )
                 SettingsItemCard(
                     icon = Icons.Outlined.Upload,
-                    title = if (isImporting) "Importing..." else "Import Data",
-                    description = "Restore products from a CSV export",
+                    title = if (isImporting) stringResource(R.string.settings_importing) else stringResource(R.string.settings_import),
+                    description = stringResource(R.string.settings_import_body),
                     onClick = {
                         if (!isImporting) {
                             // Some providers label CSV as text/comma-separated-values
@@ -282,8 +299,8 @@ fun SettingsScreen(
                 )
                 SettingsItemCard(
                     icon = Icons.Outlined.Download,
-                    title = if (isExporting) "Exporting..." else "Export Data",
-                    description = "Export products to CSV",
+                    title = if (isExporting) stringResource(R.string.settings_exporting) else stringResource(R.string.settings_export),
+                    description = stringResource(R.string.settings_export_body),
                     onClick = {
                         if (!isExporting) {
                             isExporting = true
@@ -291,13 +308,13 @@ fun SettingsScreen(
                                 try {
                                     val products = itemRepository.observeActiveItems().first()
                                     if (products.isEmpty()) {
-                                        Toast.makeText(context, "No products to export", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, exportEmptyMessage, Toast.LENGTH_SHORT).show()
                                     } else {
                                         val shareIntent = CsvExporter.exportToCSV(context, products)
                                         if (shareIntent != null) {
-                                            context.startActivity(Intent.createChooser(shareIntent, "Export Products"))
+                                            context.startActivity(Intent.createChooser(shareIntent, exportChooserTitle))
                                         } else {
-                                            Toast.makeText(context, "Failed to create export file", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, exportFailedMessage, Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 } catch (e: Exception) {
@@ -312,13 +329,15 @@ fun SettingsScreen(
 
                 SettingsItemCard(
                     icon = Icons.Outlined.CloudOff,
-                    title = "Backup & Sync",
+                    title = stringResource(R.string.settings_sync),
                     description = if (pendingChanges > 0) {
-                        "Not available yet. $pendingChanges change" +
-                            (if (pendingChanges == 1) "" else "s") +
-                            " saved on this device."
+                        pluralStringResource(
+                            R.plurals.settings_sync_pending,
+                            pendingChanges,
+                            pendingChanges
+                        )
                     } else {
-                        "Not available yet. Your items are saved on this device."
+                        stringResource(R.string.settings_sync_none)
                     },
                     enabled = false,
                     onClick = {}
@@ -327,13 +346,13 @@ fun SettingsScreen(
 
             // Privacy Section
             SettingsSection(
-                title = "Privacy",
+                title = stringResource(R.string.settings_section_privacy),
                 icon = Icons.Outlined.Shield
             ) {
                 SettingsSwitchCard(
                     icon = Icons.Outlined.Analytics,
-                    title = "Share anonymous usage data",
-                    description = "Off by default. Helps improve the app. You can change this anytime.",
+                    title = stringResource(R.string.settings_analytics),
+                    description = stringResource(R.string.settings_analytics_body),
                     checked = analyticsConsent,
                     onCheckedChange = { granted ->
                         analyticsConsent = granted
@@ -345,13 +364,13 @@ fun SettingsScreen(
 
             // About Section
             SettingsSection(
-                title = "About",
+                title = stringResource(R.string.settings_section_about),
                 icon = Icons.Outlined.Info
             ) {
                 SettingsItemCard(
                     icon = Icons.Outlined.PrivacyTip,
-                    title = "Privacy Policy",
-                    description = "How we handle your data",
+                    title = stringResource(R.string.settings_privacy_policy),
+                    description = stringResource(R.string.settings_privacy_policy_body),
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.arkayenlabs.com/privacy/freshtrack"))
                         context.startActivity(intent)
@@ -360,8 +379,8 @@ fun SettingsScreen(
 
                 SettingsItemCard(
                     icon = Icons.Outlined.Star,
-                    title = "Rate Us",
-                    description = "Rate and review on Play Store",
+                    title = stringResource(R.string.settings_rate),
+                    description = stringResource(R.string.settings_rate_body),
                     onClick = {
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
@@ -375,8 +394,8 @@ fun SettingsScreen(
 
                 SettingsItemCard(
                     icon = Icons.Outlined.HelpOutline,
-                    title = "Need Help?",
-                    description = "Contact support via email",
+                    title = stringResource(R.string.settings_help),
+                    description = stringResource(R.string.settings_help_body),
                     onClick = {
                         val deviceInfo = "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}\nApp Version: 1.1.0"
                         val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
@@ -386,9 +405,9 @@ fun SettingsScreen(
                             putExtra(Intent.EXTRA_TEXT, "\n\n---\n$deviceInfo")
                         }
                         try {
-                            context.startActivity(Intent.createChooser(emailIntent, "Contact Support"))
+                            context.startActivity(Intent.createChooser(emailIntent, supportChooserTitle))
                         } catch (e: Exception) {
-                            Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, noEmailAppMessage, Toast.LENGTH_SHORT).show()
                         }
                     }
                 )
@@ -407,8 +426,8 @@ fun SettingsScreen(
                 if (showSignOutDialog) {
                     AlertDialog(
                         onDismissRequest = { showSignOutDialog = false },
-                        title = { Text("Sign Out", fontWeight = FontWeight.Bold) },
-                        text = { Text("Are you sure you want to sign out?") },
+                        title = { Text(stringResource(R.string.settings_sign_out), fontWeight = FontWeight.Bold) },
+                        text = { Text(stringResource(R.string.settings_sign_out_confirm)) },
                         confirmButton = {
                             Button(
                                 onClick = {
@@ -419,10 +438,10 @@ fun SettingsScreen(
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                            ) { Text("Sign Out") }
+                            ) { Text(stringResource(R.string.settings_sign_out)) }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+                            TextButton(onClick = { showSignOutDialog = false }) { Text(stringResource(R.string.action_cancel)) }
                         }
                     )
                 }
@@ -436,7 +455,7 @@ fun SettingsScreen(
                 ) {
                     Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Sign Out", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_sign_out), fontWeight = FontWeight.SemiBold)
                 }
 
                 // Deliberately quiet: a destructive, irreversible action should
@@ -451,7 +470,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            "Delete Account",
+                            stringResource(R.string.settings_delete_account),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -482,13 +501,13 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Made for a sustainable future",
+                    text = stringResource(R.string.settings_footer),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Open Source Licenses",
+                    text = stringResource(R.string.settings_licenses),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                     modifier = Modifier.clickable { onNavigateToLicenses() }
@@ -502,12 +521,12 @@ fun SettingsScreen(
         var nameInput by remember { mutableStateOf(editNameValue) }
         AlertDialog(
             onDismissRequest = { showEditNameDialog = false },
-            title = { Text("Edit Name", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.settings_edit_name), fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = nameInput,
                     onValueChange = { nameInput = it },
-                    label = { Text("Display Name") },
+                    label = { Text(stringResource(R.string.settings_display_name)) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -525,11 +544,11 @@ fun SettingsScreen(
                         showEditNameDialog = false
                     },
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Save", fontWeight = FontWeight.SemiBold) }
+                ) { Text(stringResource(R.string.action_save), fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
                 TextButton(onClick = { showEditNameDialog = false }, shape = RoundedCornerShape(12.dp)) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             },
             shape = RoundedCornerShape(24.dp)
@@ -546,21 +565,18 @@ fun SettingsScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("Delete account?") },
+            title = { Text(stringResource(R.string.settings_delete_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     // Naming what goes, rather than a vague warning, so the
                     // decision is made with the facts in front of them.
-                    Text("This permanently deletes:")
+                    Text(stringResource(R.string.settings_delete_intro))
                     Text(
-                        "• Your account and sign-in details\n" +
-                            "• Every item in your inventory, on this device and in the cloud\n" +
-                            "• Your history and impact figures",
+                        stringResource(R.string.settings_delete_bullets),
                         style = MaterialTheme.typography.bodySmall
                     )
                     Text(
-                        "This cannot be undone. If you want to keep your data, " +
-                            "cancel and use Export Data first.",
+                        stringResource(R.string.settings_delete_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -569,7 +585,7 @@ fun SettingsScreen(
                         onValueChange = { deleteConfirmText = it },
                         singleLine = true,
                         enabled = !isDeletingAccount,
-                        label = { Text("Type DELETE to confirm") }
+                        label = { Text(stringResource(R.string.settings_delete_prompt)) }
                     )
                 }
             },
@@ -577,7 +593,7 @@ fun SettingsScreen(
                 Button(
                     // Typing is friction on purpose: a single mis-tap should not
                     // be able to destroy someone's account.
-                    enabled = deleteConfirmText.trim().equals("DELETE", ignoreCase = false) &&
+                    enabled = deleteConfirmText.trim() == deleteKeyword &&
                         !isDeletingAccount,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
@@ -590,7 +606,7 @@ fun SettingsScreen(
                                     showDeleteAccountDialog = false
                                     Toast.makeText(
                                         context,
-                                        "Your account and data have been deleted",
+                                        accountDeletedMessage,
                                         Toast.LENGTH_LONG
                                     ).show()
                                     onSignOut()
@@ -600,7 +616,7 @@ fun SettingsScreen(
                                     showDeleteAccountDialog = false
                                     Toast.makeText(
                                         context,
-                                        "For your security, sign in again and then delete your account",
+                                        reauthNeededMessage,
                                         Toast.LENGTH_LONG
                                     ).show()
                                     authViewModel.signOut()
@@ -619,14 +635,14 @@ fun SettingsScreen(
                         }
                     }
                 ) {
-                    Text(if (isDeletingAccount) "Deleting..." else "Delete forever")
+                    Text(if (isDeletingAccount) stringResource(R.string.settings_deleting) else stringResource(R.string.settings_delete_forever))
                 }
             },
             dismissButton = {
                 TextButton(
                     enabled = !isDeletingAccount,
                     onClick = { showDeleteAccountDialog = false }
-                ) { Text("Cancel") }
+                ) { Text(stringResource(R.string.action_cancel)) }
             },
             shape = RoundedCornerShape(24.dp)
         )
@@ -638,20 +654,20 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { importSummary = null },
             icon = { Icon(Icons.Outlined.Upload, contentDescription = null) },
-            title = { Text("Import complete") },
+            title = { Text(stringResource(R.string.settings_import_complete)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Added: ${summary.imported}")
+                    Text(stringResource(R.string.settings_import_added, summary.imported))
                     if (summary.skippedDuplicates > 0) {
-                        Text("Already in your list: ${summary.skippedDuplicates}")
+                        Text(stringResource(R.string.settings_import_duplicates, summary.skippedDuplicates))
                     }
                     if (summary.failedRows > 0) {
-                        Text("Rows that could not be read: ${summary.failedRows}")
+                        Text(stringResource(R.string.settings_import_failed_rows, summary.failedRows))
                     }
                     if (summary.imported == 0 && summary.skippedDuplicates > 0) {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Everything in that file was already here, so nothing changed.",
+                            stringResource(R.string.settings_import_nothing_new),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -659,7 +675,7 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { importSummary = null }) { Text("Done") }
+                TextButton(onClick = { importSummary = null }) { Text(stringResource(R.string.action_done)) }
             }
         )
     }
@@ -931,7 +947,7 @@ private fun AdvanceNoticeDaysDialog(
                 onClick = { onConfirm(selectedDays) },
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Save", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.action_save), fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
@@ -939,7 +955,7 @@ private fun AdvanceNoticeDaysDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Cancel", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.action_cancel), fontWeight = FontWeight.SemiBold)
             }
         },
         shape = RoundedCornerShape(28.dp),

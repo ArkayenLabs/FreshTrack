@@ -198,4 +198,184 @@
 
     <!-- Terms. -->
     <string name="terms_screen_title">Terms of Service</string>
+
+    <!-- Settings. -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_file_empty">That file is empty</string>
+    <string name="settings_add_name">Add your name</string>
+    <string name="settings_edit_name">Edit name</string>
+    <string name="settings_guest_title">Using as guest</string>
+    <string name="settings_guest_body">Sign in to unlock backup and sync</string>
+    <string name="settings_sign_in">Sign in</string>
+    <string name="settings_section_data">Data and storage</string>
+    <string name="settings_history_body">View used and discarded items</string>
+    <string name="settings_importing">Importing\u2026</string>
+    <string name="settings_import">Import data</string>
+    <string name="settings_import_body">Restore products from a CSV export</string>
+    <string name="settings_exporting">Exporting\u2026</string>
+    <string name="settings_export">Export data</string>
+    <string name="settings_export_body">Export products to CSV</string>
+    <string name="settings_export_empty">No products to export</string>
+    <string name="settings_export_chooser">Export products</string>
+    <string name="settings_export_failed">Failed to create export file</string>
+    <string name="settings_sync">Backup and sync</string>
+    <string name="settings_sync_none">Not available yet. Your items are saved on this device.</string>
+    <plurals name="settings_sync_pending">
+        <item quantity="one">Not available yet. %1$d change saved on this device.</item>
+        <item quantity="other">Not available yet. %1$d changes saved on this device.</item>
+    </plurals>
+    <string name="settings_section_privacy">Privacy</string>
+    <string name="settings_analytics">Share anonymous usage data</string>
+    <string name="settings_analytics_body">Off by default. Helps improve the app. You can change this anytime.</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_privacy_policy">Privacy policy</string>
+    <string name="settings_privacy_policy_body">How we handle your data</string>
+    <string name="settings_rate">Rate us</string>
+    <string name="settings_rate_body">Rate and review on Play Store</string>
+    <string name="settings_help">Need help?</string>
+    <string name="settings_help_body">Contact support via email</string>
+    <string name="settings_help_chooser">Contact support</string>
+    <string name="settings_no_email_app">No email app found</string>
+    <string name="settings_sign_out">Sign out</string>
+    <string name="settings_sign_out_confirm">Are you sure you want to sign out?</string>
+    <string name="settings_delete_account">Delete account</string>
+    <string name="settings_footer">Made for a sustainable future</string>
+    <string name="settings_licenses">Open source licences</string>
+    <string name="settings_display_name">Display name</string>
+    <string name="settings_delete_title">Delete account?</string>
+    <string name="settings_delete_intro">This permanently deletes:</string>
+    <string name="settings_delete_bullets">\u2022 Your account and sign-in details\n\u2022 Every item in your inventory, on this device and in the cloud\n\u2022 Your history and impact figures</string>
+    <string name="settings_delete_warning">This cannot be undone. If you want to keep your data, cancel and use Export data first.</string>
+    <string name="settings_delete_prompt">Type DELETE to confirm</string>
+    <string name="settings_delete_keyword" translatable="false">DELETE</string>
+    <string name="settings_delete_done">Your account and data have been deleted</string>
+    <string name="settings_delete_reauth">For your security, sign in again and then delete your account</string>
+    <string name="settings_deleting">Deleting\u2026</string>
+    <string name="settings_delete_forever">Delete forever</string>
+    <string name="settings_import_complete">Import complete</string>
+    <string name="settings_import_nothing_new">Everything in that file was already here, so nothing changed.</string>
+    <string name="action_done">Done</string>
+    <string name="action_save">Save</string>
+    <string name="action_edit">Edit</string>
+
+    <!-- Add and edit. -->
+    <string name="add_title">Add product</string>
+    <string name="edit_title">Edit product</string>
+    <string name="add_save_changes">Save changes</string>
+    <string name="add_section_basic">Basic information</string>
+    <string name="add_name_label">Product name</string>
+    <string name="add_name_hint">e.g. Fresh milk</string>
+    <string name="add_barcode_label">Barcode</string>
+    <string name="add_barcode_hint">Optional</string>
+    <string name="add_scan">Scan</string>
+    <string name="add_section_category">Category</string>
+    <string name="add_section_expiry">Expiry and quantity</string>
+    <string name="add_scan_date">Scan the printed date</string>
+    <string name="add_scanned_note">Read from the packet and confirmed by you.</string>
+    <string name="add_quantity_label">Quantity</string>
+    <string name="add_quantity_hint">Enter quantity</string>
+    <string name="add_quantity_range">Range: 1-999</string>
+    <string name="add_section_notes">Additional details (optional)</string>
+    <string name="add_notes_label">Notes</string>
+    <string name="add_notes_hint">Add any additional information\u2026</string>
+    <string name="add_expiry_label">Expiry date</string>
+    <string name="add_expiry_hint">Select expiry date</string>
+    <string name="add_pick_date">Pick date</string>
+    <string name="action_confirm">Confirm</string>
+
+    <!-- Expiry status, shown with an icon so colour is never the only signal. -->
+    <string name="status_expired">Expired</string>
+    <string name="status_expires_today">Expires today</string>
+    <string name="status_expiring_soon">Expiring soon</string>
+    <string name="status_expiring_this_week">Expiring this week</string>
+    <string name="status_fresh">Fresh</string>
+
+    <!-- Product details. -->
+    <string name="details_title">Product details</string>
+    <string name="details_loading">Loading product details\u2026</string>
+    <string name="details_added_on">Added on</string>
+    <string name="details_used">Used</string>
+    <string name="details_discarded">Discarded</string>
+    <string name="details_use_how_many">Use how many?</string>
+    <string name="details_discard_how_many">Discard how many?</string>
+    <string name="details_use">Use</string>
+    <string name="details_discard">Discard</string>
+    <string name="details_all">All</string>
+    <string name="details_remove_completely">This will remove the product completely</string>
+    <string name="details_invalid_number">Enter a valid number</string>
+    <string name="details_minimum_one">Minimum is 1</string>
+    <string name="details_today">Today</string>
+    <string name="details_tomorrow">Tomorrow</string>
+    <string name="details_maximum_is">Maximum is %1$d</string>
+
+    <!-- Sign in and sign up. -->
+    <string name="auth_welcome_back">Welcome back</string>
+    <string name="auth_sign_in_subtitle">Sign in to continue</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_confirm_password">Confirm password</string>
+    <string name="auth_forgot_password">Forgot password?</string>
+    <string name="auth_or">OR</string>
+    <string name="auth_continue_google">Continue with Google</string>
+    <string name="auth_no_account">Don\'t have an account? </string>
+    <string name="auth_sign_up">Sign up</string>
+    <string name="auth_continue_without_account">Continue without account</string>
+    <string name="auth_create_account">Create account</string>
+    <string name="auth_passwords_mismatch">Passwords do not match</string>
+    <string name="auth_agree_to">I agree to the </string>
+    <string name="auth_have_account">Already have an account? </string>
+    <string name="auth_reset_title">Reset password</string>
+    <string name="auth_reset_body">Enter your email to receive a password reset link.</string>
+    <string name="auth_reset_sent">If an account exists for that email, a reset link is on its way.</string>
+    <string name="auth_send_link">Send link</string>
+
+    <!--
+      Sign-in failures.
+
+      Deliberately vague about whether an account exists: saying "no account for
+      that email" tells anyone who asks which addresses are registered.
+    -->
+    <string name="auth_error_weak_password">Password must be at least 6 characters.</string>
+    <string name="auth_error_invalid_credentials">Incorrect email or password.</string>
+    <string name="auth_error_email_in_use">An account already exists for this email.</string>
+    <string name="auth_error_no_network">No internet connection. Check your network and try again.</string>
+    <string name="auth_error_too_many_attempts">Too many attempts. Please try again in a few minutes.</string>
+    <string name="auth_error_generic">Something went wrong. Please try again.</string>
+
+    <!-- Onboarding. -->
+    <string name="onboarding_track_title">Track your food</string>
+    <string name="onboarding_track_body">Keep track of all your groceries and food items in one place. Know exactly what you have and when it expires.</string>
+    <string name="onboarding_alerts_title">Expiry alerts</string>
+    <string name="onboarding_alerts_body">Get timely notifications before your food expires. Stay informed and save money by using items on time.</string>
+    <string name="onboarding_organise_title">Stay organised</string>
+    <string name="onboarding_organise_body">Organise by category, scan barcodes and manage quantities. Expiry tracking without the effort.</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get started</string>
+
+    <!-- Licences. Library and licence names are proper nouns and stay as they are. -->
+    <string name="licenses_title">Open source licences</string>
+    <string name="licenses_heading">Built with open source</string>
+    <string name="licenses_thanks">Thank you to all open source contributors.</string>
+    <string name="licenses_view_full">View full licence</string>
+
+    <!-- Notifications and widget. -->
+    <string name="notification_mark_used">Mark as used</string>
+    <string name="notification_view_items">View items</string>
+    <string name="notification_channel_summary">Daily summary</string>
+    <string name="widget_nothing_soon">Nothing needs using up in the next week.</string>
+    <plurals name="notification_summary_tracked">
+        <item quantity="one">\u2022 %1$d product tracked</item>
+        <item quantity="other">\u2022 %1$d products tracked</item>
+    </plurals>
+    <string name="notification_summary_expiring">\u2022 %1$d expiring soon</string>
+    <string name="notification_summary_body">%1$d of %2$d products expiring soon</string>
+    <string name="settings_import_added">Added: %1$d</string>
+    <string name="settings_import_duplicates">Already in your list: %1$d</string>
+    <string name="settings_import_failed_rows">Rows that could not be read: %1$d</string>
+    <string name="details_available">Available: %1$d</string>
+    <string name="history_expiry">Expiry: %1$s</string>
+    <string name="crash_reset_title">App reset</string>
+    <string name="action_ok">OK</string>
+    <string name="weekly_summary_body">You used %1$d items and wasted %2$d so far.</string>
 </resources>

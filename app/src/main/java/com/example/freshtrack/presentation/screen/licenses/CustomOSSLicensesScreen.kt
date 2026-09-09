@@ -90,14 +90,14 @@ fun CustomOSSLicensesScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Open Source Licenses",
+                        stringResource(R.string.licenses_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -146,7 +146,7 @@ fun CustomOSSLicensesScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Built with Open Source",
+                                stringResource(R.string.licenses_heading),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -185,7 +185,7 @@ fun CustomOSSLicensesScreen(
             item {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Thank you to all open source contributors.",
+                    stringResource(R.string.licenses_thanks),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth()
@@ -277,7 +277,7 @@ fun LicenseCard(
                     onClick = { onOpenUrl(license.url) },
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("View Full License")
+                    Text(stringResource(R.string.licenses_view_full))
                 }
             }
         }
