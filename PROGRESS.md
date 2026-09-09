@@ -58,17 +58,33 @@ each row stating its reason. Ranking lives in the domain, separate from
 anything that might later generate suggestions — a model may explain the list
 but must never be able to put an item on it.
 
-Last verified state (all four gates re-run 9 Sep 2026, against a clean tree):
-`./gradlew testDebugUnitTest lintDebug assembleRelease` succeeds — **142** JVM
-unit tests pass, lint reports 0 errors and 120 warnings, and a signed minified
-APK is produced. **48** Firestore rules tests pass on the emulator, against the
-current `kitchens/items/events` rules. The unit tests were re-run with
-`--rerun-tasks`; an up-to-date task is not a pass.
+Last verified state, in two parts because they were measured at different
+points.
 
-The three figures above previously read 86, 38 and "the old
-`/pantries/{id}/products` shape". All three were stale — the undo commit added
-tests and the rules were rewritten — which is the recurring lesson that this
-paragraph is the easiest thing in the file to leave behind.
+*Against the tree at `d324f15`, all three gates re-run with `--rerun-tasks`:*
+`./gradlew testDebugUnitTest lintDebug assembleRelease` succeeds — **173** JVM
+unit tests pass, lint reports 0 errors and 124 warnings plus 1 hint, and a
+signed minified APK is produced (77.2 MB, universal, four ABIs). This settles
+the open question from the previous session: `1cdc6ea`'s unverified final edits
+did not break anything.
+
+*Against the tree with the receipt review sheet in it:* **203** unit tests pass
+and lint still reports 0 errors and 124 warnings. `assembleRelease` has **not**
+been run against this work.
+
+**48** Firestore rules tests pass on the emulator, against the current
+`kitchens/items/events` rules — unchanged, and not re-run since.
+
+The figures above previously read 142 and 120, and before that 86 and 38. They
+have now been stale three times running, always for the same reason: the tests
+grew and the paragraph did not. Two traps worth naming, because both were hit
+this session:
+
+- An up-to-date task is not a pass. `testDebugUnitTest` reported `UP-TO-DATE`
+  on a tree it had never run against, and the results directory still held a
+  passing report from earlier. Read the task line, not just the exit code.
+- `--tests "*Receipt*"` matches more than the new tests. A count taken from a
+  filtered run is a count of everything the filter caught.
 
 **Verified on a Pixel_35 API 35 emulator**, not just compiled:
 
@@ -164,6 +180,15 @@ release APK (only the debug build has been installed).
 - [x] **Sync UI** — the Backup & Sync card reports real status instead of
       "coming soon".
 
+### Capture
+- [x] **Receipt review sheet** — capture by camera or file, an editable list
+      where a row nothing can date stays visibly unfinished, per-row duplicate
+      resolution (fold in, keep separate, leave out), and a commit that writes
+      the whole sheet in one transaction or none of it. Lines the parser could
+      not read are shown rather than dropped. An accepted shelf-life guess is
+      saved as an estimate, not as a date the user confirmed, so a printed date
+      scanned later still outranks it.
+
 ### Testing
 - [x] Migration tests for 4→5, 5→6, 6→7 and the full 1→7 chain, run on device
 - [x] 36 Firestore rules tests on the emulator
@@ -199,12 +224,32 @@ English only for now, but structured so a language is a translation job: text
 lives in `res/values/strings.xml`, and `DateOrdering.forLocale` decides whether
 03/04 is March or April.
 
-**Next piece of work: the receipt review sheet.** The two halves exist and have
-never met — `ReceiptParser` turns receipt text into candidate rows, and
-`ShelfLifeTable` turns a name and a storage type into an estimated date. What is
-missing is capture (camera or file), an editable review list where unresolved
-rows stay visibly unresolved, duplicate resolution, and an atomic commit.
-`ItemRepository.findDuplicate` and `.import` already exist for the last two.
+**The receipt review sheet is built, and has never run on a device.** The two
+halves that had never met are joined: `ReceiptParser` produces candidate rows,
+`ShelfLifeTable` dates them, and `ReceiptDraft` is the pure domain layer between
+them that decides what a row means and whether it may be saved at all. Capture
+is a CameraX still plus a file picker, both converging on one on-device ML Kit
+read; the temporary photo is deleted after recognition and an image the user
+chose is left where it is.
+
+What is verified: 30 new JVM tests, and the two claims that matter were checked
+by breaking them — removing the unresolved-row guard from `commit`, and
+replacing the merge-quantity sum with "last wins", failed exactly the two tests
+covering those and nothing else.
+
+What is not: **none of it has been run on a device.** The camera path, the file
+picker, and ML Kit against a photograph of a real receipt are all unexercised.
+Recognition here has never seen a receipt — only text the parser was handed
+directly — which is the same gap date capture has, and the same rule applies:
+no accuracy claim, anywhere, until real fixtures exist.
+
+`ItemRepository.import` turned out not to be usable for the commit, which the
+previous note assumed it would be. Two reasons, both of which would have been
+silent bugs: it re-decides for itself what is a duplicate and skips it, which
+throws away a batch the person explicitly chose to keep separate; and it commits
+row by row, so an interrupted receipt leaves half a shop with no way to tell
+which half. `commitReceipt` takes already-resolved rows and writes them in one
+transaction instead. `import` is untouched and still serves CSV.
 
 Loose ends found during the sweep, none of them urgent:
 
@@ -223,7 +268,12 @@ Loose ends found during the sweep, none of them urgent:
       write path behaves as designed.
 - [ ] **Exercise the surfaces the emulator run did not reach**: widget
       placement and refresh, notification delivery and its action, the CSV
-      picker, Google Sign-In, and the *release* APK rather than the debug one.
+      picker, Google Sign-In, the receipt camera and picker, and the *release*
+      APK rather than the debug one.
+- [ ] **Run `assembleRelease` against the receipt work.** Tests and lint are
+      green on it; the release build is not gated on it yet. Low risk — the
+      change is one repository method and a screen — but R8 has surprised this
+      project before.
 - [ ] **Rebuild sync on the outbox.** Push queued operations, pull by cursor,
       order by server revision rather than device clock. The queue and its
       idempotency keys exist; the transport does not.
@@ -272,9 +322,23 @@ Not bugs to fix today, but things that are true and should not be forgotten.
   off-by-default and opt-in, but the listing copy and Data Safety form still
   need updating to match, and the "no data collection" phrase should become
   "offline-first; optional, opt-in analytics".
-- **Duplicate prevention covers import only.** Adding the same item twice by
-  hand is still possible. `findDuplicate` exists on the repository and the add
-  flow does not call it.
+- **Duplicate prevention covers import and receipts only.** Adding the same item
+  twice by hand is still possible. `findDuplicate` exists on the repository and
+  the add flow does not call it.
+- **Receipt item names are saved exactly as printed**, so the kitchen fills with
+  `SEMI-SKIMMED MILK`. Deliberate — silently rewriting text read off a receipt
+  is the thing this codebase avoids everywhere else, and the sheet is editable —
+  but it is the default outcome for every row rather than an edge case, so it is
+  a decision to revisit rather than a settled one.
+- **A receipt line total is divided into a per-unit price and rounded.** 1.50 for
+  two tomatoes is 75p each, stamped `PriceSource.RECEIPT`. For quantities that do
+  not divide evenly the per-unit price will not multiply back to the printed
+  total. Exact whenever the quantity is one, which is most lines.
+- **A weight is not a count.** `1.5 KG POTATOES` becomes one item with "1.5 KG"
+  in its notes. The weight survives, but not as anything the app can compute on.
+- **Receipt capture asks for the camera permission on entering the screen**, the
+  same pattern flagged below for notifications, though here the reason is at
+  least visible on screen before the dialog appears.
 - **Widget rendering unverified.** Provider registers and the refresh path runs,
   but it has not been placed on a home screen, on the emulator or otherwise.
 - **Notification action unverified.** "Mark as used" is wired but has not been
