@@ -31,6 +31,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
@@ -59,6 +60,22 @@ fun BarcodeScannerScreen(
     // Holding a reading freezes the analyzer, so what is on screen stays the
     // thing being asked about rather than shifting under the question.
     var reading by remember { mutableStateOf<DateReading?>(null) }
+
+    // Whether any text at all has come back, which is the difference between
+    // "pointed at nothing" and "reading the label but there is no date in it".
+    var sawAnyText by remember { mutableStateOf(false) }
+
+    // A scan that finds nothing must say so. Left alone the camera would sit
+    // there indefinitely looking exactly like a camera that is about to work,
+    // and the person would never learn that the manual route is one tap away.
+    var struggling by remember { mutableStateOf(false) }
+    LaunchedEffect(reading) {
+        struggling = false
+        if (reading == null) {
+            delay(UNRESOLVED_AFTER_MS)
+            struggling = true
+        }
+    }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -128,6 +145,7 @@ fun BarcodeScannerScreen(
                     paused = reading != null,
                     onBarcodeScanned = onBarcodeScanned,
                     onTextRecognised = { text ->
+                        sawAnyText = true
                         val candidates = PrintedDateParser.parse(text, today)
                         if (candidates.isNotEmpty()) {
                             reading = DateReading(text = text, candidates = candidates)
@@ -138,7 +156,15 @@ fun BarcodeScannerScreen(
                     }
                 )
 
-                ScanningOverlay(mode)
+                ScanningOverlay(mode, showHint = !struggling)
+
+                if (mode == ScanMode.DATE && struggling && reading == null) {
+                    UnresolvedScanNotice(
+                        sawAnyText = sawAnyText,
+                        onEnterByHand = onNavigateBack,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                }
 
                 reading?.let { found ->
                     DateReviewSheet(
@@ -293,7 +319,7 @@ private fun CameraPreview(
 }
 
 @Composable
-private fun ScanningOverlay(mode: ScanMode) {
+private fun ScanningOverlay(mode: ScanMode, showHint: Boolean = true) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -309,8 +335,10 @@ private fun ScanningOverlay(mode: ScanMode) {
                 shape = MaterialTheme.shapes.medium
             ) {}
 
-            // Instructions
-            Card(
+            // Instructions. Suppressed once the unresolved notice is up, which
+            // gives better advice than this does and would otherwise be the
+            // second of two stacked cards saying overlapping things.
+            if (showHint) Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
                 )
@@ -521,4 +549,56 @@ private fun recogniseText(
     recogniser.process(image)
         .addOnSuccessListener { result -> if (result.text.isNotBlank()) onText(result.text) }
         .addOnCompleteListener { imageProxy.close() }
+}
+
+/** How long to let a scan run before admitting it is not working. */
+private const val UNRESOLVED_AFTER_MS = 6_000L
+
+/**
+ * Says that the scan is not getting anywhere, and offers the way out.
+ *
+ * Deliberately not a dead end and not a dismissal: the camera keeps looking
+ * while this is up, because the next frame may well succeed. It exists so that
+ * failing to read a label is something the person is told about rather than
+ * something they sit through.
+ */
+@Composable
+private fun UnresolvedScanNotice(
+    sawAnyText: Boolean,
+    onEnterByHand: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .padding(24.dp)
+            .fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = if (sawAnyText) "No date in what I can read" else "Nothing readable yet",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Text(
+                text = if (sawAnyText) {
+                    "Try moving closer to the printed date, or enter it yourself."
+                } else {
+                    "Steady the camera on the printed date, or enter it yourself."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TextButton(
+                onClick = onEnterByHand,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Enter the date by hand")
+            }
+        }
+    }
 }
