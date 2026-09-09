@@ -185,6 +185,37 @@ release APK (only the debug build has been installed).
 
 ---
 
+## Pick up here
+
+**Gates not re-run after the last commit.** `1cdc6ea` compiles, and the full
+unit and lint run passed immediately before its final two edits (three date
+formatters and one notification plural). Run
+`./gradlew testDebugUnitTest lintDebug assembleRelease` first and trust nothing
+until it is green.
+
+**The audience changed.** English-speaking markets first, US and UK. India is
+not a launch market — barcode and product-data coverage there is too thin.
+English only for now, but structured so a language is a translation job: text
+lives in `res/values/strings.xml`, and `DateOrdering.forLocale` decides whether
+03/04 is March or April.
+
+**Next piece of work: the receipt review sheet.** The two halves exist and have
+never met — `ReceiptParser` turns receipt text into candidate rows, and
+`ShelfLifeTable` turns a name and a storage type into an estimated date. What is
+missing is capture (camera or file), an editable review list where unresolved
+rows stay visibly unresolved, duplicate resolution, and an atomic commit.
+`ItemRepository.findDuplicate` and `.import` already exist for the last two.
+
+Loose ends found during the sweep, none of them urgent:
+
+- `AdvanceNoticeDaysDialog` and `describeLastSync` in `SettingsScreen` are
+  unreachable. The first is the notification settings dialog that was removed.
+- `EnhancedCategoryChip` in `ProductListScreen` and the icon mapping in
+  `ProductDetailsScreen` still name Food, Cosmetics and Medicines — categories
+  the product does not have. Inert, but wrong.
+- `assembleRelease` builds a four-ABI universal APK that Play does not ship.
+  `bundleRelease` is the artefact that matches distribution and is not gated.
+
 ## Next
 
 - [x] ~~**Run it on a device.**~~ Done — see the verified list above. The
