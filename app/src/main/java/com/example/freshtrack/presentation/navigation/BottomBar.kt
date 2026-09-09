@@ -1,5 +1,6 @@
 package com.example.freshtrack.presentation.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -36,9 +37,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.freshtrack.R
 
 /**
  * The three places the app is ever "at".
@@ -61,28 +64,28 @@ enum class TopLevelDestination(
      * still containing "{filter}" would be taken literally and match nothing.
      */
     val navRoute: String,
-    val label: String,
+    @StringRes val labelRes: Int,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
     TODAY(
         matchRoute = Screen.Today.route,
         navRoute = Screen.Today.route,
-        label = "Today",
+        labelRes = R.string.nav_today,
         selectedIcon = Icons.Filled.Today,
         unselectedIcon = Icons.Outlined.Today
     ),
     KITCHEN(
         matchRoute = Screen.ProductList.route,
         navRoute = Screen.ProductList.createRoute(),
-        label = "Kitchen",
+        labelRes = R.string.nav_kitchen,
         selectedIcon = Icons.Filled.Kitchen,
         unselectedIcon = Icons.Outlined.Kitchen
     ),
     PROGRESS(
         matchRoute = Screen.Impact.route,
         navRoute = Screen.Impact.route,
-        label = "Progress",
+        labelRes = R.string.nav_progress,
         // Not Insights: that icon carries sparkles, and a sparkle motif as a
         // permanent tab icon is the "signal intelligence with decoration" habit
         // the design system rules out. A chart says what this screen holds.
@@ -211,7 +214,7 @@ private fun BottomBarItem(
         }
         Spacer(Modifier.height(3.dp))
         Text(
-            text = destination.label,
+            text = stringResource(destination.labelRes),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             color = content

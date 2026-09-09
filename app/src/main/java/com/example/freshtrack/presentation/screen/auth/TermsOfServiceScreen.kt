@@ -20,10 +20,10 @@ fun TermsOfServiceScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Terms of Service") },
+                title = { Text(stringResource(R.string.terms_screen_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 }
             )

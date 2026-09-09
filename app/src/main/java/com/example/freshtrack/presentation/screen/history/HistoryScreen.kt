@@ -13,11 +13,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.domain.model.Item
 import java.time.format.DateTimeFormatter
+import com.example.freshtrack.R
 import com.example.freshtrack.presentation.viewmodel.HistoryViewModel
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
@@ -40,14 +42,14 @@ fun HistoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "History",
+                        stringResource(R.string.history_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
                 actions = {
@@ -56,7 +58,7 @@ fun HistoryScreen(
                         IconButton(onClick = { showClearConfirmDialog = true }) {
                             Icon(
                                 Icons.Outlined.DeleteSweep,
-                                "Clear History",
+                                stringResource(R.string.history_clear),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -104,12 +106,12 @@ fun HistoryScreen(
             when (selectedTabIndex) {
                 0 -> HistoryList(
                     products = consumedProducts,
-                    emptyMessage = "No used products yet",
+                    emptyMessage = stringResource(R.string.history_empty_used),
                     onDelete = { viewModel.deleteItem(it) }
                 )
                 1 -> HistoryList(
                     products = discardedProducts,
-                    emptyMessage = "No discarded products yet",
+                    emptyMessage = stringResource(R.string.history_empty_discarded),
                     onDelete = { viewModel.deleteItem(it) }
                 )
             }
@@ -119,8 +121,8 @@ fun HistoryScreen(
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
-            title = { Text("Clear History") },
-            text = { Text("Are you sure you want to delete all history? This action cannot be undone.") },
+            title = { Text(stringResource(R.string.history_clear)) },
+            text = { Text(stringResource(R.string.history_clear_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -129,12 +131,12 @@ fun HistoryScreen(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete All")
+                    Text(stringResource(R.string.action_delete_all))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -223,7 +225,7 @@ private fun HistoryItemCard(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Outlined.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = stringResource(R.string.action_delete),
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                 )
             }

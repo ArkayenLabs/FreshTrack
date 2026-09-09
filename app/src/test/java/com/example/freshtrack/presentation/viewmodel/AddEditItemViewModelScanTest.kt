@@ -149,6 +149,6 @@ class AddEditItemViewModelScanTest {
         vm.saveItem(onSuccess = {})
 
         assertNull(vm.uiState.value.expiryDate)
-        assertEquals("Expiry date is required", vm.uiState.value.error)
+        assertEquals(AddEditError.EXPIRY_REQUIRED, vm.uiState.value.error)
     }
 }

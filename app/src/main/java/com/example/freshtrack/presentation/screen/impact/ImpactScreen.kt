@@ -14,8 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.freshtrack.R
 import com.example.freshtrack.domain.model.ImpactStats
 import com.example.freshtrack.presentation.viewmodel.ImpactViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -35,7 +38,7 @@ fun ImpactScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Progress",
+                        stringResource(R.string.nav_progress),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -65,14 +68,14 @@ fun ImpactScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Outlined.CheckCircle,
                         value = stats.itemsSaved.toString(),
-                        label = "Items used",
+                        label = stringResource(R.string.impact_items_used),
                         tint = MaterialTheme.colorScheme.primary
                     )
                     StatCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Outlined.DeleteOutline,
                         value = stats.itemsWasted.toString(),
-                        label = "Items wasted",
+                        label = stringResource(R.string.impact_items_wasted),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -114,17 +117,23 @@ private fun WasteFreeCard(days: Int) {
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(
-                    text = if (days == 0) "Fresh start" else "$days ${if (days == 1) "day" else "days"}",
+                    text = if (days == 0) {
+                        stringResource(R.string.impact_fresh_start)
+                    } else {
+                        pluralStringResource(R.plurals.impact_waste_free_days, days, days)
+                    },
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    text = if (days == 0) {
-                        "Your waste-free count starts again today"
-                    } else {
-                        "Waste-free and counting"
-                    },
+                    text = stringResource(
+                        if (days == 0) {
+                            R.string.impact_fresh_start_body
+                        } else {
+                            R.string.impact_counting_body
+                        }
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -181,7 +190,7 @@ private fun SavedRatioCard(stats: ImpactStats) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Used vs. wasted",
+                text = stringResource(R.string.impact_used_vs_wasted),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -196,7 +205,12 @@ private fun SavedRatioCard(stats: ImpactStats) {
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "You used $percent% of the ${stats.totalResolved} items you finished with.",
+                text = pluralStringResource(
+                    R.plurals.impact_ratio_body,
+                    stats.totalResolved,
+                    percent,
+                    stats.totalResolved
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -222,13 +236,13 @@ private fun EmptyImpactState(modifier: Modifier = Modifier) {
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "No impact to show yet",
+                text = stringResource(R.string.impact_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Mark an item as used or discarded and your progress will appear here.",
+                text = stringResource(R.string.impact_empty_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

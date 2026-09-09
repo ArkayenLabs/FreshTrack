@@ -109,7 +109,7 @@ class AddEditItemViewModel(
                 }
                 .onFailure {
                     _uiState.update {
-                        it.copy(isLookingUp = false, error = "Product not found or lookup failed")
+                        it.copy(isLookingUp = false, error = AddEditError.LOOKUP_FAILED)
                     }
                 }
         }
@@ -161,21 +161,21 @@ class AddEditItemViewModel(
         val state = _uiState.value
 
         if (state.name.isBlank()) {
-            _uiState.update { it.copy(error = "Item name is required") }
+            _uiState.update { it.copy(error = AddEditError.NAME_REQUIRED) }
             return
         }
         val expiry = state.expiryDate
         if (expiry == null) {
-            _uiState.update { it.copy(error = "Expiry date is required") }
+            _uiState.update { it.copy(error = AddEditError.EXPIRY_REQUIRED) }
             return
         }
         val quantity = state.quantity.toIntOrNull()
         if (quantity == null || quantity < 1) {
-            _uiState.update { it.copy(error = "Please enter a valid quantity (1-999)") }
+            _uiState.update { it.copy(error = AddEditError.QUANTITY_INVALID) }
             return
         }
         if (quantity > 999) {
-            _uiState.update { it.copy(error = "Maximum quantity is 999") }
+            _uiState.update { it.copy(error = AddEditError.QUANTITY_TOO_LARGE) }
             return
         }
 
@@ -209,7 +209,7 @@ class AddEditItemViewModel(
                 // Deliberately not e.message: that surfaces internal exception
                 // text to the user and can leak implementation detail.
                 _uiState.update {
-                    it.copy(isSaving = false, error = "Could not save this item. Please try again.")
+                    it.copy(isSaving = false, error = AddEditError.SAVE_FAILED)
                 }
             }
         }
@@ -237,5 +237,21 @@ data class AddEditItemUiState(
     val isEditMode: Boolean = false,
     val isSaving: Boolean = false,
     val isLookingUp: Boolean = false,
-    val error: String? = null
+    val error: AddEditError? = null
 )
+
+/**
+ * What went wrong, as a fact rather than a sentence.
+ *
+ * The screen turns these into words. Keeping the English here would have put
+ * six user-facing strings somewhere no string resource can reach, which is the
+ * exact thing that makes an app hard to translate later.
+ */
+enum class AddEditError {
+    NAME_REQUIRED,
+    EXPIRY_REQUIRED,
+    QUANTITY_INVALID,
+    QUANTITY_TOO_LARGE,
+    LOOKUP_FAILED,
+    SAVE_FAILED
+}

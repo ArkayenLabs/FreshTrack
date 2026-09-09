@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,6 +69,17 @@ fun TodayScreen(
     val hasAnyItem by viewModel.hasAnyItem.collectAsState()
     val undoPrompt by viewModel.undoPrompt.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    // Read here rather than inside the effect: stringResource is a
+    // composable read and the effect body is not composition.
+    val undoLabel = stringResource(R.string.action_undo)
+    val usedTemplate = stringResource(R.string.today_used_item)
+    val binnedTemplate = stringResource(R.string.today_binned_item)
+    val undoMessage = { prompt: TodayViewModel.UndoPrompt ->
+        when (prompt.resolvedAs) {
+            TodayViewModel.ResolvedAs.USED -> usedTemplate.format(prompt.itemName)
+            TodayViewModel.ResolvedAs.BINNED -> binnedTemplate.format(prompt.itemName)
+        }
+    }
 
     // Reminders are worth asking about once there is food to be reminded about,
     // and not before: at first launch the question has no subject, and the
@@ -92,8 +104,8 @@ fun TodayScreen(
     LaunchedEffect(undoPrompt) {
         val prompt = undoPrompt ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
-            message = prompt.message,
-            actionLabel = "Undo",
+            message = undoMessage(prompt),
+            actionLabel = undoLabel,
             duration = SnackbarDuration.Short
         )
         if (result == SnackbarResult.ActionPerformed) viewModel.undo() else viewModel.dismissUndo()
@@ -107,7 +119,10 @@ fun TodayScreen(
                 title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.action_settings)
+                        )
                     }
                 }
             )
@@ -116,7 +131,7 @@ fun TodayScreen(
             ExtendedFloatingActionButton(
                 onClick = onNavigateToAddItem,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add") }
+                text = { Text(stringResource(R.string.action_add)) }
             )
         }
     ) { padding ->
@@ -161,7 +176,7 @@ fun TodayScreen(
                     onClick = onNavigateToKitchen,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("See everything in the kitchen")
+                    Text(stringResource(R.string.today_see_kitchen))
                 }
             }
         }
@@ -174,18 +189,22 @@ fun TodayScreen(
  * Counts describe everything eligible rather than the few rows shown, so the
  * headline does not quietly under-report when the list is capped.
  */
+@Composable
 private fun headlineFor(rescue: RescueList): String {
     val overdue = rescue.overdueCount
     val today = rescue.dueTodayCount
     return when {
         overdue > 0 && today > 0 ->
-            "$overdue past its date, $today due today"
-        overdue == 1 -> "One food is past its date"
-        overdue > 1 -> "$overdue foods are past their date"
-        today == 1 -> "One food is worth using today"
-        today > 1 -> "$today foods are worth using today"
-        rescue.entries.size == 1 -> "One food to use this week"
-        else -> "${rescue.entries.size} foods to use this week"
+            stringResource(R.string.today_headline_overdue_and_due, overdue, today)
+        overdue > 0 ->
+            pluralStringResource(R.plurals.today_headline_overdue, overdue, overdue)
+        today > 0 ->
+            pluralStringResource(R.plurals.today_headline_due_today, today, today)
+        else -> pluralStringResource(
+            R.plurals.today_headline_this_week,
+            rescue.entries.size,
+            rescue.entries.size
+        )
     }
 }
 
@@ -237,7 +256,10 @@ private fun RescueRow(
                 }
                 if (entry.item.quantity > 1) {
                     Text(
-                        text = "×${entry.item.quantity}",
+                        text = stringResource(
+                            R.string.today_quantity,
+                            entry.item.quantity
+                        ),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -250,17 +272,25 @@ private fun RescueRow(
                 FilledTonalButton(onClick = onUse) {
                     Icon(Icons.Outlined.CheckCircle, null, Modifier.size(18.dp))
                     androidx.compose.foundation.layout.Spacer(Modifier.size(6.dp))
-                    Text(if (entry.item.quantity > 1) "Use one" else "Use")
+                    Text(
+                        stringResource(
+                            if (entry.item.quantity > 1) {
+                                R.string.today_action_use_one
+                            } else {
+                                R.string.today_action_use
+                            }
+                        )
+                    )
                 }
                 TextButton(onClick = onSnooze) {
                     Icon(Icons.Outlined.Schedule, null, Modifier.size(18.dp))
                     androidx.compose.foundation.layout.Spacer(Modifier.size(6.dp))
-                    Text("Later")
+                    Text(stringResource(R.string.today_action_later))
                 }
                 TextButton(onClick = onDiscard) {
                     Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(18.dp))
                     androidx.compose.foundation.layout.Spacer(Modifier.size(6.dp))
-                    Text("Bin")
+                    Text(stringResource(R.string.today_action_bin))
                 }
             }
         }
@@ -275,19 +305,33 @@ private fun RescueRow(
  * as a printed date is how a tracker loses the user's trust the first time it
  * is wrong.
  */
+@Composable
 private fun describe(entry: RescueEntry): String {
     val timing = when (val reason = entry.primaryReason) {
         is RescueReason.Overdue ->
-            if (reason.days == 1L) "Was due yesterday" else "Was due ${reason.days} days ago"
-        RescueReason.DueToday -> "Due today"
-        RescueReason.DueTomorrow -> "Due tomorrow"
-        is RescueReason.DueInDays -> "Due in ${reason.days} days"
+            if (reason.days == 1L) {
+                stringResource(R.string.today_due_yesterday)
+            } else {
+                pluralStringResource(
+                    R.plurals.today_due_days_ago,
+                    reason.days.toInt(),
+                    reason.days.toInt()
+                )
+            }
+        RescueReason.DueToday -> stringResource(R.string.today_due_today)
+        RescueReason.DueTomorrow -> stringResource(R.string.today_due_tomorrow)
+        is RescueReason.DueInDays -> pluralStringResource(
+            R.plurals.today_due_in_days,
+            reason.days.toInt(),
+            reason.days.toInt()
+        )
     }
 
-    val qualifier = entry.supportingReasons
-        .firstOrNull { it is RescueReason.DateUnconfirmed }
-        ?.let { " · estimated date" }
-        .orEmpty()
+    val qualifier = if (entry.supportingReasons.any { it is RescueReason.DateUnconfirmed }) {
+        stringResource(R.string.today_estimated_suffix)
+    } else {
+        ""
+    }
 
     return timing + qualifier
 }
@@ -325,17 +369,17 @@ private fun NothingToRescue(
                 tint = GoodBefore.urgency.safe
             )
             Text(
-                text = "Nothing needs using yet",
+                text = stringResource(R.string.today_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Everything in your kitchen has more than a week left.",
+                text = stringResource(R.string.today_empty_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             TextButton(onClick = onNavigateToKitchen) {
-                Text("See everything in the kitchen")
+                Text(stringResource(R.string.today_see_kitchen))
             }
         }
     }

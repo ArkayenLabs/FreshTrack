@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -27,8 +28,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.freshtrack.R
 import com.example.freshtrack.domain.model.DateSource
 import com.example.freshtrack.domain.model.ExpiryDate
+import com.example.freshtrack.presentation.viewmodel.AddEditError
 import com.example.freshtrack.presentation.viewmodel.AddEditItemViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.koin.androidx.compose.koinViewModel
@@ -68,9 +72,11 @@ fun AddEditProductScreen(
         scannedBarcode?.let { viewModel.updateBarcode(it) }
     }
 
-    // Show error snackbar
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
+    // Show error snackbar. The message is resolved in composition because the
+    // effect body cannot read resources.
+    val errorMessage = uiState.error?.let { stringResource(messageFor(it)) }
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
         }
@@ -602,3 +608,14 @@ private fun LocalDate.toUtcMillis(): Long =
 
 private fun Long.toLocalDateUtc(): LocalDate =
     Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
+
+/** The words for a failure the ViewModel reported as a fact. */
+@StringRes
+private fun messageFor(error: AddEditError): Int = when (error) {
+    AddEditError.NAME_REQUIRED -> R.string.error_name_required
+    AddEditError.EXPIRY_REQUIRED -> R.string.error_expiry_required
+    AddEditError.QUANTITY_INVALID -> R.string.error_quantity_invalid
+    AddEditError.QUANTITY_TOO_LARGE -> R.string.error_quantity_too_large
+    AddEditError.LOOKUP_FAILED -> R.string.error_lookup_failed
+    AddEditError.SAVE_FAILED -> R.string.error_save_failed
+}

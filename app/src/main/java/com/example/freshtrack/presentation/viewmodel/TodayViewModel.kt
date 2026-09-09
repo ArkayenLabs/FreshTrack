@@ -70,14 +70,14 @@ class TodayViewModel(
     fun use(itemId: String, itemName: String, amount: Int = 1) {
         viewModelScope.launch {
             itemRepository.use(itemId, amount)
-            _undoPrompt.value = UndoPrompt(itemId, "Used $itemName")
+            _undoPrompt.value = UndoPrompt(itemId, ResolvedAs.USED, itemName)
         }
     }
 
     fun discard(itemId: String, itemName: String, amount: Int = 1) {
         viewModelScope.launch {
             itemRepository.discard(itemId, amount)
-            _undoPrompt.value = UndoPrompt(itemId, "Binned $itemName")
+            _undoPrompt.value = UndoPrompt(itemId, ResolvedAs.BINNED, itemName)
         }
     }
 
@@ -93,7 +93,21 @@ class TodayViewModel(
         _undoPrompt.value = null
     }
 
-    data class UndoPrompt(val itemId: String, val message: String)
+    /** What was done, so the screen can say it in its own language. */
+    enum class ResolvedAs { USED, BINNED }
+
+    /**
+     * An offer to undo the last resolution.
+     *
+     * Carries the fact rather than the sentence. A ViewModel has no Context and
+     * no business holding English: building the message here would have made it
+     * the one piece of user-facing text no translator could reach.
+     */
+    data class UndoPrompt(
+        val itemId: String,
+        val resolvedAs: ResolvedAs,
+        val itemName: String
+    )
 
     /** Hides the item from Today until tomorrow without resolving it. */
     fun snoozeUntilTomorrow(itemId: String) {

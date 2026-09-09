@@ -18,9 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.freshtrack.R
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -102,7 +104,7 @@ fun NotificationPermissionDialog(
         },
         title = {
             Text(
-                text = "Stay Notified",
+                text = stringResource(R.string.reminders_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -114,11 +116,13 @@ fun NotificationPermissionDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = if (isDeniedBefore) {
-                        "To receive expiry alerts, please enable notifications in app settings."
-                    } else {
-                        "Get timely alerts before your products expire. Never let anything go to waste!"
-                    },
+                    text = stringResource(
+                        if (isDeniedBefore) {
+                            R.string.reminders_body_denied
+                        } else {
+                            R.string.reminders_body_first
+                        }
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -135,9 +139,9 @@ fun NotificationPermissionDialog(
                             modifier = Modifier.padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            NotificationBenefit("Expiry reminders")
-                            NotificationBenefit("Reduce food waste")
-                            NotificationBenefit("Daily summaries")
+                            NotificationBenefit(stringResource(R.string.reminders_benefit_alerts))
+                            NotificationBenefit(stringResource(R.string.reminders_benefit_waste))
+                            NotificationBenefit(stringResource(R.string.reminders_benefit_summary))
                         }
                     }
                 }
@@ -150,7 +154,13 @@ fun NotificationPermissionDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = if (isDeniedBefore) "Open Settings" else "Allow Notifications",
+                    text = stringResource(
+                        if (isDeniedBefore) {
+                            R.string.reminders_open_settings
+                        } else {
+                            R.string.reminders_allow
+                        }
+                    ),
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -162,7 +172,7 @@ fun NotificationPermissionDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Not Now",
+                    text = stringResource(R.string.reminders_not_now),
                     fontWeight = FontWeight.SemiBold
                 )
             }

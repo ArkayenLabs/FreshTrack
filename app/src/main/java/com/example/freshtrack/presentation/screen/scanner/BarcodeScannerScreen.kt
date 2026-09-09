@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -17,10 +18,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.example.freshtrack.R
 import com.example.freshtrack.domain.capture.DateCandidate
 import com.example.freshtrack.domain.capture.PrintedDateParser
 import com.example.freshtrack.domain.model.ConfidenceBand
@@ -34,6 +37,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.concurrent.Executors
 
 /**
@@ -108,12 +112,18 @@ fun BarcodeScannerScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (mode == ScanMode.DATE) "Scan date label" else "Scan barcode"
+                        stringResource(
+                            if (mode == ScanMode.DATE) {
+                                R.string.scanner_title_date
+                            } else {
+                                R.string.scanner_title_barcode
+                            }
+                        )
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
                 actions = {
@@ -126,7 +136,7 @@ fun BarcodeScannerScreen(
                         Icon(
                             if (flashEnabled) Icons.Default.FlashlightOn
                             else Icons.Default.FlashlightOff,
-                            "Toggle Flash"
+                            stringResource(R.string.scanner_toggle_flash)
                         )
                     }
                 }
@@ -193,16 +203,18 @@ fun BarcodeScannerScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "Camera Permission Required",
+                        text = stringResource(R.string.scanner_permission_title),
                         style = MaterialTheme.typography.titleLarge
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = if (mode == ScanMode.DATE) {
-                            "Grant camera access to read the date printed on a packet"
-                        } else {
-                            "Grant camera access to scan a barcode"
-                        },
+                        text = stringResource(
+                            if (mode == ScanMode.DATE) {
+                                R.string.scanner_permission_body_date
+                            } else {
+                                R.string.scanner_permission_body_barcode
+                            }
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -212,7 +224,7 @@ fun BarcodeScannerScreen(
                             permissionLauncher.launch(Manifest.permission.CAMERA)
                         }
                     ) {
-                        Text("Grant Permission")
+                        Text(stringResource(R.string.scanner_grant_permission))
                     }
                 }
             }
@@ -344,11 +356,13 @@ private fun ScanningOverlay(mode: ScanMode, showHint: Boolean = true) {
                 )
             ) {
                 Text(
-                    text = if (mode == ScanMode.DATE) {
-                        "Point the camera at the printed date"
-                    } else {
-                        "Point camera at barcode"
-                    },
+                    text = stringResource(
+                        if (mode == ScanMode.DATE) {
+                            R.string.scanner_hint_date
+                        } else {
+                            R.string.scanner_hint_barcode
+                        }
+                    ),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(16.dp)
                 )
@@ -419,18 +433,19 @@ private fun DateReviewSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = if (reading.candidates.size > 1) {
-                    "This date can be read two ways"
-                } else {
-                    "Is this the date?"
-                },
+                text = stringResource(
+                    if (reading.candidates.size > 1) {
+                        R.string.scanner_review_two_ways
+                    } else {
+                        R.string.scanner_review_is_this
+                    }
+                ),
                 style = MaterialTheme.typography.titleLarge
             )
 
             if (reading.candidates.size > 1) {
                 Text(
-                    text = "The label does not say which comes first, the day or " +
-                        "the month. Pick the one that matches the packet.",
+                    text = stringResource(R.string.scanner_review_ambiguous_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -442,7 +457,7 @@ private fun DateReviewSheet(
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = "Read from the packet",
+                        text = stringResource(R.string.scanner_read_from_packet),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -458,7 +473,7 @@ private fun DateReviewSheet(
             }
 
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text("None of these — scan again")
+                Text(stringResource(R.string.scanner_scan_again))
             }
         }
     }
@@ -492,13 +507,17 @@ private fun CandidateRow(candidate: DateCandidate, onConfirm: () -> Unit) {
                     // Kind and confidence together, because "best before" and
                     // "use by" are different promises and a medium-confidence
                     // read is exactly the one that looks right and is not.
-                    text = "${kindLabel(candidate.kind)} · ${bandLabel(date.band)}",
+                    text = stringResource(
+                        R.string.scanner_candidate_summary,
+                        stringResource(kindLabel(candidate.kind)),
+                        stringResource(bandLabel(date.band))
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Text(
-                text = "Use this",
+                text = stringResource(R.string.scanner_use_this),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -506,25 +525,33 @@ private fun CandidateRow(candidate: DateCandidate, onConfirm: () -> Unit) {
     }
 }
 
-private val REVIEW_DATE_FORMAT: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("d MMM yyyy")
+/**
+ * A medium-length date in whatever order the reader's locale writes them.
+ *
+ * Not a fixed pattern: "12 Mar 2027" and "Mar 12, 2027" are the same date and
+ * the wrong one of the two reads as a mistake to whoever is holding the packet.
+ */
+private val REVIEW_DATE_FORMAT: DateTimeFormatter
+    get() = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
-private fun kindLabel(kind: DateKind): String = when (kind) {
-    DateKind.BEST_BEFORE -> "Best before"
-    DateKind.USE_BY -> "Use by"
-    DateKind.SELL_BY -> "Sell by"
-    DateKind.OPENED_UNTIL -> "Once opened"
-    DateKind.FROZEN_UNTIL -> "Once frozen"
-    DateKind.ESTIMATED -> "Estimated"
+@StringRes
+private fun kindLabel(kind: DateKind): Int = when (kind) {
+    DateKind.BEST_BEFORE -> R.string.date_kind_best_before
+    DateKind.USE_BY -> R.string.date_kind_use_by
+    DateKind.SELL_BY -> R.string.date_kind_sell_by
+    DateKind.OPENED_UNTIL -> R.string.date_kind_opened_until
+    DateKind.FROZEN_UNTIL -> R.string.date_kind_frozen_until
+    DateKind.ESTIMATED -> R.string.date_kind_estimated
     // The label carried a date but did not say which kind, and saying so is
     // more honest than picking one.
-    DateKind.UNKNOWN -> "Date kind not stated"
+    DateKind.UNKNOWN -> R.string.date_kind_unknown
 }
 
-private fun bandLabel(band: ConfidenceBand): String = when (band) {
-    ConfidenceBand.HIGH -> "clear read"
-    ConfidenceBand.MEDIUM -> "worth checking"
-    ConfidenceBand.LOW -> "unsure"
+@StringRes
+private fun bandLabel(band: ConfidenceBand): Int = when (band) {
+    ConfidenceBand.HIGH -> R.string.confidence_high
+    ConfidenceBand.MEDIUM -> R.string.confidence_medium
+    ConfidenceBand.LOW -> R.string.confidence_low
 }
 
 /**
@@ -581,15 +608,23 @@ private fun UnresolvedScanNotice(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = if (sawAnyText) "No date in what I can read" else "Nothing readable yet",
+                text = stringResource(
+                    if (sawAnyText) {
+                        R.string.scanner_unresolved_title_no_date
+                    } else {
+                        R.string.scanner_unresolved_title_unreadable
+                    }
+                ),
                 style = MaterialTheme.typography.titleSmall
             )
             Text(
-                text = if (sawAnyText) {
-                    "Try moving closer to the printed date, or enter it yourself."
-                } else {
-                    "Steady the camera on the printed date, or enter it yourself."
-                },
+                text = stringResource(
+                    if (sawAnyText) {
+                        R.string.scanner_unresolved_body_no_date
+                    } else {
+                        R.string.scanner_unresolved_body_unreadable
+                    }
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -597,7 +632,7 @@ private fun UnresolvedScanNotice(
                 onClick = onEnterByHand,
                 modifier = Modifier.align(Alignment.End)
             ) {
-                Text("Enter the date by hand")
+                Text(stringResource(R.string.scanner_enter_by_hand))
             }
         }
     }

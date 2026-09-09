@@ -15,8 +15,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.freshtrack.R
 import com.example.freshtrack.domain.model.ProductFilter
 import com.example.freshtrack.domain.model.ProductSort
 import com.example.freshtrack.presentation.component.*
@@ -52,7 +54,7 @@ fun ProductListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Kitchen",
+                        stringResource(R.string.nav_kitchen),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -60,12 +62,12 @@ fun ProductListScreen(
                 actions = {
                     // Filter Button
                     IconButton(onClick = { showFilterMenu = true }) {
-                        Icon(Icons.Default.FilterList, "Filter")
+                        Icon(Icons.Default.FilterList, stringResource(R.string.action_filter))
                     }
 
                     // Sort Button
                     IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.Default.Sort, "Sort")
+                        Icon(Icons.Default.Sort, stringResource(R.string.action_sort))
                     }
 
                     // Filter Menu
@@ -74,7 +76,7 @@ fun ProductListScreen(
                         onDismissRequest = { showFilterMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("All Products") },
+                            text = { Text(stringResource(R.string.kitchen_filter_all)) },
                             onClick = {
                                 viewModel.setFilter(ProductFilter.ALL)
                                 viewModel.selectCategory(null)
@@ -85,7 +87,7 @@ fun ProductListScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Expiring Soon") },
+                            text = { Text(stringResource(R.string.kitchen_filter_expiring)) },
                             onClick = {
                                 viewModel.setFilter(ProductFilter.EXPIRING_SOON)
                                 viewModel.selectCategory(null)
@@ -96,7 +98,7 @@ fun ProductListScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Expired") },
+                            text = { Text(stringResource(R.string.kitchen_filter_expired)) },
                             onClick = {
                                 viewModel.setFilter(ProductFilter.EXPIRED)
                                 viewModel.selectCategory(null)
@@ -114,7 +116,7 @@ fun ProductListScreen(
                         onDismissRequest = { showSortMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Expiry Date (Nearest First)") },
+                            text = { Text(stringResource(R.string.kitchen_sort_expiry)) },
                             onClick = {
                                 viewModel.setSort(ProductSort.EXPIRY_DATE_ASC)
                                 showSortMenu = false
@@ -124,7 +126,7 @@ fun ProductListScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Name (A-Z)") },
+                            text = { Text(stringResource(R.string.kitchen_sort_name)) },
                             onClick = {
                                 viewModel.setSort(ProductSort.NAME_ASC)
                                 showSortMenu = false
@@ -134,7 +136,7 @@ fun ProductListScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Recently Added") },
+                            text = { Text(stringResource(R.string.kitchen_sort_added)) },
                             onClick = {
                                 viewModel.setSort(ProductSort.ADDED_DATE_DESC)
                                 showSortMenu = false
@@ -157,7 +159,7 @@ fun ProductListScreen(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {
-                Icon(Icons.Default.Add, "Add Product")
+                Icon(Icons.Default.Add, stringResource(R.string.kitchen_add_product))
             }
         }
     ) { padding ->
@@ -200,7 +202,7 @@ fun ProductListScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    LoadingState("Loading products...")
+                    LoadingState(stringResource(R.string.kitchen_loading))
                 }
             } else if (uiState.items.isEmpty()) {
                 // Enhanced Empty State
@@ -256,14 +258,14 @@ fun ProductListScreen(
             },
             title = {
                 Text(
-                    "Delete Product?",
+                    stringResource(R.string.kitchen_delete_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    "Are you sure you want to delete this product? This action cannot be undone.",
+                    stringResource(R.string.kitchen_delete_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -279,7 +281,7 @@ fun ProductListScreen(
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Delete", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_delete), fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -287,7 +289,7 @@ fun ProductListScreen(
                     onClick = { showDeleteDialog = null },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_cancel), fontWeight = FontWeight.SemiBold)
                 }
             },
             shape = RoundedCornerShape(28.dp),
@@ -382,14 +384,14 @@ fun EnhancedEmptyState(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "No Products Found",
+                text = stringResource(R.string.kitchen_empty_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
 
             Text(
-                text = "Add your first product to start tracking",
+                text = stringResource(R.string.kitchen_empty_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -412,7 +414,7 @@ fun EnhancedEmptyState(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                "Add Product",
+                stringResource(R.string.kitchen_add_product),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
