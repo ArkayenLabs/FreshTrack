@@ -30,12 +30,36 @@ class TodayViewModel(
     private val clock: AppClock = AppClock.System
 ) : ViewModel() {
 
-    val rescue: StateFlow<RescueList> = itemRepository.observeActiveItems()
+    // Shared so that the two things derived from it are one database query
+    // rather than two identical ones.
+    private val activeItems = itemRepository.observeActiveItems()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    val rescue: StateFlow<RescueList> = activeItems
         .map { items -> RescueRanking.build(items, clock.today(), clock.nowMillis()) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = RescueList(emptyList(), 0, 0)
+        )
+
+    /**
+     * Whether there is anything in the kitchen at all.
+     *
+     * Not the same question as the rescue list, which only holds what is close
+     * to its date. Asking about reminders is only meaningful once the person has
+     * food being tracked, and that is true well before anything is urgent.
+     */
+    val hasAnyItem: StateFlow<Boolean> = activeItems
+        .map { it.isNotEmpty() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false
         )
 
     private val _undoPrompt = MutableStateFlow<UndoPrompt?>(null)

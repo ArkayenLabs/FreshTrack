@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,62 +26,54 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 
+/**
+ * Asks for the notification permission, once, at a moment that has a reason.
+ *
+ * Composing this *is* the decision to ask — it does not decide for itself based
+ * on permission status, which is what made the old version fire on every
+ * launch and again on every configuration change. The caller picks the moment
+ * and records that the question was asked; this only conducts it.
+ *
+ * There is deliberately no loop back to the dialog after the system prompt is
+ * answered. Denying used to flip `shouldShowRationale` true, which the previous
+ * version read as "time to explain again" and immediately re-showed itself.
+ */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun NotificationPermissionHandler(
-    onPermissionGranted: () -> Unit = {},
-    onPermissionDenied: () -> Unit = {}
-) {
-    // Only for Android 13+ (API 33+)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val context = LocalContext.current
-        val permissionState = rememberPermissionState(
-            Manifest.permission.POST_NOTIFICATIONS
-        )
+fun NotificationPermissionHandler() {
+    // Below API 33 notifications need no runtime grant, so there is nothing to
+    // ask and nothing to explain.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
 
-        var showRationaleDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
 
-        // Check permission status
-        LaunchedEffect(permissionState.status) {
-            when {
-                permissionState.status.isGranted -> {
-                    onPermissionGranted()
-                }
-                permissionState.status.shouldShowRationale -> {
-                    // User denied once, show explanation
-                    showRationaleDialog = true
-                }
-                else -> {
-                    // First time, show explanation before asking
-                    showRationaleDialog = true
-                }
-            }
-        }
+    // Survives rotation so that turning the phone while the system prompt is up
+    // does not bring our explanation back on top of it.
+    var explained by rememberSaveable { mutableStateOf(false) }
 
-        // Show explanation dialog
-        if (showRationaleDialog) {
-            NotificationPermissionDialog(
-                onConfirm = {
-                    showRationaleDialog = false
-                    if (permissionState.status.shouldShowRationale) {
-                        // User denied before, open settings
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                        context.startActivity(intent)
-                    } else {
-                        // First time, request permission
-                        permissionState.launchPermissionRequest()
+    if (explained || permissionState.status.isGranted) return
+
+    val deniedBefore = permissionState.status.shouldShowRationale
+
+    NotificationPermissionDialog(
+        onConfirm = {
+            explained = true
+            if (deniedBefore) {
+                // The system will not prompt a second time, so the only route
+                // left is the app's own settings page.
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
                     }
-                },
-                onDismiss = {
-                    showRationaleDialog = false
-                    onPermissionDenied()
-                },
-                isDeniedBefore = permissionState.status.shouldShowRationale
-            )
-        }
-    }
+                )
+            } else {
+                permissionState.launchPermissionRequest()
+            }
+        },
+        onDismiss = { explained = true },
+        isDeniedBefore = deniedBefore
+    )
 }
 
 @Composable
@@ -196,24 +189,5 @@ fun NotificationBenefit(text: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer
         )
-    }
-}
-
-/**
- * Simple version - Just request permission without dialog
- */
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-fun RequestNotificationPermissionSimple() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val permissionState = rememberPermissionState(
-            Manifest.permission.POST_NOTIFICATIONS
-        )
-
-        LaunchedEffect(Unit) {
-            if (!permissionState.status.isGranted) {
-                permissionState.launchPermissionRequest()
-            }
-        }
     }
 }

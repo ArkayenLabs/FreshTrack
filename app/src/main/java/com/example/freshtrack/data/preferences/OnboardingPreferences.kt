@@ -24,6 +24,7 @@ class OnboardingPreferences(context: Context) {
         private const val PREFS_NAME = "freshtrack_prefs"
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
         private const val KEY_GUEST_MODE = "guest_mode"
+        private const val KEY_ASKED_ABOUT_REMINDERS = "asked_about_reminders"
     }
 
     /**
@@ -49,6 +50,21 @@ class OnboardingPreferences(context: Context) {
         sharedPreferences.edit()
             .putBoolean(KEY_ONBOARDING_COMPLETED, false)
             .apply()
+    }
+
+    /**
+     * Whether the reminder prompt has already been put to this person.
+     *
+     * Asked at most once. Someone who said no is not asked again on the next
+     * launch, the next item, or the next time the screen happens to recompose;
+     * repeating the question is how a permission prompt turns into nagging.
+     */
+    fun hasAskedAboutReminders(): Boolean =
+        sharedPreferences.getBoolean(KEY_ASKED_ABOUT_REMINDERS, false)
+
+    /** Records that the question has been asked, whatever the answer was. */
+    fun setAskedAboutReminders() {
+        sharedPreferences.edit().putBoolean(KEY_ASKED_ABOUT_REMINDERS, true).apply()
     }
 
     /** Returns true if user chose to skip auth and use the app as a guest */

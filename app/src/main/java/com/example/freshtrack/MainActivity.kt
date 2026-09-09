@@ -24,7 +24,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import com.example.freshtrack.presentation.component.RequestNotificationPermissionSimple
 import com.example.freshtrack.presentation.navigation.FreshTrackNavGraph
 import com.example.freshtrack.presentation.theme.FreshTrackTheme
 import com.example.freshtrack.util.InAppUpdateManager
@@ -87,7 +86,6 @@ class MainActivity : ComponentActivity() {
             }
             
             FreshTrackTheme {
-                RequestNotificationPermissionSimple()
                 // This Scaffold exists only to host the snackbar: it has no top or
                 // bottom bar, and every destination in the nav graph brings its own
                 // Scaffold. Consuming the content padding here would apply the

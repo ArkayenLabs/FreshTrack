@@ -24,7 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,12 +36,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.R
+import com.example.freshtrack.data.preferences.OnboardingPreferences
+import com.example.freshtrack.presentation.component.NotificationPermissionHandler
 import com.example.freshtrack.domain.rescue.RescueEntry
 import com.example.freshtrack.domain.rescue.RescueList
 import com.example.freshtrack.domain.rescue.RescueReason
 import com.example.freshtrack.presentation.theme.GoodBefore
 import com.example.freshtrack.presentation.viewmodel.TodayViewModel
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
  * The decision screen: a short ranked list of what is worth using now.
@@ -55,11 +61,31 @@ fun TodayScreen(
     onNavigateToKitchen: () -> Unit,
     onNavigateToSettings: () -> Unit,
     bottomBar: @Composable () -> Unit = {},
+    onboardingPreferences: OnboardingPreferences = koinInject(),
     viewModel: TodayViewModel = koinViewModel()
 ) {
     val rescue by viewModel.rescue.collectAsState()
+    val hasAnyItem by viewModel.hasAnyItem.collectAsState()
     val undoPrompt by viewModel.undoPrompt.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Reminders are worth asking about once there is food to be reminded about,
+    // and not before: at first launch the question has no subject, and the
+    // honest answer to "why do you want this?" is "we have not shown you yet".
+    //
+    // The preference is written when the question is put, not when it is
+    // answered, so a dismissal, a rotation or a process death cannot bring it
+    // back round again.
+    var askAboutReminders by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(hasAnyItem) {
+        if (hasAnyItem && !onboardingPreferences.hasAskedAboutReminders()) {
+            onboardingPreferences.setAskedAboutReminders()
+            askAboutReminders = true
+        }
+    }
+    if (askAboutReminders) {
+        NotificationPermissionHandler()
+    }
 
     // Shown as a snackbar rather than an inline control: undo is a correction,
     // not a step in the flow, and it should disappear once the moment passes.
