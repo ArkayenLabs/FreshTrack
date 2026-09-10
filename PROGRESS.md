@@ -220,11 +220,39 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
-**Gates not re-run after the last commit.** `1cdc6ea` compiles, and the full
-unit and lint run passed immediately before its final two edits (three date
-formatters and one notification plural). Run
-`./gradlew testDebugUnitTest lintDebug assembleRelease` first and trust nothing
-until it is green.
+**State at the end of 10 Sep 2026 — `main` at `8a7e8a0`, tree clean, all gates
+green on it.** 211 unit tests, lint 0 errors / 124 warnings, signed release APK
+built, 16/16 connected tests on Pixel_35. Nothing is unverified in the tree.
+
+**Do first, in this order:**
+
+1. `git push origin main` — 21 commits are local only, held back deliberately
+   for a day. Push them.
+2. Then create the GitHub release the owner asked for: tag `8a7e8a0` (or
+   whatever `main` is after the push), attach
+   `app/build/outputs/apk/release/app-release.apk` (rebuild it if the file is
+   older than the commit). `gh` is installed and logged in; no release exists
+   yet. This was blocked only because a release tag needs a pushed commit.
+
+**Then pick one, and ask the owner which:**
+
+- **Naming.** Receipt items save exactly as printed, so the kitchen fills with
+  `SEMI-SKIMMED MILK 2L`. Asked three times, never answered; it has now been
+  seen on a device. Leave as printed, or title-case. Twenty minutes either way.
+- **Sync.** The big gap. Outbox proven on device (contiguous sequence, ids
+  matching events); nothing consumes it. `sync-design.md` is stale in both
+  directions — rewrite it against the outbox contract before any transport.
+- **Firestore rules deploy.** Decision, not work. Tested, not deployed, and the
+  new rules omit locations/invites/entitlements so deploying now means twice.
+
+**The receipt review sheet is done and device-verified.** Details under "Where
+we are". The only receipt surface not exercised is the camera path (emulator
+camera is synthetic); the picker path was driven end to end and Room checked.
+
+**Habits that cost time this session, so the next one does not repeat them:**
+read the Gradle task line, not the exit code — `UP-TO-DATE` is not a pass; a
+count from `--tests "*Filter*"` includes everything the filter catches; and the
+connected suite drifts silently, so run it after any string or locale change.
 
 **The audience changed.** English-speaking markets first, US and UK. India is
 not a launch market — barcode and product-data coverage there is too thin.
