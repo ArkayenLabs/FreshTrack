@@ -283,16 +283,14 @@ rendered receipt is not a photograph. The fixture debt owed for date capture is
 owed here too, and the same rule applies: no accuracy claim, anywhere, until
 real fixtures exist.
 
-**The device run exposed a gap that is now live.** The kitchen list shows
-`Sep 17` for the milk with nothing to say it is a guess. `Item.hasEstimatedDate`
-and `needsDateReview` exist on the model and **no screen reads them**. This
-predates the receipt work — `ShelfLifeTable` was built last session and nothing
-called it — but `ReceiptDraft` is now the only producer of estimated dates in
-the app, so an obligation that was latent is unmet. `CLAUDE.md` says the UI
-separates fact from estimate; today only the review sheet does. This belongs
-with the design pass rather than being bolted onto the card in isolation, but it
-must not be forgotten: every receipt now writes dates the kitchen presents as if
-they were printed.
+**The device run exposed a gap, since closed.** The kitchen list showed
+`Sep 17` for the milk with nothing to say it was a guess: `Item.hasEstimatedDate`
+existed on the model and no screen outside Today read it. That predated the
+receipt work, but `ReceiptDraft` is the only producer of estimated dates in the
+app, so the obligation went from latent to live the moment the sheet merged.
+The card now reads `Sep 17 · est.` and the details screen says what the guess
+was based on, using the same test Today already used (`e81c198`). A guess reads
+as one on every surface.
 
 `ItemRepository.import` turned out not to be usable for the commit, which the
 previous note assumed it would be. Two reasons, both of which would have been
@@ -321,14 +319,10 @@ Loose ends found during the sweep, none of them urgent:
       placement and refresh, notification delivery and its action, the CSV
       picker, Google Sign-In, the receipt camera, and the *release* APK rather
       than the debug one.
-- [ ] **Label estimated dates outside the review sheet.** The kitchen card and
-      the details screen show a shelf-life guess exactly as they show a printed
-      date. `Item.hasEstimatedDate` is already there; nothing reads it. Part of
-      the design pass, but the receipt feature makes it overdue rather than
-      pending.
-- [ ] **A date a year out renders as `Sep 10`** in the kitchen list — no year,
-      so it reads as today. The `9+` badge is the only thing saying otherwise.
-      Pre-existing; noticed because rice keeps for a year.
+- [x] ~~**Label estimated dates outside the review sheet.**~~ Done — card,
+      details and Today agree (`e81c198`). Verified on device.
+- [x] ~~**A date a year out renders as `Sep 10`.**~~ Done in the same commit:
+      the year is shown when it differs from today's.
 - [ ] **Rebuild sync on the outbox.** Push queued operations, pull by cursor,
       order by server revision rather than device clock. The queue and its
       idempotency keys exist; the transport does not.
