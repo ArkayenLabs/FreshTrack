@@ -86,7 +86,17 @@
         <item quantity="other">Due in %1$d days</item>
     </plurals>
     <!-- Appended to the timing when the date was never confirmed by anyone. -->
-    <string name="today_estimated_suffix"> · estimated date</string>
+    <!--
+      Quoted, because aapt trims leading whitespace from an unquoted value and
+      the separator ends up jammed against the word before it.
+    -->
+    <string name="today_estimated_suffix">" · estimated date"</string>
+    <!--
+      The same disclosure on the kitchen card and the details screen, so a
+      guess reads as one on every surface rather than only on Today.
+    -->
+    <string name="date_estimated_short_suffix">" · est."</string>
+    <string name="details_date_estimated_note">An estimate from how long this kind of food usually keeps, not a date printed on it. Edit the item to set the real one.</string>
 
     <string name="today_used_item">Used %1$s</string>
     <string name="today_binned_item">Binned %1$s</string>

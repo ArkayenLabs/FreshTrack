@@ -21,9 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.freshtrack.R
 import com.example.freshtrack.domain.model.ExpiryUrgency
 import com.example.freshtrack.domain.model.Item
 import com.example.freshtrack.presentation.theme.*
@@ -134,8 +136,17 @@ fun ProductCard(
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            // Same test Today uses, so a date reads the same way
+                            // on every screen: a guess is disclosed as one rather
+                            // than borrowing the voice of a printed date.
+                            val unconfirmed = product.needsDateReview || product.hasEstimatedDate
                             Text(
-                                text = formatDateShort(product.expiry.value),
+                                text = formatDateShort(product.expiry.value, today) +
+                                    if (unconfirmed) {
+                                        stringResource(R.string.date_estimated_short_suffix)
+                                    } else {
+                                        ""
+                                    },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -402,8 +413,15 @@ private fun getCategoryIcon(category: String): ImageVector {
     }
 }
 
-private fun formatDateShort(date: LocalDate): String =
-    date.format(DateTimeFormatter.ofPattern("MMM dd", Locale.getDefault()))
+/**
+ * Short on the card, but never ambiguous. A date in another year carries the
+ * year, because "Sep 10" for something that keeps until next September reads
+ * as today, and the badge beside it is the only thing saying otherwise.
+ */
+private fun formatDateShort(date: LocalDate, today: LocalDate): String {
+    val pattern = if (date.year == today.year) "MMM dd" else "MMM dd, yyyy"
+    return date.format(DateTimeFormatter.ofPattern(pattern, Locale.getDefault()))
+}
 
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())

@@ -146,6 +146,17 @@ fun ProductDetailsScreen(
                                 label = stringResource(R.string.add_expiry_label),
                                 value = formatDate(product.expiry.value)
                             )
+                            // A guess says so, here and on the card and on
+                            // Today. This is the one screen with room to say
+                            // what the guess was based on and how to replace it.
+                            if (product.needsDateReview || product.hasEstimatedDate) {
+                                Text(
+                                    text = stringResource(R.string.details_date_estimated_note),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 32.dp, top = 4.dp)
+                                )
+                            }
 
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
