@@ -68,9 +68,12 @@ signed minified APK is produced (77.2 MB, universal, four ABIs). This settles
 the open question from the previous session: `1cdc6ea`'s unverified final edits
 did not break anything.
 
-*Against the tree with the receipt review sheet in it:* **203** unit tests pass
-and lint still reports 0 errors and 124 warnings. `assembleRelease` has **not**
-been run against this work.
+*Against the tree with the receipt review sheet in it (`f3390f6`):* **211**
+unit tests pass, lint reports 0 errors and 124 warnings, and `assembleRelease`
+produces the signed APK. All three re-run with the tasks forced to execute.
+`connectedDebugAndroidTest` is **16 of 16** on Pixel_35 — after repairing four
+tests that the previous session's i18n and date-ordering commits had broken and
+never re-run (`1db6921`).
 
 **48** Firestore rules tests pass on the emulator, against the current
 `kitchens/items/events` rules — unchanged, and not re-run since.
@@ -88,8 +91,12 @@ this session:
 
 **Verified on a Pixel_35 API 35 emulator**, not just compiled:
 
-- `connectedDebugAndroidTest` — **14** tests, 0 failures. These had never
-  passed before the migration; see that commit for the three separate reasons.
+- `connectedDebugAndroidTest` — **16** tests, 0 failures (was 14; two
+  recognition tests added with the receipt work). These had never passed before
+  the migration; see that commit for the three separate reasons. Four of them
+  then silently broke again under the i18n and date-ordering commits and were
+  not re-run until 10 Sep — the pattern to watch for is a device suite that is
+  green in this file and has not actually been executed since the file said so.
 - The database is created with all five tables, and the seed callback
   populates all seven categories and four locations. Enums store by name.
 - Guest route works: onboarding Skip lands on Today with no account.
@@ -108,8 +115,9 @@ this session:
   the ledger.
 
 Still unverified on a device: the widget, notification delivery and its
-"Mark as used" action, the CSV file picker, Google Sign-In, and the minified
-release APK (only the debug build has been installed).
+"Mark as used" action, the CSV file picker, Google Sign-In, the receipt
+*camera* path (the picker path is verified, above), and the minified release
+APK (only the debug build has been installed).
 
 ---
 
@@ -249,13 +257,42 @@ arrived as whole lines passes through untouched. That property is what makes it
 a fix rather than a bet, and it is checked on the JVM rather than needing a
 device.
 
-What is not verified: **none of it has been run on a device.** The camera path,
-the file picker, and ML Kit against a photograph of a real receipt are all
-unexercised. `ReceiptRecognitionTest` exists for exactly this and **has never
-been run** — it renders a two-column receipt and puts a real recogniser through
-the assembly path, but rendered text is not a photograph. The fixture debt owed
-for date capture is owed here too, and the same rule applies: no accuracy claim,
-anywhere, until real fixtures exist.
+**Verified on Pixel_35, 10 Sep 2026**, by hand as well as by test. A rendered
+six-line receipt was pushed to the device and taken through the picker:
+
+- Real ML Kit, through `ReceiptLines`, produced six items with their prices.
+  The columns were joined correctly, which is the thing the JVM tests could only
+  assert about geometry written by hand.
+- The row nothing could date (`ZORBANI WAFERS`: no rule, no category guess) came
+  up tinted and marked, the banner read "1 row still needs a date, or leaving
+  out", and **Save was disabled** until it was left out.
+- The masked card line appeared nowhere — not as an item and not as an
+  unreadable line. The two header lines were listed as unreadable rather than
+  dropped. `Order No`, `SUBTOTAL`, `VAT`, `TOTAL` were filtered silently.
+- After commit, Room held five rows, all `ESTIMATED`/`RULE` at 0.4 with
+  `dateConfirmedByUserAt` **null** — an accepted estimate stayed an estimate.
+  `TOMATOES` was quantity 2 at 75p, `RECEIPT`-sourced. Five `ITEM_CREATED`
+  events and five `CREATE` outbox entries, each event's `operationId` matching
+  exactly one outbox row, client sequence 1–5 contiguous.
+- The user's own image was left on the device; nothing of ours was left in the
+  cache.
+- `connectedDebugAndroidTest`: **16 of 16**, including both recognition tests.
+
+Not verified: the camera path. The emulator's camera is synthetic, and a
+rendered receipt is not a photograph. The fixture debt owed for date capture is
+owed here too, and the same rule applies: no accuracy claim, anywhere, until
+real fixtures exist.
+
+**The device run exposed a gap that is now live.** The kitchen list shows
+`Sep 17` for the milk with nothing to say it is a guess. `Item.hasEstimatedDate`
+and `needsDateReview` exist on the model and **no screen reads them**. This
+predates the receipt work — `ShelfLifeTable` was built last session and nothing
+called it — but `ReceiptDraft` is now the only producer of estimated dates in
+the app, so an obligation that was latent is unmet. `CLAUDE.md` says the UI
+separates fact from estimate; today only the review sheet does. This belongs
+with the design pass rather than being bolted onto the card in isolation, but it
+must not be forgotten: every receipt now writes dates the kitchen presents as if
+they were printed.
 
 `ItemRepository.import` turned out not to be usable for the commit, which the
 previous note assumed it would be. Two reasons, both of which would have been
@@ -282,12 +319,16 @@ Loose ends found during the sweep, none of them urgent:
       write path behaves as designed.
 - [ ] **Exercise the surfaces the emulator run did not reach**: widget
       placement and refresh, notification delivery and its action, the CSV
-      picker, Google Sign-In, the receipt camera and picker, and the *release*
-      APK rather than the debug one.
-- [ ] **Run `assembleRelease` against the receipt work.** Tests and lint are
-      green on it; the release build is not gated on it yet. Low risk — the
-      change is one repository method and a screen — but R8 has surprised this
-      project before.
+      picker, Google Sign-In, the receipt camera, and the *release* APK rather
+      than the debug one.
+- [ ] **Label estimated dates outside the review sheet.** The kitchen card and
+      the details screen show a shelf-life guess exactly as they show a printed
+      date. `Item.hasEstimatedDate` is already there; nothing reads it. Part of
+      the design pass, but the receipt feature makes it overdue rather than
+      pending.
+- [ ] **A date a year out renders as `Sep 10`** in the kitchen list — no year,
+      so it reads as today. The `9+` badge is the only thing saying otherwise.
+      Pre-existing; noticed because rice keeps for a year.
 - [ ] **Rebuild sync on the outbox.** Push queued operations, pull by cursor,
       order by server revision rather than device clock. The queue and its
       idempotency keys exist; the transport does not.
