@@ -55,10 +55,16 @@ class TextRecognitionToParserTest {
         return bitmap
     }
 
+    /**
+     * The ordering is stated rather than taken from the device. `12/03/2027`
+     * is March on a UK emulator and December on a US one, and this test is
+     * about whether recognition reaches the parser, not about which way the
+     * device happens to read a slash date.
+     */
     private fun read(vararg lines: String): List<DateCandidate> {
         val image = InputImage.fromBitmap(labelImage(*lines), 0)
         val result = Tasks.await(recogniser.process(image), 30, TimeUnit.SECONDS)
-        return PrintedDateParser.parse(result.text, today)
+        return PrintedDateParser.parse(result.text, today, DateOrdering.DAY_FIRST)
     }
 
     @Test
