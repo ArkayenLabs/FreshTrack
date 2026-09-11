@@ -143,10 +143,20 @@ India pricing target: ₹299–499/yr. USD base: $3.99/mo · $14.99/yr.
 
 ## graphify
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+This project has a knowledge graph at `.graphify/` with god nodes, community
+structure, and cross-file relationships. The graph is not committed — build it
+once per machine or container.
+
+**Setup (required before the graph is usable):** run `tools/graphify-setup.sh`,
+then `graphify update .`. graphify ships no Kotlin grammar, so without that
+script every `.kt`/`.kts` file fails AST extraction with "Grammar not found for
+kotlin" and the graph degrades to git history plus the one `.mjs` rules test —
+it looks like it built fine, and it tells you nothing about the app. If a graph
+query returns only commit nodes, that is the symptom: re-run the setup script.
 
 Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- For codebase questions, first run `graphify query "<question>"` when `.graphify/graph.json` exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If `.graphify/wiki/index.md` exists, use it for broad navigation instead of raw source browsing.
+- Read `.graphify/GRAPH_REPORT.md` only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- `graphify update` also emits label/description instruction files under `.graphify/` for an LLM to fill in. They are optional; `--no-description --no-label` skips them.

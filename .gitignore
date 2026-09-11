@@ -55,6 +55,8 @@ out/
 google-services.json
 
 # === Graphify (tool output, not source) ===
+# .graphify/ is the current output directory; graphify-out/ was the old one.
+.graphify/
 graphify-out/
 run_graphify.ps1
 # Registers graphify's PreToolUse hooks by absolute path to this machine's
