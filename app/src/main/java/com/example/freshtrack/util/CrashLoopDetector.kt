@@ -14,6 +14,13 @@ class CrashLoopDetector(private val context: Context) {
         private const val KEY_LAST_CRASH_TIME = "last_crash_time"
         private const val MAX_CRASHES_BEFORE_RESET = 3
         private const val CRASH_WINDOW_MS = 60000L
+
+        // Named here rather than referenced from the preference classes so that
+        // clearing a file never constructs one — building an
+        // EncryptedSharedPreferences is exactly the kind of work that can fail
+        // during the start we are recovering.
+        private const val PREFS_ONBOARDING = "freshtrack_prefs"
+        private const val PREFS_CONSENT = "freshtrack_consent_prefs"
     }
 
     private val prefs: SharedPreferences by lazy {
@@ -77,30 +84,79 @@ class CrashLoopDetector(private val context: Context) {
             .apply()
     }
 
+    /**
+     * Clears what can be rebuilt, and nothing else.
+     *
+     * This deliberately does NOT touch the database. Room is the source of
+     * truth for an offline-first app, most users are guests with no cloud
+     * backup, and the event ledger cannot be reconstructed from anywhere — so
+     * wiping it to escape a crash loop costs the user the entire contents of
+     * their kitchen and every bit of impact history the app has told them
+     * about. A crash is recoverable; that is not.
+     *
+     * The previous version had it exactly backwards: it deleted the whole data
+     * directory apart from `shared_prefs`, destroying the database and files/
+     * while preserving the preferences — and a bad preference read at startup
+     * is far more likely to loop than the database is. It also cleared
+     * "freshtrack_preferences", which is not a file this app has ever written,
+     * and called deleteDatabase("freshtrack_database"), a name retired in the
+     * GoodBefore migration. So the two lines that looked like the targeted part
+     * of the reset were both no-ops, and only the indiscriminate wipe did
+     * anything.
+     */
     private fun clearAppData() {
         try {
-            context.cacheDir?.deleteRecursively()
-            
-            val dataDir = context.filesDir?.parentFile
-            dataDir?.listFiles()?.forEach { file ->
-                if (file.name != "shared_prefs") {
-                    file.deleteRecursively()
-                }
-            }
-            
-            context.getSharedPreferences("freshtrack_preferences", Context.MODE_PRIVATE)
-                .edit().clear().apply()
-                
-            context.deleteDatabase("freshtrack_database")
-            
+            context.cacheDir?.clearContents()
+            context.codeCacheDir?.clearContents()
+
+            // Onboarding and consent state: recoverable (the user sees
+            // onboarding again, and consent returns to its manifest default of
+            // off, which is the safe direction) and a plausible cause of a
+            // start-up loop.
+            clearPreferences(PREFS_ONBOARDING)
+            clearPreferences(PREFS_CONSENT)
         } catch (e: Exception) {
-            e.printStackTrace()
+            // Recovery is best-effort by nature: if we cannot clear a cache
+            // there is nothing further to do, and throwing here would crash the
+            // start we are trying to rescue.
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance()
+                .recordException(e)
         }
     }
-    
-    private fun File.deleteRecursively(): Boolean {
+
+    /**
+     * Clears one preference file.
+     *
+     * Both files are written through EncryptedSharedPreferences, but clearing
+     * is done on the plain handle to the same file: opening the encrypted view
+     * needs the keystore key, and a key that has been invalidated is itself a
+     * reason the app might be looping. Deleting the entries does not need to
+     * read them.
+     */
+    private fun clearPreferences(name: String) {
+        runCatching {
+            context.getSharedPreferences(name, Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .commit()
+        }
+    }
+
+    /**
+     * Empties a directory but keeps the directory itself.
+     *
+     * The framework hands out cacheDir and codeCacheDir as long-lived paths;
+     * deleting the directory out from under them leaves anything already
+     * holding one writing into a path that no longer exists.
+     */
+    private fun File.clearContents() {
+        if (!isDirectory) return
+        listFiles()?.forEach { it.deleteTree() }
+    }
+
+    private fun File.deleteTree(): Boolean {
         if (isDirectory) {
-            listFiles()?.forEach { it.deleteRecursively() }
+            listFiles()?.forEach { it.deleteTree() }
         }
         return delete()
     }

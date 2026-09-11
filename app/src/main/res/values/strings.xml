@@ -22,7 +22,7 @@
 
     <string name="weekly_summary_title">Your week with GoodBefore</string>
 
-    <string name="crash_reset_message">GoodBefore encountered repeated issues and has been reset. Your data has been cleared to restore functionality.</string>
+    <string name="crash_reset_message">GoodBefore had trouble starting a few times, so temporary data was cleared to get it running again. Everything in your kitchen is still there.</string>
 
     <string name="terms_title">GoodBefore Terms of Service</string>
     <string name="register_subtitle">Join GoodBefore today</string>
