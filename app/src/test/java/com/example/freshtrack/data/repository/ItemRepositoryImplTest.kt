@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -112,6 +113,32 @@ class ItemRepositoryImplTest {
         assertEquals(ItemEventType.ITEM_CREATED, eventDao.events.single().type)
         assertEquals(1, outboxDao.operations.size)
         assertEquals(OutboxOperationType.CREATE, outboxDao.operations.single().operationType)
+    }
+
+    @Test
+    fun `two adds are two items, whatever id the caller passed`() = runTest {
+        // The Add screen passes a blank id for every new item. When add() took
+        // that id at face value both rows shared one primary key and the
+        // REPLACE insert threw the first item away.
+        val first = repository.add(sampleItem(name = "Milk"))
+        val second = repository.add(sampleItem(name = "Bread"))
+
+        assertNotEquals(first, second)
+        assertEquals(2, itemDao.rows.size)
+        assertEquals("Milk", itemDao.rows[first]?.name)
+        assertEquals("Bread", itemDao.rows[second]?.name)
+    }
+
+    @Test
+    fun `the id the caller passed is not the id that is stored`() = runTest {
+        val id = repository.add(sampleItem())
+
+        assertNotEquals("ignored-the-repository-mints-its-own", id)
+        assertTrue(id.isNotBlank())
+        // The event and the queued operation have to point at the minted id,
+        // not the one the caller made up, or the ledger references nothing.
+        assertEquals(id, eventDao.events.single().itemId)
+        assertEquals(id, outboxDao.operations.single().entityId)
     }
 
     @Test

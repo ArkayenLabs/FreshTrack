@@ -186,6 +186,12 @@ class ItemRepositoryImpl(
     override suspend fun add(item: Item): String {
         val now = clock.nowMillis()
         val row = item.toEntity().copy(
+            // Minted here, like the event and outbox ids below, because the id
+            // is this row's identity and no call site is trusted to supply one.
+            // The Add screen passes a blank id for a new item, so without this
+            // every item added on a device shared one primary key and the
+            // REPLACE insert silently overwrote the item added before it.
+            id = ids.newId(),
             // Stamped here rather than at the call site, so no screen can create
             // a row that belongs to nobody.
             kitchenId = kitchen(),
