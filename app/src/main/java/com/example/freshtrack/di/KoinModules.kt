@@ -48,8 +48,8 @@ val repositoryModule = module {
 
     // Firestore sync
     single { com.google.firebase.firestore.FirebaseFirestore.getInstance() }
-    single<com.example.freshtrack.data.sync.RemoteProductStore> {
-        com.example.freshtrack.data.remote.firestore.RemoteProductDataSource(get())
+    single<com.example.freshtrack.data.sync.RemoteStore> {
+        com.example.freshtrack.data.remote.firestore.FirestoreRemoteStore(get())
     }
     single {
         com.example.freshtrack.data.account.AccountDeleter(

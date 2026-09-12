@@ -324,9 +324,26 @@ passing for a second reason (a missing `expiryDate`), and now start from a
 complete valid write and break one thing. Still **not deployed** — that is
 step 8 of the build order, after the transport.
 
-**Next: build the transport in the order §11 gives**, from step 3: the
-`RemoteStore` interface for the new shape and its Firestore implementation,
-retiring `RemoteProductStore` and the `/pantries` constants.
+**`RemoteStore` built for the new shape, 12 Sep 2026.** `RemoteProductStore`
+and `RemoteProductDataSource` (still addressing `/pantries/{id}/products`)
+are gone; `RemoteStore` + `FirestoreRemoteStore` cover kitchens/items/events:
+ensure kitchen, read `isPremium`, `push` (item + event in one batch, server
+timestamp stamped by the store), `eventExists`, erase account. `WireFormat`
+is the pure row→fields mapping, 9 JVM tests: ISO date string, enums by name,
+`lastOperationId` set, **kitchen never a field** (it is the path, from the
+claimed outbox row), guest attribution replaced by the actor, other members'
+attribution kept, `revision`/`id` never sent. `AccountDeleter` rewired; its
+tests unchanged and green.
+
+One design correction from building it: the Android SDK's batch commit
+returns no server timestamp, so `revision` cannot be stamped at ack. It is
+stamped when the device's own write comes back through the pull listener,
+which `sync-design.md` §5–§6 now say. Not verified: `FirestoreRemoteStore`
+itself — Firebase types cannot run on the JVM and there is no end-to-end
+test yet (§10).
+
+**Next: step 4, the push engine**, JVM-tested against `FakeDaos` and a fake
+`RemoteStore`. Then bootstrap.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator

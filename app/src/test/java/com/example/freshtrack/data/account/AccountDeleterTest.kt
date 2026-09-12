@@ -6,7 +6,7 @@ import com.example.freshtrack.data.local.dao.OutboxDao
 import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.data.preferences.SyncPreferences
 import com.example.freshtrack.data.session.UserSession
-import com.example.freshtrack.data.sync.RemoteProductStore
+import com.example.freshtrack.data.sync.RemoteStore
 import com.example.freshtrack.domain.repository.AuthRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -23,7 +23,7 @@ import org.junit.Test
 class AccountDeleterTest {
 
     private val auth: AuthRepository = mockk(relaxed = true)
-    private val remote: RemoteProductStore = mockk(relaxed = true)
+    private val remote: RemoteStore = mockk(relaxed = true)
     private val dao: ItemDao = mockk(relaxed = true)
     private val eventDao: ItemEventDao = mockk(relaxed = true)
     private val outboxDao: OutboxDao = mockk(relaxed = true)

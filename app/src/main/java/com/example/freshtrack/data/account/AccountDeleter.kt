@@ -6,7 +6,7 @@ import com.example.freshtrack.data.local.dao.OutboxDao
 import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.data.preferences.SyncPreferences
 import com.example.freshtrack.data.session.UserSession
-import com.example.freshtrack.data.sync.RemoteProductStore
+import com.example.freshtrack.data.sync.RemoteStore
 import com.example.freshtrack.domain.repository.AuthRepository
 
 /**
@@ -23,7 +23,7 @@ import com.example.freshtrack.domain.repository.AuthRepository
  */
 class AccountDeleter(
     private val authRepository: AuthRepository,
-    private val remote: RemoteProductStore,
+    private val remote: RemoteStore,
     private val itemDao: ItemDao,
     private val eventDao: ItemEventDao,
     private val outboxDao: OutboxDao,

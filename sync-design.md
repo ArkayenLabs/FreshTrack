@@ -29,7 +29,7 @@ contradicts this section is a plan, not a description.
 | `outbox` queue, one row per change, same transaction as the change | `OutboxEntity`, `OutboxDao`, `ItemRepositoryImpl.record` | Built, proven on device: contiguous `clientSequence`, each event's `operationId` matches one outbox row |
 | `locations` table with `kitchenId`, `updatedAt` | `LocationEntity` | Built, **not queued** — `LocationRepositoryImpl` writes bypass the outbox |
 | Guest → account claim | `ItemRepositoryImpl.claimLocalData` | Built; rewrites `kitchenId` on items, events and outbox rows |
-| `RemoteProductStore` | `data/sync`, `data/remote/firestore` | Reduced to `ensurePantryExists` and `deleteAccountData`, and still addresses `/pantries/{id}/products` — the old shape |
+| `RemoteStore` + `FirestoreRemoteStore` | `data/sync`, `data/remote/firestore` | Built for the §3 shape (12 Sep 2026): ensure kitchen, read entitlement, `push` one item + event batch, `eventExists`, erase account. `WireFormat` maps rows to fields, JVM-tested |
 | `RemoteError` classification | `data/sync/RemoteError.kt` | Built: `PermissionDenied` / `Transient` / `Permanent` |
 | Firestore rules for `users`, `kitchens`, `kitchens/items`, `kitchens/events` | `firestore.rules` | Written for the transport shape (§3), 54 tests, **not deployed**; live project still runs the old `pantries/products` ruleset from 5 Aug 2026, deny-by-default |
 | Entitlement | `kitchens/{id}.isPremium` | Rules refuse client writes; **nothing sets it** |
@@ -181,11 +181,13 @@ for each kitchen the session can see:
         on Permanent          → recordFailure; after 5 attempts it is "stuck"
 ```
 
-`ack(op)` is one Room transaction: set `items.revision` to the server
-timestamp the write returned, then `outboxDao.acknowledge([op.operationId])`.
-Revision first, then delete — if the process dies between, the op is retried,
-refused because its event already exists, recognised as a retry by the
-existence read, and acknowledged. Harmless.
+`ack(op)` is `outboxDao.acknowledge([op.operationId])` and nothing else. The
+Android SDK's batch commit returns no server timestamp, so `items.revision`
+cannot be stamped here; it is stamped when the write comes back through the
+pull listener (§6), which delivers a device's own writes like anyone else's.
+Until then `revision` is whatever it was, and `baseRevision` on a follow-up
+edit may be stale by one round trip — the conflict check in §6 tolerates
+that, because a stale base only means one extra read.
 
 The existence read costs one document read per retry, never per push, so it
 is free in the common case.
@@ -220,8 +222,9 @@ skips.
 Applying a pulled **item**:
 
 ```
-if doc.lastOperationId is in this device's outbox, or was acknowledged by it
-    → skip; it is our own write coming back                (clientId check as backstop)
+if doc.lastOperationId was pushed by this device (in or just removed from its outbox)
+    → stamp local revision = doc.serverUpdatedAt; do not touch the row
+      (this is how a device learns the server's revision of its own write)
 else if local.revision >= doc.serverUpdatedAt
     → skip; already applied
 else
@@ -359,8 +362,11 @@ Deploying rules now would mean deploying again for each of these. **Decision,
 2. ~~Rules: add `serverUpdatedAt`, event-id-is-operation-id,
    `lastOperationId`; extend tests.~~ Done, 12 Sep 2026 — 54 tests, each new
    clause verified by weakening it and watching only its tests fail.
-3. `RemoteStore` interface for the new shape; Firestore implementation;
-   retire `RemoteProductStore` and the `/pantries` constants.
+3. ~~`RemoteStore` interface for the new shape; Firestore implementation;
+   retire `RemoteProductStore` and the `/pantries` constants.~~ Done,
+   12 Sep 2026. `WireFormat` is the mapping and is where the §7 rule lives:
+   the kitchen is the path, never a field, and guest attribution becomes the
+   outbox row's actor.
 4. Push engine, JVM-tested. Bootstrap path included.
 5. Pull engine, JVM-tested.
 6. WorkManager wiring; Settings card shows pending count and stuck count.
