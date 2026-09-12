@@ -44,6 +44,15 @@ interface ItemEventDao {
     @Query("SELECT * FROM item_events WHERE operationId = :operationId LIMIT 1")
     suspend fun findByOperationId(operationId: String): ItemEventEntity?
 
+    /**
+     * The whole ledger for a kitchen, in a fixed order, for a first backup.
+     *
+     * The order is what makes the upload resumable: "the first N are done" is
+     * only meaningful if the same N come first every time.
+     */
+    @Query("SELECT * FROM item_events WHERE kitchenId = :kitchenId ORDER BY occurredAt ASC, id ASC")
+    suspend fun getAllForKitchen(kitchenId: String): List<ItemEventEntity>
+
     // ─── Impact, derived from the ledger ─────────────────────────────────────
 
     /**

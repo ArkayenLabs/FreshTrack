@@ -1,5 +1,6 @@
 package com.example.freshtrack.data.sync
 
+import com.example.freshtrack.data.local.dao.ItemDao
 import com.example.freshtrack.data.local.dao.ItemEventDao
 import com.example.freshtrack.data.local.dao.OutboxDao
 import com.example.freshtrack.data.local.entities.ItemEntity
@@ -17,11 +18,19 @@ import com.example.freshtrack.util.AppClock
  * An entry leaves the queue only on acknowledgement. A change that could not
  * be sent stays, with its failure recorded, until it either goes or has failed
  * often enough to be shown to the person as stuck. Nothing is ever dropped.
+ *
+ * The first time a kitchen is pushed it is not replayed from the queue but
+ * uploaded whole — every row, tombstones included, and the entire ledger —
+ * because the queue may hold months of superseded operations from before there
+ * was anywhere to send them. Only what was queued before the upload began is
+ * dropped afterwards; a change made during it still goes up on its own.
  */
 class OutboxPusher(
     private val outboxDao: OutboxDao,
+    private val itemDao: ItemDao,
     private val eventDao: ItemEventDao,
     private val remote: RemoteStore,
+    private val syncState: SyncState,
     private val deserialise: (String) -> ItemEntity,
     private val clock: AppClock,
     private val batchSize: Int = 50,
@@ -41,14 +50,20 @@ class OutboxPusher(
 
     suspend fun push(kitchenId: String): Outcome {
         var pushed = 0
+        val bootstrapped = syncState.isBootstrapped(kitchenId)
 
         // The entitlement read is skipped when there is nothing to send, so an
-        // idle free account costs nothing.
-        if (outboxDao.peek(kitchenId, 1).isEmpty()) return Outcome.Drained(0)
+        // idle free account costs nothing. A kitchen that has never been
+        // backed up always has something to send, even with an empty queue.
+        if (bootstrapped && outboxDao.peek(kitchenId, 1).isEmpty()) return Outcome.Drained(0)
 
         val premium = remote.isKitchenPremium(kitchenId)
             .getOrElse { return Outcome.Deferred(0, it.asRemoteError()) }
         if (!premium) return Outcome.NotEntitled(0)
+
+        if (!bootstrapped) {
+            bootstrap(kitchenId)?.let { return it }
+        }
 
         // An entry that failed permanently gets one attempt per run, not one
         // per batch: retrying it inside the same run would burn through its
@@ -73,6 +88,51 @@ class OutboxPusher(
         }
     }
 
+    /**
+     * The first backup. Returns null when complete, or the outcome that
+     * stopped it — in which case nothing has been dropped and the next run
+     * carries on from the recorded count.
+     */
+    private suspend fun bootstrap(kitchenId: String): Outcome? {
+        // Anything queued from here on is a change the upload will not see.
+        val queuedBefore = outboxDao.getHighestSequence() ?: 0L
+
+        // Rows first. Setting a document is idempotent, so an interrupted
+        // upload is simply repeated.
+        val rows = itemDao.getAllIncludingDeleted(kitchenId).map { row ->
+            row.id to WireFormat.item(row, "bootstrap-${row.id}", row.lastEditedBy)
+        }
+        remote.pushItems(kitchenId, rows).onFailure { return stopped(it, 0) }
+
+        // Then the ledger, in batches, recording progress after each. An event
+        // cannot be written twice, so a repeat would be refused; the count is
+        // what lets the next run pick up after the last batch that landed.
+        val ledger = eventDao.getAllForKitchen(kitchenId)
+        var uploaded = syncState.bootstrapEventsUploaded(kitchenId)
+        ledger.drop(uploaded).chunked(RemoteStore.MAX_BATCH).forEach { chunk ->
+            val batch = chunk.map { it.operationId to WireFormat.event(it) }
+            remote.pushEvents(kitchenId, batch).onFailure { error ->
+                // A refusal on a batch that is already there means the previous
+                // run committed it and died before recording that. Carry on.
+                val landed = error.asRemoteError() is RemoteError.PermissionDenied &&
+                    remote.eventExists(kitchenId, chunk.first().operationId).getOrDefault(false)
+                if (!landed) return stopped(error, 0)
+            }
+            uploaded += chunk.size
+            syncState.setBootstrapEventsUploaded(kitchenId, uploaded)
+        }
+
+        outboxDao.deleteUpTo(kitchenId, queuedBefore)
+        syncState.markBootstrapped(kitchenId)
+        return null
+    }
+
+    private fun stopped(error: Throwable, pushed: Int): Outcome =
+        when (val remoteError = error.asRemoteError()) {
+            is RemoteError.PermissionDenied -> Outcome.NotEntitled(pushed)
+            else -> Outcome.Deferred(pushed, remoteError)
+        }
+
     private sealed interface PushResult {
         data object Sent : PushResult
         data object Failed : PushResult
@@ -89,7 +149,7 @@ class OutboxPusher(
         val write = RemoteWrite(
             kitchenId = op.kitchenId,
             itemId = op.entityId,
-            itemFields = WireFormat.item(deserialise(op.payload), op),
+            itemFields = WireFormat.item(deserialise(op.payload), op.operationId, op.actorUid),
             operationId = op.operationId,
             eventFields = WireFormat.event(event)
         )

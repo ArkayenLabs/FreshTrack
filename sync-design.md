@@ -33,7 +33,8 @@ contradicts this section is a plan, not a description.
 | `RemoteError` classification | `data/sync/RemoteError.kt` | Built: `PermissionDenied` / `Transient` / `Permanent` |
 | Firestore rules for `users`, `kitchens`, `kitchens/items`, `kitchens/events` | `firestore.rules` | Written for the transport shape (§3), 54 tests, **not deployed**; live project still runs the old `pantries/products` ruleset from 5 Aug 2026, deny-by-default |
 | Entitlement | `kitchens/{id}.isPremium` | Rules refuse client writes; **nothing sets it** |
-| Transport (push, pull, worker) | — | **Does not exist** |
+| Push engine | `data/sync/OutboxPusher.kt` | Built, 20 JVM tests (12 Sep 2026): incremental drain, retry/stuck, entitlement gate, and the first backup with resumable ledger upload |
+| Pull engine, worker | — | **Do not exist** |
 
 ---
 
@@ -202,11 +203,19 @@ simpler and the batches are small.
 
 **First backup is not a replay.** When a kitchen becomes premium for the first
 time, the outbox may hold months of operations from before there was anywhere
-to send them, many superseded. Bootstrap instead: upload every non-deleted and
-deleted row as a CREATE, upload the whole ledger as events, clear the outbox for
-that kitchen, then continue incrementally. This also bounds the outbox for free
-users: a kitchen that has never bootstrapped may be compacted to one entry per
-entity at any time, because the ledger — not the outbox — is the history.
+to send them, many superseded. Bootstrap instead: upload every row, tombstones
+included, with `lastOperationId = "bootstrap-{itemId}"`; upload the whole
+ledger as events in batches of 500 (Firestore's limit), **recording the count
+after each batch** — an event cannot be written twice, so an interrupted upload
+resumes from that count rather than repeating, and a batch that landed before
+the crash is recognised by one existence read; then drop outbox entries whose
+`clientSequence` is at or below what was queued when the upload began. A
+change made during the upload has a higher sequence and goes up on its own
+afterwards. The count lives in `SyncState` (`SyncPreferences`), per kitchen.
+
+This also bounds the outbox for free users: a kitchen that has never
+bootstrapped may be compacted to one entry per entity at any time, because the
+ledger — not the outbox — is the history. (Not built; the queue is small.)
 
 ---
 
@@ -338,7 +347,7 @@ Deploying rules now would mean deploying again for each of these. **Decision,
 
 - **Engine on the JVM.** The push/pull logic takes `OutboxDao`, `ItemDao`,
   `ItemEventDao` and a `RemoteStore` interface; `FakeDaos.kt` already exists.
-  Tests: ack removes exactly the acknowledged op and stamps revision;
+  Tests: ack removes exactly the acknowledged op;
   `PermissionDenied` with the event already present acks; `PermissionDenied`
   with no event stops without touching attempt counts; a Transient failure increments and stops; five Permanent failures
   make an op stuck; a pulled own-write is skipped; a pulled newer row is
@@ -367,7 +376,9 @@ Deploying rules now would mean deploying again for each of these. **Decision,
    12 Sep 2026. `WireFormat` is the mapping and is where the §7 rule lives:
    the kitchen is the path, never a field, and guest attribution becomes the
    outbox row's actor.
-4. Push engine, JVM-tested. Bootstrap path included.
+4. ~~Push engine, JVM-tested. Bootstrap path included.~~ Done, 12 Sep 2026.
+   `OutboxPusher`, 20 tests; the once-per-run guard and the resume count were
+   each verified by removing them and watching exactly their tests fail.
 5. Pull engine, JVM-tested.
 6. WorkManager wiring; Settings card shows pending count and stuck count.
 7. End-to-end test on the emulator.

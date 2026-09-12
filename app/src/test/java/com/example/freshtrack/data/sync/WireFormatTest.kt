@@ -5,8 +5,6 @@ import com.example.freshtrack.data.local.entities.ItemEntity
 import com.example.freshtrack.data.local.entities.ItemEventEntity
 import com.example.freshtrack.data.local.entities.ItemEventType
 import com.example.freshtrack.data.local.entities.LOCAL_KITCHEN_ID
-import com.example.freshtrack.data.local.entities.OutboxEntity
-import com.example.freshtrack.data.local.entities.OutboxOperationType
 import com.example.freshtrack.domain.model.DateKind
 import com.example.freshtrack.domain.model.DateSource
 import org.junit.Assert.assertEquals
@@ -40,28 +38,16 @@ class WireFormatTest {
         revision = 7L
     )
 
-    private fun op(actorUid: String = "alice") = OutboxEntity(
-        operationId = "op-1",
-        entityId = "item-1",
-        kitchenId = "personal-alice",
-        actorUid = actorUid,
-        clientId = "device-a",
-        clientSequence = 1L,
-        operationType = OutboxOperationType.UPDATE,
-        occurredAtClient = 100L,
-        payload = "{}"
-    )
-
     @Test
     fun `expiry travels as an ISO date string, never a number`() {
-        val fields = WireFormat.item(snapshot(), op())
+        val fields = WireFormat.item(snapshot(), "op-1", "alice")
 
         assertEquals("2026-09-20", fields["expiryDate"])
     }
 
     @Test
     fun `enums travel by name`() {
-        val fields = WireFormat.item(snapshot(), op())
+        val fields = WireFormat.item(snapshot(), "op-1", "alice")
 
         assertEquals("USE_BY", fields["dateKind"])
         assertEquals("USER", fields["dateSource"])
@@ -71,7 +57,7 @@ class WireFormatTest {
 
     @Test
     fun `the item names the operation that produced it`() {
-        assertEquals("op-1", WireFormat.item(snapshot(), op())["lastOperationId"])
+        assertEquals("op-1", WireFormat.item(snapshot(), "op-1", "alice")["lastOperationId"])
     }
 
     @Test
@@ -79,14 +65,14 @@ class WireFormatTest {
         // The payload was serialised before sign-in and still says "local".
         // The path comes from the outbox row, which the claim rewrote, so the
         // kitchen must not be a field at all.
-        val fields = WireFormat.item(snapshot(kitchenId = LOCAL_KITCHEN_ID), op())
+        val fields = WireFormat.item(snapshot(kitchenId = LOCAL_KITCHEN_ID), "op-1", "alice")
 
         assertFalse(fields.containsKey("kitchenId"))
     }
 
     @Test
     fun `guest attribution becomes the actor who claimed it`() {
-        val fields = WireFormat.item(snapshot(), op(actorUid = "alice"))
+        val fields = WireFormat.item(snapshot(), "op-1", "alice")
 
         assertEquals("alice", fields["createdBy"])
         assertEquals("alice", fields["lastEditedBy"])
@@ -96,7 +82,7 @@ class WireFormatTest {
     fun `attribution to another member is kept`() {
         // Bob created it in the shared kitchen; Alice edited it. Bob's uid is
         // real attribution and must not be overwritten by the pusher's.
-        val fields = WireFormat.item(snapshot(createdBy = "bob", lastEditedBy = "alice"), op(actorUid = "alice"))
+        val fields = WireFormat.item(snapshot(createdBy = "bob", lastEditedBy = "alice"), "op-1", "alice")
 
         assertEquals("bob", fields["createdBy"])
         assertEquals("alice", fields["lastEditedBy"])
@@ -104,7 +90,7 @@ class WireFormatTest {
 
     @Test
     fun `local bookkeeping stays local`() {
-        val fields = WireFormat.item(snapshot(), op())
+        val fields = WireFormat.item(snapshot(), "op-1", "alice")
 
         assertFalse(fields.containsKey("revision"))
         assertFalse(fields.containsKey("id"))

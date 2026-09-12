@@ -7,6 +7,7 @@ import com.example.freshtrack.data.local.entities.ItemEventType
 import com.example.freshtrack.data.local.entities.LOCAL_KITCHEN_ID
 import com.example.freshtrack.data.local.entities.OutboxEntity
 import com.example.freshtrack.data.local.entities.OutboxOperationType
+import com.example.freshtrack.data.repository.FakeItemDao
 import com.example.freshtrack.data.repository.FakeItemEventDao
 import com.example.freshtrack.data.repository.FakeOutboxDao
 import com.example.freshtrack.domain.model.DateKind
@@ -29,15 +30,18 @@ class OutboxPusherTest {
 
     private val kitchen = "personal-alice"
     private val outboxDao = FakeOutboxDao()
+    private val itemDao = FakeItemDao()
     private val eventDao = FakeItemEventDao()
     private val remote = FakeRemoteStore()
+    // Most tests are about the incremental path, so they start already backed up.
+    private val syncState = FakeSyncState().apply { markBootstrapped("personal-alice") }
     private val clock = object : AppClock {
         override fun nowMillis() = 1_000L
         override fun today(): LocalDate = LocalDate.of(2026, 9, 12)
     }
 
     private fun pusher(batchSize: Int = 50, stuckThreshold: Int = 5) = OutboxPusher(
-        outboxDao, eventDao, remote, OutboxPayload::deserialise, clock, batchSize, stuckThreshold
+        outboxDao, itemDao, eventDao, remote, syncState, OutboxPayload::deserialise, clock, batchSize, stuckThreshold
     )
 
     /** Queues one change the way ItemRepositoryImpl.record does: row snapshot plus event. */
@@ -60,6 +64,7 @@ class OutboxPusherTest {
             dateConfidence = 1f,
             createdBy = if (snapshotKitchen == LOCAL_KITCHEN_ID) GUEST_USER_ID else actorUid
         )
+        itemDao.insert(row.copy(kitchenId = kitchen))
         eventDao.append(
             ItemEventEntity(
                 id = "evt-$operationId", itemId = itemId, kitchenId = kitchen,
@@ -270,6 +275,173 @@ class OutboxPusherTest {
     }
 }
 
+// ─── First backup ───────────────────────────────────────────────────────────
+
+class OutboxPusherBootstrapTest {
+
+    private val kitchen = "personal-alice"
+    private val outboxDao = FakeOutboxDao()
+    private val itemDao = FakeItemDao()
+    private val eventDao = FakeItemEventDao()
+    private val remote = FakeRemoteStore()
+    private val syncState = FakeSyncState()
+    private val clock = object : AppClock {
+        override fun nowMillis() = 1_000L
+        override fun today(): LocalDate = LocalDate.of(2026, 9, 12)
+    }
+
+    private fun pusher() = OutboxPusher(
+        outboxDao, itemDao, eventDao, remote, syncState, OutboxPayload::deserialise, clock
+    )
+
+    private suspend fun history(itemId: String, sequence: Long, deleted: Boolean = false) {
+        itemDao.insert(
+            ItemEntity(
+                id = itemId, kitchenId = kitchen, name = itemId, category = "Dairy & Eggs",
+                expiryDate = LocalDate.of(2026, 9, 20), dateKind = DateKind.USE_BY,
+                dateSource = DateSource.USER, dateConfidence = 1f, createdBy = "alice",
+                lastEditedBy = "alice", isDeleted = deleted
+            )
+        )
+        eventDao.append(
+            ItemEventEntity(
+                id = "evt-$sequence", itemId = itemId, kitchenId = kitchen,
+                type = ItemEventType.ITEM_CREATED, actorUid = "alice",
+                occurredAt = sequence, operationId = "op-$sequence"
+            )
+        )
+        outboxDao.enqueue(
+            OutboxEntity(
+                operationId = "op-$sequence", entityId = itemId, kitchenId = kitchen,
+                actorUid = "alice", clientId = "device-a", clientSequence = sequence,
+                operationType = OutboxOperationType.CREATE, occurredAtClient = sequence,
+                payload = "{}"
+            )
+        )
+    }
+
+    @Test
+    fun `a first backup uploads every row and the whole ledger, and empties the queue`() = runTest {
+        history("milk", 1)
+        history("eggs", 2, deleted = true)
+
+        val outcome = pusher().push(kitchen)
+
+        assertEquals(OutboxPusher.Outcome.Drained(0), outcome)
+        assertEquals(setOf("milk", "eggs"), remote.bootstrappedItems.keys)
+        assertEquals(true, remote.bootstrappedItems.getValue("eggs")["isDeleted"])
+        assertEquals(listOf("op-1", "op-2"), remote.bootstrappedEvents)
+        assertTrue("the queue was superseded by the upload", outboxDao.operations.isEmpty())
+        assertTrue(syncState.isBootstrapped(kitchen))
+        // Nothing went through the incremental path.
+        assertTrue(remote.pushes.isEmpty())
+    }
+
+    @Test
+    fun `a kitchen with rows but an empty queue is still backed up`() = runTest {
+        history("milk", 1)
+        outboxDao.operations.clear()
+
+        pusher().push(kitchen)
+
+        assertEquals(setOf("milk"), remote.bootstrappedItems.keys)
+        assertTrue(syncState.isBootstrapped(kitchen))
+    }
+
+    @Test
+    fun `a free kitchen is not backed up`() = runTest {
+        history("milk", 1)
+        remote.premium = false
+
+        val outcome = pusher().push(kitchen)
+
+        assertEquals(OutboxPusher.Outcome.NotEntitled(0), outcome)
+        assertTrue(remote.bootstrappedItems.isEmpty())
+        assertFalse(syncState.isBootstrapped(kitchen))
+        assertEquals(1, outboxDao.operations.size)
+    }
+
+    @Test
+    fun `an interrupted ledger upload resumes after the last batch that landed`() = runTest {
+        (1L..1200L).forEach { history("item-$it", it) }
+        remote.failEventBatch = 2   // the second batch of 500 fails, temporarily
+
+        val first = pusher().push(kitchen)
+
+        assertTrue(first is OutboxPusher.Outcome.Deferred)
+        assertEquals(500, syncState.bootstrapEventsUploaded(kitchen))
+        assertFalse(syncState.isBootstrapped(kitchen))
+        assertEquals("nothing is dropped until the backup completes", 1200, outboxDao.operations.size)
+
+        remote.failEventBatch = null
+        val second = pusher().push(kitchen)
+
+        assertEquals(OutboxPusher.Outcome.Drained(0), second)
+        assertEquals(1200, remote.bootstrappedEvents.size)
+        assertEquals("every event exactly once", 1200, remote.bootstrappedEvents.toSet().size)
+        assertTrue(syncState.isBootstrapped(kitchen))
+        assertTrue(outboxDao.operations.isEmpty())
+    }
+
+    @Test
+    fun `a batch that landed before the crash is not sent again`() = runTest {
+        // The previous run committed the first batch and died before recording
+        // it. The server refuses the repeat; the existence read says why, and
+        // the count moves past it.
+        (1L..600L).forEach { history("item-$it", it) }
+        remote.existing += "op-1"
+        remote.refuseEventBatchesContaining += "op-1"
+
+        val outcome = pusher().push(kitchen)
+
+        assertEquals(OutboxPusher.Outcome.Drained(0), outcome)
+        assertEquals(600, syncState.bootstrapEventsUploaded(kitchen))
+        // Only the second batch actually went up this run.
+        assertEquals(100, remote.bootstrappedEvents.size)
+        assertTrue(syncState.isBootstrapped(kitchen))
+    }
+
+    @Test
+    fun `a change made during the backup still goes up on its own`() = runTest {
+        history("milk", 1)
+        // Something queued after the upload started: a higher sequence than
+        // anything the upload could have seen.
+        remote.onBootstrapItems = {
+            outboxDao.enqueue(
+                OutboxEntity(
+                    operationId = "op-late", entityId = "milk", kitchenId = kitchen,
+                    actorUid = "alice", clientId = "device-a", clientSequence = 99,
+                    operationType = OutboxOperationType.UPDATE, occurredAtClient = 200,
+                    payload = OutboxPayload.serialise(itemDao.rows.getValue("milk"))
+                )
+            )
+            eventDao.append(
+                ItemEventEntity(
+                    id = "evt-late", itemId = "milk", kitchenId = kitchen,
+                    type = ItemEventType.ITEM_EDITED, actorUid = "alice",
+                    occurredAt = 200, operationId = "op-late"
+                )
+            )
+        }
+
+        val outcome = pusher().push(kitchen)
+
+        assertEquals(OutboxPusher.Outcome.Drained(1), outcome)
+        assertEquals(listOf("op-late"), remote.pushes.map { it.operationId })
+        assertTrue(outboxDao.operations.isEmpty())
+    }
+}
+
+/** Per-kitchen sync progress, in memory. */
+private class FakeSyncState : SyncState {
+    private val bootstrapped = mutableSetOf<String>()
+    private val uploaded = mutableMapOf<String, Int>()
+    override fun isBootstrapped(kitchenId: String) = kitchenId in bootstrapped
+    override fun markBootstrapped(kitchenId: String) { bootstrapped += kitchenId }
+    override fun bootstrapEventsUploaded(kitchenId: String) = uploaded[kitchenId] ?: 0
+    override fun setBootstrapEventsUploaded(kitchenId: String, count: Int) { uploaded[kitchenId] = count }
+}
+
 /** A scripted server: says whether the kitchen is premium, and fails the pushes it is told to. */
 private class FakeRemoteStore : RemoteStore {
     var premium = true
@@ -297,6 +469,27 @@ private class FakeRemoteStore : RemoteStore {
 
     override suspend fun eventExists(kitchenId: String, operationId: String): Result<Boolean> =
         Result.success(operationId in existing)
+
+    val bootstrappedItems = mutableMapOf<String, Map<String, Any?>>()
+    val bootstrappedEvents = mutableListOf<String>()
+    var onBootstrapItems: (suspend () -> Unit)? = null
+    var failEventBatch: Int? = null
+    val refuseEventBatchesContaining = mutableSetOf<String>()
+    private var eventBatches = 0
+
+    override suspend fun pushItems(kitchenId: String, items: List<Pair<String, Map<String, Any?>>>): Result<Unit> {
+        items.forEach { (id, fields) -> bootstrappedItems[id] = fields }
+        onBootstrapItems?.invoke()
+        return Result.success(Unit)
+    }
+
+    override suspend fun pushEvents(kitchenId: String, events: List<Pair<String, Map<String, Any?>>>): Result<Unit> {
+        eventBatches++
+        if (events.any { it.first in refuseEventBatchesContaining }) return Result.failure(RemoteError.PermissionDenied())
+        if (eventBatches == failEventBatch) return Result.failure(RemoteError.Transient())
+        events.forEach { (id, _) -> bootstrappedEvents += id; existing += id }
+        return Result.success(Unit)
+    }
 
     override suspend fun deleteAccountData(kitchenId: String, uid: String) = Result.success(Unit)
 }

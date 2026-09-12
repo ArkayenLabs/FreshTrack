@@ -255,6 +255,10 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE id IN (:itemIds)")
     suspend fun getByIdsIncludingDeleted(itemIds: List<String>): List<ItemEntity>
 
+    /** Everything in the kitchen, tombstones included, for a first backup. */
+    @Query("SELECT * FROM items WHERE kitchenId = :kitchenId")
+    suspend fun getAllIncludingDeleted(kitchenId: String): List<ItemEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertFromRemote(items: List<ItemEntity>)
 }

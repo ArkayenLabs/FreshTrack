@@ -209,6 +209,9 @@ class FakeItemDao : ItemDao {
         itemIds.mapNotNull { rows[it] }
 
     override suspend fun upsertFromRemote(items: List<ItemEntity>) = items.forEach { insert(it) }
+
+    override suspend fun getAllIncludingDeleted(kitchenId: String): List<ItemEntity> =
+        rows.values.filter { it.kitchenId == kitchenId }
 }
 
 class FakeItemEventDao : ItemEventDao {
@@ -239,6 +242,9 @@ class FakeItemEventDao : ItemEventDao {
 
     override suspend fun findByOperationId(operationId: String): ItemEventEntity? =
         events.firstOrNull { it.operationId == operationId }
+
+    override suspend fun getAllForKitchen(kitchenId: String): List<ItemEventEntity> =
+        events.filter { it.kitchenId == kitchenId }.sortedWith(compareBy({ it.occurredAt }, { it.id }))
 
     /** Nets reversals out, mirroring the subtraction the SQL does. */
     override fun sumQuantityForType(kitchenId: String, type: ItemEventType): Flow<Int> =
@@ -351,6 +357,11 @@ class FakeOutboxDao : OutboxDao {
 
     override suspend fun deleteAllForKitchen(kitchenId: String) {
         operations.removeAll { it.kitchenId == kitchenId }
+        changes.value += 1
+    }
+
+    override suspend fun deleteUpTo(kitchenId: String, sequence: Long) {
+        operations.removeAll { it.kitchenId == kitchenId && it.clientSequence <= sequence }
         changes.value += 1
     }
 

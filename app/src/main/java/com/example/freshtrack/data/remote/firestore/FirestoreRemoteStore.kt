@@ -66,6 +66,34 @@ class FirestoreRemoteStore(
         runCatching { events(kitchenId).document(operationId).get().await().exists() }
             .mapRemoteError()
 
+    override suspend fun pushItems(
+        kitchenId: String,
+        items: List<Pair<String, Map<String, Any?>>>
+    ): Result<Unit> = runCatching {
+        items.chunked(RemoteStore.MAX_BATCH).forEach { chunk ->
+            val stamp = FieldValue.serverTimestamp()
+            val batch = firestore.batch()
+            chunk.forEach { (id, fields) ->
+                batch.set(items(kitchenId).document(id), fields + ("serverUpdatedAt" to stamp))
+            }
+            batch.commit().await()
+        }
+    }.mapRemoteError()
+
+    override suspend fun pushEvents(
+        kitchenId: String,
+        events: List<Pair<String, Map<String, Any?>>>
+    ): Result<Unit> = runCatching {
+        require(events.size <= RemoteStore.MAX_BATCH) { "one batch at a time, so progress can be recorded" }
+        val stamp = FieldValue.serverTimestamp()
+        val batch = firestore.batch()
+        events.forEach { (operationId, fields) ->
+            batch.set(events(kitchenId).document(operationId), fields + ("serverUpdatedAt" to stamp))
+        }
+        batch.commit().await()
+        Unit
+    }.mapRemoteError()
+
     override suspend fun deleteAccountData(kitchenId: String, uid: String): Result<Unit> =
         runCatching {
             deleteAll(items(kitchenId))

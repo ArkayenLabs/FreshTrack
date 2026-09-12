@@ -342,8 +342,28 @@ which `sync-design.md` §5–§6 now say. Not verified: `FirestoreRemoteStore`
 itself — Firebase types cannot run on the JVM and there is no end-to-end
 test yet (§10).
 
-**Next: step 4, the push engine**, JVM-tested against `FakeDaos` and a fake
-`RemoteStore`. Then bootstrap.
+**Push engine built, 12 Sep 2026** (`883a8ba`, bootstrap in the next commit).
+`OutboxPusher.push(kitchenId)`: entitlement read once (skipped when nothing
+is queued and the kitchen is already backed up); drain oldest-first; ack only
+on success; a permission refusal is a retry if the event is already there and
+an entitlement stop otherwise; transient stops the run; permanent is tried
+once per run and stuck after five, skipped and surfaced, never dropped. First
+backup uploads every row and the whole ledger in 500-batches with a resumable
+count, then drops only what was queued before it began. 20 JVM tests; the
+once-per-run guard and the resume count were each removed and exactly their
+tests failed. `SyncPreferences` lost its dead watermark pair and now
+implements `SyncState`.
+
+Known edge, not fixed: `peek` returns the oldest 50; if fifty consecutive
+entries are stuck, nothing behind them is attempted. Fifty stuck entries is a
+broken state that is surfaced anyway.
+
+**Next: step 5, the pull engine** — a listener per kitchen on
+`items`/`events where serverUpdatedAt > cursor`, own writes recognised by
+`lastOperationId` and used to stamp `revision`, events appended with IGNORE,
+cursor advanced only after the Room transaction commits. Needs a set of
+recently acknowledged operation ids so an own write that arrives after its
+outbox row was deleted is still recognised.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator

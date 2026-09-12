@@ -4,16 +4,17 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.example.freshtrack.data.sync.SyncState
 
 /**
- * Sync watermarks, kept per pantry so joining a household later does not reset
- * the personal pantry's position.
+ * Sync progress, kept per kitchen so joining a household later does not reset
+ * the personal kitchen's position.
  *
- * Pull and push are tracked separately. Sharing one watermark would mean a row
- * just pulled from the server immediately looks like a local change and gets
- * pushed straight back.
+ * The previous watermark pair (last pulled at, last pushed at) is gone with
+ * the polling client it served; the outbox is the pending set now, and the
+ * only per-kitchen state left is how far a first backup has got.
  */
-class SyncPreferences(context: Context) {
+class SyncPreferences(context: Context) : SyncState {
 
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -27,16 +28,18 @@ class SyncPreferences(context: Context) {
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
-    fun lastPulledAt(pantryId: String): Long = prefs.getLong(pullKey(pantryId), 0L)
+    override fun isBootstrapped(kitchenId: String): Boolean =
+        prefs.getBoolean(bootstrappedKey(kitchenId), false)
 
-    fun setLastPulledAt(pantryId: String, value: Long) {
-        prefs.edit().putLong(pullKey(pantryId), value).apply()
+    override fun markBootstrapped(kitchenId: String) {
+        prefs.edit().putBoolean(bootstrappedKey(kitchenId), true).apply()
     }
 
-    fun lastPushedAt(pantryId: String): Long = prefs.getLong(pushKey(pantryId), 0L)
+    override fun bootstrapEventsUploaded(kitchenId: String): Int =
+        prefs.getInt(eventsUploadedKey(kitchenId), 0)
 
-    fun setLastPushedAt(pantryId: String, value: Long) {
-        prefs.edit().putLong(pushKey(pantryId), value).apply()
+    override fun setBootstrapEventsUploaded(kitchenId: String, count: Int) {
+        prefs.edit().putInt(eventsUploadedKey(kitchenId), count).apply()
     }
 
     /**
@@ -54,8 +57,8 @@ class SyncPreferences(context: Context) {
         prefs.edit().clear().apply()
     }
 
-    private fun pullKey(pantryId: String) = "last_pulled_$pantryId"
-    private fun pushKey(pantryId: String) = "last_pushed_$pantryId"
+    private fun bootstrappedKey(kitchenId: String) = "bootstrapped_$kitchenId"
+    private fun eventsUploadedKey(kitchenId: String) = "bootstrap_events_$kitchenId"
 
     companion object {
         private const val PREFS_NAME = "freshtrack_sync_prefs"

@@ -80,6 +80,14 @@ interface OutboxDao {
     @Query("DELETE FROM outbox WHERE kitchenId = :kitchenId")
     suspend fun deleteAllForKitchen(kitchenId: String)
 
+    /**
+     * Drops entries a first backup has made redundant, and only those. A
+     * change queued while the backup was running has a higher sequence and
+     * still needs to go up on its own.
+     */
+    @Query("DELETE FROM outbox WHERE kitchenId = :kitchenId AND clientSequence <= :sequence")
+    suspend fun deleteUpTo(kitchenId: String, sequence: Long)
+
     @Query("DELETE FROM outbox")
     suspend fun clear()
 }

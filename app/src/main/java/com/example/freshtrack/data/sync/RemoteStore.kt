@@ -46,6 +46,20 @@ interface RemoteStore {
     suspend fun eventExists(kitchenId: String, operationId: String): Result<Boolean>
 
     /**
+     * A first backup's rows. Setting an item is idempotent, so the store may
+     * split these into as many batches as it needs and the caller may repeat
+     * the whole call after an interruption.
+     */
+    suspend fun pushItems(kitchenId: String, items: List<Pair<String, Map<String, Any?>>>): Result<Unit>
+
+    /**
+     * A first backup's ledger, one atomic batch, so the caller can record
+     * exactly how far it got. At most [MAX_BATCH] entries per call: an event
+     * cannot be written twice, so the caller resumes rather than repeats.
+     */
+    suspend fun pushEvents(kitchenId: String, events: List<Pair<String, Map<String, Any?>>>): Result<Unit>
+
+    /**
      * Erases everything stored for this user: every item, every event, the
      * kitchen, and the user profile.
      *
@@ -54,6 +68,11 @@ interface RemoteStore {
      * orphaned with no owner and no way to reach them.
      */
     suspend fun deleteAccountData(kitchenId: String, uid: String): Result<Unit>
+
+    companion object {
+        /** Firestore's limit on writes in one batch. */
+        const val MAX_BATCH = 500
+    }
 }
 
 /**

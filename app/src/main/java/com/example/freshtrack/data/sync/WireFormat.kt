@@ -3,7 +3,6 @@ package com.example.freshtrack.data.sync
 import com.example.freshtrack.data.local.entities.GUEST_USER_ID
 import com.example.freshtrack.data.local.entities.ItemEntity
 import com.example.freshtrack.data.local.entities.ItemEventEntity
-import com.example.freshtrack.data.local.entities.OutboxEntity
 
 /**
  * The shape an item and an event take on the wire.
@@ -27,7 +26,7 @@ import com.example.freshtrack.data.local.entities.OutboxEntity
  */
 object WireFormat {
 
-    fun item(snapshot: ItemEntity, op: OutboxEntity): Map<String, Any?> = mapOf(
+    fun item(snapshot: ItemEntity, operationId: String, actorUid: String): Map<String, Any?> = mapOf(
         "name" to snapshot.name,
         "category" to snapshot.category,
         "locationId" to snapshot.locationId,
@@ -52,13 +51,13 @@ object WireFormat {
         "resolvedAt" to snapshot.resolvedAt,
         "notificationEnabled" to snapshot.notificationEnabled,
         "snoozedUntil" to snapshot.snoozedUntil,
-        "createdBy" to claimed(snapshot.createdBy, op),
-        "lastEditedBy" to claimed(snapshot.lastEditedBy, op),
+        "createdBy" to claimed(snapshot.createdBy, actorUid),
+        "lastEditedBy" to claimed(snapshot.lastEditedBy, actorUid),
         "updatedAt" to snapshot.updatedAt,
         "schemaVersion" to snapshot.schemaVersion,
         "isDeleted" to snapshot.isDeleted,
         "deletedAt" to snapshot.deletedAt,
-        "lastOperationId" to op.operationId
+        "lastOperationId" to operationId
     )
 
     fun event(event: ItemEventEntity): Map<String, Any?> = mapOf(
@@ -74,6 +73,6 @@ object WireFormat {
         "schemaVersion" to event.schemaVersion
     )
 
-    private fun claimed(uid: String, op: OutboxEntity): String =
-        if (uid == GUEST_USER_ID) op.actorUid else uid
+    private fun claimed(uid: String, actorUid: String): String =
+        if (uid == GUEST_USER_ID) actorUid else uid
 }
