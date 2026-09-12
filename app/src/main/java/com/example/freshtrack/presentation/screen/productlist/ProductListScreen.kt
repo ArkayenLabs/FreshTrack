@@ -56,8 +56,7 @@ fun ProductListScreen(
                 title = {
                     Text(
                         stringResource(R.string.nav_kitchen),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 actions = {
@@ -268,8 +267,7 @@ fun ProductListScreen(
             title = {
                 Text(
                     stringResource(R.string.kitchen_delete_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge
                 )
             },
             text = {
@@ -288,20 +286,20 @@ fun ProductListScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(stringResource(R.string.action_delete), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_delete))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showDeleteDialog = null },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(stringResource(R.string.action_cancel), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_cancel))
                 }
             },
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         )
@@ -348,7 +346,7 @@ fun EnhancedCategoryChip(
                 )
             }
         },
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -382,7 +380,7 @@ fun EnhancedEmptyState(
         Box(
             modifier = Modifier
                 .size(120.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .clip(MaterialTheme.shapes.large)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
@@ -401,7 +399,6 @@ fun EnhancedEmptyState(
             Text(
                 text = stringResource(R.string.kitchen_empty_title),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
 
@@ -417,7 +414,7 @@ fun EnhancedEmptyState(
             modifier = Modifier
                 .fillMaxWidth(0.7f)
                 .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.medium,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
             )
@@ -430,8 +427,7 @@ fun EnhancedEmptyState(
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.kitchen_add_product),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.titleMedium
             )
         }
     }

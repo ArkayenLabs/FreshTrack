@@ -1,7 +1,10 @@
 package com.example.freshtrack.presentation.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -89,6 +92,20 @@ private val DarkColors = darkColorScheme(
     surfaceTint = DarkPrimary
 )
 
+/**
+ * Three radii, not eight. A chip and a small control sit on 10; a card, a
+ * button and a field on 16; a sheet, a dialog and the floating bar on 24.
+ * Screens use these roles rather than spelling a number, so the same kind of
+ * thing has the same corner everywhere.
+ */
+val Shapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(24.dp)
+)
+
 private val LocalUrgencyPalette = staticCompositionLocalOf { LightUrgency }
 
 /** Theme values that Material has no slot for. */
@@ -121,6 +138,7 @@ fun FreshTrackTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,
+            shapes = Shapes,
             content = content
         )
     }

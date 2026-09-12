@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.content.Intent
 import android.net.Uri
@@ -91,8 +90,7 @@ fun CustomOSSLicensesScreen(
                 title = {
                     Text(
                         stringResource(R.string.licenses_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -120,7 +118,7 @@ fun CustomOSSLicensesScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Row(
                         modifier = Modifier
@@ -148,7 +146,6 @@ fun CustomOSSLicensesScreen(
                             Text(
                                 stringResource(R.string.licenses_heading),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
@@ -210,7 +207,7 @@ fun LicenseCard(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = MaterialTheme.shapes.medium
     ) {
         Column(
             modifier = Modifier
@@ -226,13 +223,12 @@ fun LicenseCard(
                     Text(
                         text = license.library,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(4.dp))
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(6.dp)
+                        shape = MaterialTheme.shapes.small
                     ) {
                         Text(
                             text = license.license,
@@ -262,7 +258,6 @@ fun LicenseCard(
                 Text(
                     text = "Apache License 2.0",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(Modifier.height(8.dp))
@@ -275,7 +270,7 @@ fun LicenseCard(
                 Spacer(Modifier.height(12.dp))
                 TextButton(
                     onClick = { onOpenUrl(license.url) },
-                    shape = RoundedCornerShape(8.dp)
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Text(stringResource(R.string.licenses_view_full))
                 }

@@ -26,7 +26,6 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -106,7 +105,6 @@ fun LoginScreen(
             Text(
                 text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
@@ -120,7 +118,7 @@ fun LoginScreen(
             // Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
@@ -130,7 +128,6 @@ fun LoginScreen(
                     Text(
                         stringResource(R.string.auth_welcome_back),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
@@ -147,7 +144,7 @@ fun LoginScreen(
                         label = { Text(stringResource(R.string.auth_email)) },
                         leadingIcon = { Icon(Icons.Default.Email, null) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Email,
                             imeAction = ImeAction.Next
@@ -176,7 +173,7 @@ fun LoginScreen(
                         },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
                             imeAction = ImeAction.Done
@@ -195,12 +192,8 @@ fun LoginScreen(
                     // Forgot Password link
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                         TextButton(onClick = onNavigateToForgotPassword) {
-                            Text(
-                                stringResource(R.string.auth_forgot_password),
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp
-                            )
+                            Text(stringResource(R.string.auth_forgot_password),
+                                color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                         }
                     }
 
@@ -224,7 +217,7 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .height(52.dp),
                         enabled = !uiState.isLoading && email.isNotBlank() && password.isNotBlank(),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         if (uiState.isLoading) {
                             CircularProgressIndicator(
@@ -233,7 +226,7 @@ fun LoginScreen(
                                 strokeWidth = 2.5.dp
                             )
                         } else {
-                            Text(stringResource(R.string.settings_sign_in), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(stringResource(R.string.settings_sign_in), style = MaterialTheme.typography.titleMedium)
                         }
                     }
 
@@ -264,7 +257,7 @@ fun LoginScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
@@ -274,7 +267,7 @@ fun LoginScreen(
                                 tint = androidx.compose.ui.graphics.Color.Unspecified
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(stringResource(R.string.auth_continue_google), fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                            Text(stringResource(R.string.auth_continue_google), style = MaterialTheme.typography.titleSmall)
                         }
                     }
                 }
@@ -291,8 +284,7 @@ fun LoginScreen(
                 Text(
                     stringResource(R.string.auth_sign_up),
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.titleSmall
                 )
             }
 

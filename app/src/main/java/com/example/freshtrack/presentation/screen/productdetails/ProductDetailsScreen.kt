@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import com.example.freshtrack.R
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -56,8 +55,7 @@ fun ProductDetailsScreen(
                 title = {
                     Text(
                         stringResource(R.string.details_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -107,7 +105,6 @@ fun ProductDetailsScreen(
                         Text(
                             text = product.name,
                             style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
@@ -118,7 +115,7 @@ fun ProductDetailsScreen(
                     // Product Information Card
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = MaterialTheme.shapes.medium,
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         ),
@@ -193,7 +190,7 @@ fun ProductDetailsScreen(
                     product.notes?.let { notes ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = MaterialTheme.shapes.medium,
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surface
                             ),
@@ -216,7 +213,6 @@ fun ProductDetailsScreen(
                                     Text(
                                         text = stringResource(R.string.add_notes_label),
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
@@ -246,7 +242,7 @@ fun ProductDetailsScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(56.dp),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Icon(
                                 Icons.Default.CheckCircle,
@@ -256,8 +252,7 @@ fun ProductDetailsScreen(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 stringResource(R.string.details_used),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
+                                style = MaterialTheme.typography.titleSmall
                             )
                         }
 
@@ -273,7 +268,7 @@ fun ProductDetailsScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = MaterialTheme.shapes.medium,
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error
                             ),
@@ -289,8 +284,7 @@ fun ProductDetailsScreen(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 stringResource(R.string.details_discarded),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
+                                style = MaterialTheme.typography.titleSmall
                             )
                         }
                     }
@@ -323,8 +317,7 @@ fun ProductDetailsScreen(
             title = {
                 Text(
                     stringResource(R.string.kitchen_delete_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge
                 )
             },
             text = {
@@ -344,20 +337,20 @@ fun ProductDetailsScreen(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(stringResource(R.string.action_delete), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_delete))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showDeleteDialog = false },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(stringResource(R.string.action_cancel), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.action_cancel))
                 }
             },
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         )
@@ -443,7 +436,6 @@ fun ExpiryStatusBadge(expiryDate: LocalDate) {
                 Text(
                     text = status,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
                     color = color
                 )
                 Text(
@@ -500,8 +492,7 @@ fun InfoRow(
         } else {
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.titleSmall,
                 color = valueColor
             )
         }
@@ -530,7 +521,7 @@ fun CategoryChipCompact(category: String) {
     }
 
     Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = MaterialTheme.shapes.small,
         color = color.copy(alpha = 0.15f)
     ) {
         Row(
@@ -547,7 +538,6 @@ fun CategoryChipCompact(category: String) {
             Text(
                 text = category,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
                 color = color
             )
         }
@@ -629,8 +619,7 @@ fun QuantityPickerDialog(
         title = {
             Text(
                 title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleLarge
             )
         },
         text = {
@@ -654,7 +643,7 @@ fun QuantityPickerDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 )
 
                 // Quick action buttons
@@ -708,20 +697,20 @@ fun QuantityPickerDialog(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = iconTint
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text(confirmText, fontWeight = FontWeight.SemiBold)
+                Text(confirmText)
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text(stringResource(R.string.action_cancel), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.action_cancel))
             }
         },
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.large,
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 6.dp
     )

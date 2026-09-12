@@ -130,7 +130,7 @@ fun GoodBeforeBottomBar(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 3.dp,
             shadowElevation = 8.dp
@@ -179,7 +179,7 @@ private fun BottomBarItem(
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(MaterialTheme.shapes.large)
             // selectable merges its descendants, so the label below is what
             // TalkBack reads, and Role.Tab plus the selected flag are what turn
             // it into "Today, tab, selected" rather than a bare button.

@@ -34,7 +34,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.R
 import com.example.freshtrack.data.preferences.OnboardingPreferences
@@ -116,7 +115,7 @@ fun TodayScreen(
         bottomBar = bottomBar,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
@@ -156,7 +155,6 @@ fun TodayScreen(
                 Text(
                     text = headlineFor(rescue),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
@@ -245,8 +243,7 @@ private fun RescueRow(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = entry.item.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.titleMedium
                     )
                     Text(
                         text = describe(entry),
@@ -370,8 +367,7 @@ private fun NothingToRescue(
             )
             Text(
                 text = stringResource(R.string.today_empty_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.titleMedium
             )
             Text(
                 text = stringResource(R.string.today_empty_body),

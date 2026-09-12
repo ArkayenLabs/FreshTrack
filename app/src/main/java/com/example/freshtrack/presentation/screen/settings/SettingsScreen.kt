@@ -21,7 +21,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.data.export.CsvExporter
 import com.example.freshtrack.data.repository.ItemRepository
@@ -134,8 +133,7 @@ fun SettingsScreen(
                 title = {
                     Text(
                         stringResource(R.string.settings_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -165,7 +163,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
@@ -191,7 +189,6 @@ fun SettingsScreen(
                             Text(
                                 text = initial.toString(),
                                 style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
@@ -200,7 +197,6 @@ fun SettingsScreen(
                             Text(
                                 text = displayName ?: stringResource(R.string.settings_add_name),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
                                 color = if (displayName != null)
                                     MaterialTheme.colorScheme.onPrimaryContainer
                                 else
@@ -235,7 +231,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
@@ -263,7 +259,6 @@ fun SettingsScreen(
                             Text(
                                 stringResource(R.string.settings_guest_title),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
@@ -272,8 +267,8 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
-                        TextButton(onClick = onSignOut, shape = RoundedCornerShape(10.dp)) {
-                            Text(stringResource(R.string.settings_sign_in), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        TextButton(onClick = onSignOut, shape = MaterialTheme.shapes.small) {
+                            Text(stringResource(R.string.settings_sign_in), color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -434,7 +429,7 @@ fun SettingsScreen(
                 if (showSignOutDialog) {
                     AlertDialog(
                         onDismissRequest = { showSignOutDialog = false },
-                        title = { Text(stringResource(R.string.settings_sign_out), fontWeight = FontWeight.Bold) },
+                        title = { Text(stringResource(R.string.settings_sign_out)) },
                         text = { Text(stringResource(R.string.settings_sign_out_confirm)) },
                         confirmButton = {
                             Button(
@@ -457,13 +452,13 @@ fun SettingsScreen(
                 OutlinedButton(
                     onClick = { showSignOutDialog = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp)
                 ) {
                     Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.settings_sign_out), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_sign_out))
                 }
 
                 // Deliberately quiet: a destructive, irreversible action should
@@ -498,7 +493,6 @@ fun SettingsScreen(
                 Text(
                     text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.height(4.dp))
@@ -529,14 +523,14 @@ fun SettingsScreen(
         var nameInput by remember { mutableStateOf(editNameValue) }
         AlertDialog(
             onDismissRequest = { showEditNameDialog = false },
-            title = { Text(stringResource(R.string.settings_edit_name), fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.settings_edit_name)) },
             text = {
                 OutlinedTextField(
                     value = nameInput,
                     onValueChange = { nameInput = it },
                     label = { Text(stringResource(R.string.settings_display_name)) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 )
             },
             confirmButton = {
@@ -551,15 +545,15 @@ fun SettingsScreen(
                             ?.addOnCompleteListener { /* profile updated */ }
                         showEditNameDialog = false
                     },
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text(stringResource(R.string.action_save), fontWeight = FontWeight.SemiBold) }
+                    shape = MaterialTheme.shapes.medium
+                ) { Text(stringResource(R.string.action_save)) }
             },
             dismissButton = {
-                TextButton(onClick = { showEditNameDialog = false }, shape = RoundedCornerShape(12.dp)) {
+                TextButton(onClick = { showEditNameDialog = false }, shape = MaterialTheme.shapes.medium) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
-            shape = RoundedCornerShape(24.dp)
+            shape = MaterialTheme.shapes.large
         )
     }
 
@@ -652,7 +646,7 @@ fun SettingsScreen(
                     onClick = { showDeleteAccountDialog = false }
                 ) { Text(stringResource(R.string.action_cancel)) }
             },
-            shape = RoundedCornerShape(24.dp)
+            shape = MaterialTheme.shapes.large
         )
     }
 
@@ -714,7 +708,6 @@ private fun SettingsSection(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
         }
@@ -736,7 +729,7 @@ private fun SettingsItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.medium)
             .clickable(enabled = enabled) { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -770,8 +763,7 @@ private fun SettingsItemCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = if (enabled)
                         MaterialTheme.colorScheme.onSurface
                     else
@@ -813,7 +805,7 @@ private fun SettingsSwitchCard(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -850,8 +842,7 @@ private fun SettingsSwitchCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
@@ -899,8 +890,7 @@ private fun AdvanceNoticeDaysDialog(
         title = {
             Text(
                 "Advance Notice",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleLarge
             )
         },
         text = {
@@ -917,7 +907,7 @@ private fun AdvanceNoticeDaysDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .clickable { selectedDays = days }
                             .background(
                                 if (selectedDays == days)
@@ -953,20 +943,20 @@ private fun AdvanceNoticeDaysDialog(
         confirmButton = {
             Button(
                 onClick = { onConfirm(selectedDays) },
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text(stringResource(R.string.action_save), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.action_save))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text(stringResource(R.string.action_cancel), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.action_cancel))
             }
         },
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.large,
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 6.dp
     )

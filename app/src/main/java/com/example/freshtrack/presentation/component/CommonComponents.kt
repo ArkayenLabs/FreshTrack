@@ -22,7 +22,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.R
@@ -57,7 +56,7 @@ fun ProductCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        shape = RoundedCornerShape(16.dp) // More rounded for modern look
+        shape = MaterialTheme.shapes.medium // More rounded for modern look
     ) {
         Row(
             modifier = Modifier
@@ -96,7 +95,6 @@ fun ProductCard(
                     Text(
                         text = product.name,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -201,7 +199,6 @@ fun ExpiryBadge(
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
             color = textColor
         )
     }
@@ -219,7 +216,7 @@ fun CategoryChip(
 
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+        shape = MaterialTheme.shapes.small,
         color = categoryColor.copy(alpha = 0.15f)
     ) {
         Row(
@@ -236,8 +233,7 @@ fun CategoryChip(
             Text(
                 text = category,
                 style = MaterialTheme.typography.labelSmall,
-                color = categoryColor,
-                fontWeight = FontWeight.Medium
+                color = categoryColor
             )
         }
     }
@@ -275,7 +271,6 @@ fun EmptyState(
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
 
@@ -341,7 +336,7 @@ fun StatCard(
             containerColor = backgroundColor.copy(alpha = 0.12f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = RoundedCornerShape(16.dp)
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -356,7 +351,6 @@ fun StatCard(
                 Text(
                     text = value,
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
                     color = backgroundColor
                 )
 

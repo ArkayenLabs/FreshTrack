@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -78,7 +77,6 @@ fun ForgotPasswordScreen(
             Text(
                 text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
@@ -86,7 +84,7 @@ fun ForgotPasswordScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
@@ -96,7 +94,6 @@ fun ForgotPasswordScreen(
                     Text(
                         stringResource(R.string.auth_reset_title),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
@@ -114,7 +111,7 @@ fun ForgotPasswordScreen(
                         label = { Text(stringResource(R.string.auth_email)) },
                         leadingIcon = { Icon(Icons.Default.Email, null) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Email,
                             imeAction = ImeAction.Done
@@ -146,8 +143,7 @@ fun ForgotPasswordScreen(
                         Text(
                             text = stringResource(R.string.auth_reset_sent),
                             color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(top = 8.dp),
                             textAlign = TextAlign.Center
                         )
@@ -165,7 +161,7 @@ fun ForgotPasswordScreen(
                             .fillMaxWidth()
                             .height(52.dp),
                         enabled = !uiState.isLoading && email.isNotBlank() && !uiState.isSuccess,
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         if (uiState.isLoading) {
                             CircularProgressIndicator(
@@ -174,7 +170,7 @@ fun ForgotPasswordScreen(
                                 strokeWidth = 2.5.dp
                             )
                         } else {
-                            Text(stringResource(R.string.auth_send_link), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(stringResource(R.string.auth_send_link), style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }

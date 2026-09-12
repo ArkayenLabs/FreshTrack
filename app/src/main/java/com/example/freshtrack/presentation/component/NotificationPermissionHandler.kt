@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.R
@@ -106,7 +105,6 @@ fun NotificationPermissionDialog(
             Text(
                 text = stringResource(R.string.reminders_title),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
         },
@@ -133,7 +131,7 @@ fun NotificationPermissionDialog(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Column(
                             modifier = Modifier.padding(12.dp),
@@ -150,7 +148,7 @@ fun NotificationPermissionDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -160,24 +158,22 @@ fun NotificationPermissionDialog(
                         } else {
                             R.string.reminders_allow
                         }
-                    ),
-                    fontWeight = FontWeight.SemiBold
+                    )
                 )
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = stringResource(R.string.reminders_not_now),
-                    fontWeight = FontWeight.SemiBold
+                    text = stringResource(R.string.reminders_not_now)
                 )
             }
         },
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.large,
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 6.dp
     )

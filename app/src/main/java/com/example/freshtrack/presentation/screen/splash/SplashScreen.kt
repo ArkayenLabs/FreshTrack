@@ -9,7 +9,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.freshtrack.R
@@ -47,26 +46,18 @@ fun SplashScreen(
             Spacer(Modifier.height(24.dp))
 
             // App Name
-            Text(
-                text = stringResource(R.string.app_name),
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
+            Text( text = stringResource(R.string.app_name),
                 // Use a color that works well on any background
                 color = MaterialTheme.colorScheme.onBackground,
-                letterSpacing = 1.sp
-            )
+                letterSpacing = 1.sp, style = MaterialTheme.typography.displayMedium)
 
             Spacer(Modifier.height(8.dp))
 
             // Tagline
-            Text(
-                text = stringResource(R.string.app_tagline),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Normal,
+            Text( text = stringResource(R.string.app_tagline),
                 // Use a secondary text color for the tagline.
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.5.sp
-            )
+                letterSpacing = 0.5.sp, style = MaterialTheme.typography.bodyLarge)
 
             Spacer(Modifier.height(80.dp))
 

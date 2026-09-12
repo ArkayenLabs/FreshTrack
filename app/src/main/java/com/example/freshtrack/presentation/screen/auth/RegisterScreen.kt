@@ -26,7 +26,6 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -109,7 +108,6 @@ fun RegisterScreen(
             Text(
                 text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
@@ -117,7 +115,7 @@ fun RegisterScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
@@ -127,7 +125,6 @@ fun RegisterScreen(
                     Text(
                         stringResource(R.string.auth_create_account),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
@@ -144,7 +141,7 @@ fun RegisterScreen(
                         label = { Text(stringResource(R.string.auth_email)) },
                         leadingIcon = { Icon(Icons.Default.Email, null) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                         singleLine = true
@@ -168,7 +165,7 @@ fun RegisterScreen(
                         },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                         singleLine = true
@@ -198,7 +195,7 @@ fun RegisterScreen(
                         },
                         visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         isError = passwordMismatch,
                         supportingText = if (passwordMismatch) {
                             { Text(stringResource(R.string.auth_passwords_mismatch), color = MaterialTheme.colorScheme.error) }
@@ -224,7 +221,7 @@ fun RegisterScreen(
                             onClick = onNavigateToTerms,
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text(stringResource(R.string.terms_screen_title), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.terms_screen_title), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                         }
                     }
 
@@ -248,7 +245,7 @@ fun RegisterScreen(
                             .fillMaxWidth()
                             .height(52.dp),
                         enabled = !uiState.isLoading && email.isNotBlank() && password.isNotBlank() && !passwordMismatch && agreeToTerms,
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         if (uiState.isLoading) {
                             CircularProgressIndicator(
@@ -257,7 +254,7 @@ fun RegisterScreen(
                                 strokeWidth = 2.5.dp
                             )
                         } else {
-                            Text(stringResource(R.string.auth_create_account), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(stringResource(R.string.auth_create_account), style = MaterialTheme.typography.titleMedium)
                         }
                     }
 
@@ -288,7 +285,7 @@ fun RegisterScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
@@ -298,7 +295,7 @@ fun RegisterScreen(
                                 tint = androidx.compose.ui.graphics.Color.Unspecified
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(stringResource(R.string.auth_continue_google), fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                            Text(stringResource(R.string.auth_continue_google), style = MaterialTheme.typography.titleSmall)
                         }
                     }
                 }
@@ -308,7 +305,7 @@ fun RegisterScreen(
 
             TextButton(onClick = onNavigateToLogin) {
                 Text(stringResource(R.string.auth_have_account), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.settings_sign_in), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.settings_sign_in), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
             }
 
             Spacer(modifier = Modifier.height(32.dp))

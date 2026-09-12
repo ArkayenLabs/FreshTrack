@@ -89,8 +89,7 @@ fun AddEditProductScreen(
                 title = {
                     Text(
                         if (productId == null) stringResource(R.string.add_title) else stringResource(R.string.edit_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -121,7 +120,7 @@ fun AddEditProductScreen(
                         .padding(16.dp)
                         .height(56.dp),
                     enabled = !uiState.isSaving,
-                    shape = RoundedCornerShape(16.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     if (uiState.isSaving) {
                         CircularProgressIndicator(
@@ -138,8 +137,7 @@ fun AddEditProductScreen(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = if (productId == null) stringResource(R.string.add_title) else stringResource(R.string.add_save_changes),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 }
@@ -171,7 +169,7 @@ fun AddEditProductScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
@@ -194,7 +192,7 @@ fun AddEditProductScreen(
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.medium,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
@@ -204,7 +202,7 @@ fun AddEditProductScreen(
                         FilledTonalButton(
                             onClick = onNavigateToScanner,
                             modifier = Modifier.height(56.dp),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Icon(Icons.Default.QrCodeScanner, stringResource(R.string.add_scan), modifier = Modifier.size(20.dp))
                         }
@@ -237,7 +235,7 @@ fun AddEditProductScreen(
                     OutlinedButton(
                         onClick = onNavigateToDateScanner,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Icon(
                             Icons.Outlined.DocumentScanner,
@@ -277,7 +275,7 @@ fun AddEditProductScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
@@ -297,7 +295,7 @@ fun AddEditProductScreen(
                         .fillMaxWidth()
                         .height(120.dp),
                     maxLines = 4,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
@@ -318,7 +316,7 @@ fun SectionCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -343,7 +341,6 @@ fun SectionCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -431,7 +428,7 @@ fun CategoryChip(
             }
         },
         modifier = modifier.height(72.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -487,7 +484,7 @@ fun ExpiryDatePicker(
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
@@ -568,7 +565,7 @@ fun ExpiryStatusIndicator(expiryDate: LocalDate, today: LocalDate) {
         colors = CardDefaults.cardColors(
             containerColor = color.copy(alpha = 0.1f)
         ),
-        shape = RoundedCornerShape(8.dp)
+        shape = MaterialTheme.shapes.small
     ) {
         Row(
             modifier = Modifier
@@ -587,8 +584,7 @@ fun ExpiryStatusIndicator(expiryDate: LocalDate, today: LocalDate) {
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = status,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = color
                 )
             }
