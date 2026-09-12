@@ -264,26 +264,24 @@ only.
 
 ---
 
-## 7. Sign-in and the claim — a defect to fix before any transport
+## 7. Sign-in and the claim
 
-`claimLocalData` moves guest rows into `personal-{uid}`. Today it rewrites
-`kitchenId` on items, events and outbox rows, and `createdBy`/`lastEditedBy` on
-items. It does **not** rewrite:
+`claimLocalData` moves guest rows into `personal-{uid}`. It rewrites
+`kitchenId` on items, events and outbox rows, `createdBy`/`lastEditedBy` on
+items, and — since 12 Sep 2026 — `actorUid` on events and outbox rows. The
+rules require `request.resource.data.actorUid == uid()` on every event create,
+so before that fix every event a person recorded before signing in would have
+been refused on push and sat in the outbox as "stuck". The person has, by
+signing in, said that the guest was them, and the claim now says so
+everywhere. A JVM test signs in over guest data and asserts no event, outbox
+row or item still names the guest.
 
-- `item_events.actorUid`, which stays `"guest"`;
-- `outbox.actorUid`, which stays `"guest"`;
-- the `kitchenId`, `createdBy` and `lastEditedBy` **inside** `outbox.payload`,
-  which is a JSON snapshot taken before sign-in.
-
-The rules require `request.resource.data.actorUid == uid()` on every event
-create. So every event a person recorded before signing in would be refused
-the moment it was pushed, and would sit in the outbox as "stuck". The person
-has, by signing in, said that the guest was them; the claim should say so
-everywhere. Fix: `claimLocalEvents` and `claimLocalOperations` set `actorUid`
-too, and push maps `kitchenId` and attribution **from the outbox columns**, not
-from the payload, so a stale snapshot cannot reintroduce `"local"` or
-`"guest"`. Both are small; both need a JVM test that signs in over guest data
-and asserts no row anywhere still says guest.
+One thing the claim deliberately does **not** rewrite: the `kitchenId`,
+`createdBy` and `lastEditedBy` **inside** `outbox.payload`, a JSON snapshot
+taken before sign-in. The transport must map kitchen and attribution **from
+the outbox columns**, never from the payload, so a stale snapshot cannot
+reintroduce `"local"` or `"guest"` on the wire. This is a rule for the push
+engine, and its test belongs with the push engine.
 
 The cross-account edge case stays: sign out, act, sign in as a different
 account, and that account claims the rows. Narrow, and recorded in
@@ -354,7 +352,7 @@ Deploying rules now would mean deploying again for each of these. **Decision,
 
 ## 11. Build order
 
-1. Fix the claim (§7). Small, testable, and a precondition for everything.
+1. ~~Fix the claim (§7).~~ Done, 12 Sep 2026.
 2. Rules: add `serverUpdatedAt`, event-id-is-operation-id, `lastOperationId`;
    extend tests.
 3. `RemoteStore` interface for the new shape; Firestore implementation;

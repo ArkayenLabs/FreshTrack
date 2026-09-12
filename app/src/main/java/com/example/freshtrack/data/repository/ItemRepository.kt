@@ -478,8 +478,8 @@ class ItemRepositoryImpl(
         val kitchenId = kitchen()
         transactions.run {
             itemDao.claimLocalItems(LOCAL_KITCHEN_ID, kitchenId, uid(), clock.nowMillis())
-            eventDao.claimLocalEvents(LOCAL_KITCHEN_ID, kitchenId)
-            outboxDao.claimLocalOperations(LOCAL_KITCHEN_ID, kitchenId)
+            eventDao.claimLocalEvents(LOCAL_KITCHEN_ID, kitchenId, uid())
+            outboxDao.claimLocalOperations(LOCAL_KITCHEN_ID, kitchenId, uid())
         }
         return pending
     }

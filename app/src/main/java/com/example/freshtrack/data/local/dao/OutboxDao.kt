@@ -63,8 +63,19 @@ interface OutboxDao {
     @Query("SELECT * FROM outbox WHERE kitchenId = :kitchenId AND attemptCount >= :threshold")
     suspend fun getStuck(kitchenId: String, threshold: Int): List<OutboxEntity>
 
-    @Query("UPDATE outbox SET kitchenId = :kitchenId WHERE kitchenId = :localKitchenId")
-    suspend fun claimLocalOperations(localKitchenId: String, kitchenId: String)
+    /**
+     * Adopts queued operations into the account's kitchen, actor included, for
+     * the same reason as [ItemEventDao.claimLocalEvents]. The payload snapshot
+     * is left as written; push takes kitchen and actor from these columns.
+     */
+    @Query(
+        """
+        UPDATE outbox
+        SET kitchenId = :kitchenId, actorUid = :uid
+        WHERE kitchenId = :localKitchenId
+        """
+    )
+    suspend fun claimLocalOperations(localKitchenId: String, kitchenId: String, uid: String)
 
     @Query("DELETE FROM outbox WHERE kitchenId = :kitchenId")
     suspend fun deleteAllForKitchen(kitchenId: String)

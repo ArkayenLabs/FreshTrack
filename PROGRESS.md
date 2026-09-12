@@ -306,16 +306,18 @@ by server cursor, conflict handling (row LWW, quantity events rebased,
 tombstone wins), bootstrap instead of replay for a first backup, and a build
 order. Two findings from the rewrite:
 
-- **The claim leaves `actorUid = "guest"`** on events and outbox rows, and the
-  rules require `actorUid == uid()` on every event create — so every change a
-  person made before signing in would be refused on push and sit as "stuck".
-  Documented in §7; fix is small and is step 1 of the build order.
+- ~~**The claim leaves `actorUid = "guest"`** on events and outbox rows~~,
+  which the rules would refuse on push. Fixed the same day: both claim queries
+  rewrite `actorUid`, and a JVM test signs in over guest data and asserts
+  nothing still names the guest. Room compile-checked the SQL; not run on a
+  device, as no device test exercises the claim.
 - **Location writes bypass the outbox.** `LocationRepositoryImpl` never
   enqueues, so a renamed shelf could not sync. Out of scope for the first
   transport; needs an `entityKind` column (`Migration(3, 4)`).
 
-**Next: build the transport in the order §11 gives.** Step 1 (fix the claim)
-is a JVM-tested change with no device needed.
+**Next: build the transport in the order §11 gives**, from step 2: the rules
+changes (`serverUpdatedAt == request.time`, event id = operation id,
+`lastOperationId`) with their emulator tests.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
@@ -462,9 +464,9 @@ Not bugs to fix today, but things that are true and should not be forgotten.
 - **No sync at all, by choice.** The polling client was deleted with the
   schema it mirrored. `sync-design.md` was rewritten against the outbox
   contract on 12 Sep 2026 and is the plan for the transport.
-- **The guest claim does not rewrite `actorUid`** on events or outbox rows, and
-  the rules will refuse such events on push. Found during the sync-design
-  rewrite; see `sync-design.md` §7. Must be fixed before the transport.
+- **The outbox payload snapshot still says `local`/`guest`** after a claim.
+  Deliberate — the transport must take kitchen and actor from the outbox
+  columns, never the payload. See `sync-design.md` §7.
 - **No end-to-end test.** The engine is tested with mocks and the rules against
   the emulator, but never the two together.
 - **Cross-account claim edge case.** If a user signs out, updates, and a

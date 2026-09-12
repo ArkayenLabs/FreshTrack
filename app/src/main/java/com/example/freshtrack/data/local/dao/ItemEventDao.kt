@@ -138,8 +138,22 @@ interface ItemEventDao {
 
     // ─── Account handover and deletion ───────────────────────────────────────
 
-    @Query("UPDATE item_events SET kitchenId = :kitchenId WHERE kitchenId = :localKitchenId")
-    suspend fun claimLocalEvents(localKitchenId: String, kitchenId: String)
+    /**
+     * Adopts events recorded before sign-in into the account's kitchen.
+     *
+     * The actor is rewritten too. Every event in the local kitchen was recorded
+     * by the guest sentinel, and by signing in the person has said the guest
+     * was them. Leaving "guest" would be refused by the rules on push, which
+     * require an event to name its actor as the signed-in user.
+     */
+    @Query(
+        """
+        UPDATE item_events
+        SET kitchenId = :kitchenId, actorUid = :uid
+        WHERE kitchenId = :localKitchenId
+        """
+    )
+    suspend fun claimLocalEvents(localKitchenId: String, kitchenId: String, uid: String)
 
     @Query("DELETE FROM item_events WHERE kitchenId = :kitchenId")
     suspend fun deleteAllForKitchen(kitchenId: String)

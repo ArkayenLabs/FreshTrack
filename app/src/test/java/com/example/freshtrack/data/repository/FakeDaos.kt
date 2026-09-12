@@ -285,9 +285,9 @@ class FakeItemEventDao : ItemEventDao {
     override fun sumVerifiedValueForType(kitchenId: String, type: ItemEventType): Flow<Long> =
         changes.map { 0L }
 
-    override suspend fun claimLocalEvents(localKitchenId: String, kitchenId: String) {
+    override suspend fun claimLocalEvents(localKitchenId: String, kitchenId: String, uid: String) {
         events.replaceAll {
-            if (it.kitchenId == localKitchenId) it.copy(kitchenId = kitchenId) else it
+            if (it.kitchenId == localKitchenId) it.copy(kitchenId = kitchenId, actorUid = uid) else it
         }
         changes.value += 1
     }
@@ -342,9 +342,9 @@ class FakeOutboxDao : OutboxDao {
     override suspend fun getStuck(kitchenId: String, threshold: Int): List<OutboxEntity> =
         operations.filter { it.kitchenId == kitchenId && it.attemptCount >= threshold }
 
-    override suspend fun claimLocalOperations(localKitchenId: String, kitchenId: String) {
+    override suspend fun claimLocalOperations(localKitchenId: String, kitchenId: String, uid: String) {
         operations.replaceAll {
-            if (it.kitchenId == localKitchenId) it.copy(kitchenId = kitchenId) else it
+            if (it.kitchenId == localKitchenId) it.copy(kitchenId = kitchenId, actorUid = uid) else it
         }
         changes.value += 1
     }

@@ -340,6 +340,27 @@ class ItemRepositoryImplTest {
         assertTrue(outboxDao.operations.all { it.kitchenId == "personal-alice" })
     }
 
+    @Test
+    fun `signing in leaves nothing attributed to the guest`() = runTest {
+        // The rules refuse an event whose actor is not the signed-in user, so
+        // an event still saying "guest" after sign-in could never be pushed.
+        // By signing in the person has said the guest was them.
+        val id = repository.add(sampleItem(quantity = 3))
+        repository.use(id, amount = 1)
+        assertTrue(eventDao.events.any { it.actorUid == "guest" })
+        assertTrue(outboxDao.operations.any { it.actorUid == "guest" })
+
+        session.signedIn = true
+        session.uid = "alice"
+        repository.claimLocalData()
+
+        assertTrue(eventDao.events.all { it.actorUid == "alice" })
+        assertTrue(outboxDao.operations.all { it.actorUid == "alice" })
+        assertTrue(itemDao.rows.values.all { it.createdBy == "alice" && it.lastEditedBy == "alice" })
+        assertFalse(eventDao.events.any { it.kitchenId == "local" })
+        assertFalse(outboxDao.operations.any { it.kitchenId == "local" })
+    }
+
     // ─── Undo ────────────────────────────────────────────────────────────────
 
     @Test
