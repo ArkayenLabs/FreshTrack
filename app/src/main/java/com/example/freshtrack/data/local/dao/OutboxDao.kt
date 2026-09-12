@@ -63,6 +63,9 @@ interface OutboxDao {
     @Query("SELECT * FROM outbox WHERE kitchenId = :kitchenId AND attemptCount >= :threshold")
     suspend fun getStuck(kitchenId: String, threshold: Int): List<OutboxEntity>
 
+    @Query("SELECT COUNT(*) FROM outbox WHERE kitchenId = :kitchenId AND attemptCount >= :threshold")
+    fun observeStuckCount(kitchenId: String, threshold: Int): Flow<Int>
+
     /**
      * Adopts queued operations into the account's kitchen, actor included, for
      * the same reason as [ItemEventDao.claimLocalEvents]. The payload snapshot

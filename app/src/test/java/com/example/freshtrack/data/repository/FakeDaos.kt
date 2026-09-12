@@ -353,6 +353,9 @@ class FakeOutboxDao : OutboxDao {
     override suspend fun getStuck(kitchenId: String, threshold: Int): List<OutboxEntity> =
         operations.filter { it.kitchenId == kitchenId && it.attemptCount >= threshold }
 
+    override fun observeStuckCount(kitchenId: String, threshold: Int): Flow<Int> =
+        changes.map { operations.count { it.kitchenId == kitchenId && it.attemptCount >= threshold } }
+
     override suspend fun claimLocalOperations(localKitchenId: String, kitchenId: String, uid: String) {
         operations.replaceAll {
             if (it.kitchenId == localKitchenId) it.copy(kitchenId = kitchenId, actorUid = uid) else it

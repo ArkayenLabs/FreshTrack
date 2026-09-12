@@ -29,4 +29,12 @@ interface SyncState {
     fun setItemsCursor(kitchenId: String, cursor: Long)
     fun eventsCursor(kitchenId: String): Long
     fun setEventsCursor(kitchenId: String, cursor: Long)
+
+    /** When a run last completed with everything sent, for "backed up N ago". */
+    fun lastSuccessAt(): Long
+    fun setLastSuccessAt(at: Long)
+
+    /** How the most recent run ended, so the card can say why nothing is going up. */
+    fun lastRun(): SyncRun.Result?
+    fun setLastRun(result: SyncRun.Result)
 }

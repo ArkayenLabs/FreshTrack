@@ -81,11 +81,21 @@ fun SettingsScreen(
     var deleteConfirmText by remember { mutableStateOf("") }
     var isDeletingAccount by remember { mutableStateOf(false) }
 
-    // Cloud backup is not wired up in this build. Rather than showing a
-    // button that silently does nothing, the card reports what is actually
-    // true: changes are queued on the device and nothing has left it.
+    // The backup card reports what is actually true rather than what would
+    // be reassuring: how many changes are waiting, how many could not be
+    // sent, and why nothing is going up if nothing is. The last-run facts
+    // live in preferences, re-read whenever the sync work changes state.
     val pendingChanges by itemRepository.observePendingSyncCount()
         .collectAsState(initial = 0)
+    val stuckChanges by itemRepository.observeStuckSyncCount()
+        .collectAsState(initial = 0)
+    val syncState: com.example.freshtrack.data.sync.SyncState = koinInject()
+    val syncWork by androidx.work.WorkManager.getInstance(context)
+        .getWorkInfosForUniqueWorkFlow(com.example.freshtrack.data.sync.SyncWorker.ONE_SHOT_WORK)
+        .collectAsState(initial = emptyList())
+    val lastRun = remember(syncWork) { syncState.lastRun() }
+    val lastSuccessAt = remember(syncWork) { syncState.lastSuccessAt() }
+    val isSignedIn = FirebaseAuth.getInstance().currentUser != null
 
     // OpenDocument rather than GetContent: it returns a persistable URI and lets
     // the user pick from any provider, including Drive.
@@ -328,19 +338,17 @@ fun SettingsScreen(
                 )
 
                 SettingsItemCard(
-                    icon = Icons.Outlined.CloudOff,
+                    icon = if (isSignedIn) Icons.Outlined.Cloud else Icons.Outlined.CloudOff,
                     title = stringResource(R.string.settings_sync),
-                    description = if (pendingChanges > 0) {
-                        pluralStringResource(
-                            R.plurals.settings_sync_pending,
-                            pendingChanges,
-                            pendingChanges
-                        )
-                    } else {
-                        stringResource(R.string.settings_sync_none)
-                    },
-                    enabled = false,
-                    onClick = {}
+                    description = describeSync(
+                        isSignedIn = isSignedIn,
+                        lastRun = lastRun,
+                        lastSuccessAt = lastSuccessAt,
+                        pending = pendingChanges,
+                        stuck = stuckChanges
+                    ),
+                    enabled = isSignedIn,
+                    onClick = { com.example.freshtrack.data.sync.SyncWorker.syncNow(context) }
                 )
             }
 
@@ -966,23 +974,49 @@ private fun AdvanceNoticeDaysDialog(
 /**
  * Wording for the Backup & Sync card.
  *
- * Deliberately plain about the two cases that are not success. A backup that
+ * Deliberately plain about the cases that are not success. A backup that
  * silently is not happening is worse than no backup, because the user stops
- * worrying about it.
+ * worrying about it. So: why nothing is going up, then how much is waiting,
+ * then how much could not be sent — each only when it is true.
  */
-/** "Backed up 3 hours ago", or an honest statement that it never has been. */
-private fun describeLastSync(lastSuccessAt: Long): String {
-    if (lastSuccessAt <= 0L) return "Not backed up yet"
+@Composable
+private fun describeSync(
+    isSignedIn: Boolean,
+    lastRun: com.example.freshtrack.data.sync.SyncRun.Result?,
+    lastSuccessAt: Long,
+    pending: Int,
+    stuck: Int
+): String {
+    val status = when {
+        !isSignedIn -> stringResource(R.string.settings_sync_signed_out)
+        lastRun == com.example.freshtrack.data.sync.SyncRun.Result.NOT_ENTITLED ->
+            stringResource(R.string.settings_sync_needs_premium)
+        lastRun == com.example.freshtrack.data.sync.SyncRun.Result.DEFERRED && lastSuccessAt <= 0L ->
+            stringResource(R.string.settings_sync_unreachable)
+        lastSuccessAt <= 0L -> stringResource(R.string.settings_sync_never)
+        else -> describeLastSync(lastSuccessAt)
+    }
+    val waiting = if (pending > 0 && isSignedIn) {
+        " " + pluralStringResource(R.plurals.settings_sync_pending, pending, pending)
+    } else ""
+    val failed = if (stuck > 0) {
+        " " + pluralStringResource(R.plurals.settings_sync_stuck, stuck, stuck)
+    } else ""
+    return status + waiting + failed
+}
 
+/** "Backed up 3 hours ago." */
+@Composable
+private fun describeLastSync(lastSuccessAt: Long): String {
     val elapsed = System.currentTimeMillis() - lastSuccessAt
-    val minutes = elapsed / 60_000
+    val minutes = (elapsed / 60_000).toInt()
     val hours = minutes / 60
     val days = hours / 24
 
     return when {
-        minutes < 1 -> "Backed up just now"
-        minutes < 60 -> "Backed up $minutes ${if (minutes == 1L) "minute" else "minutes"} ago"
-        hours < 24 -> "Backed up $hours ${if (hours == 1L) "hour" else "hours"} ago"
-        else -> "Backed up $days ${if (days == 1L) "day" else "days"} ago"
+        minutes < 1 -> stringResource(R.string.settings_sync_just_now)
+        minutes < 60 -> pluralStringResource(R.plurals.settings_sync_minutes_ago, minutes, minutes)
+        hours < 24 -> pluralStringResource(R.plurals.settings_sync_hours_ago, hours, hours)
+        else -> pluralStringResource(R.plurals.settings_sync_days_ago, days, days)
     }
 }

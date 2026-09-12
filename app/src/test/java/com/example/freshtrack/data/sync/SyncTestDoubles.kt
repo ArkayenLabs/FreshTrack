@@ -14,6 +14,12 @@ class FakeSyncState : SyncState {
     override fun setItemsCursor(kitchenId: String, cursor: Long) { itemsCursor[kitchenId] = cursor }
     override fun eventsCursor(kitchenId: String) = eventsCursor[kitchenId] ?: 0L
     override fun setEventsCursor(kitchenId: String, cursor: Long) { eventsCursor[kitchenId] = cursor }
+    private var lastSuccess = 0L
+    private var last: SyncRun.Result? = null
+    override fun lastSuccessAt() = lastSuccess
+    override fun setLastSuccessAt(at: Long) { lastSuccess = at }
+    override fun lastRun() = last
+    override fun setLastRun(result: SyncRun.Result) { last = result }
 }
 
 /** A scripted server: says whether the kitchen is premium, and fails the pushes it is told to. */
@@ -25,8 +31,14 @@ class FakeRemoteStore : RemoteStore {
     val failWith = mutableMapOf<String, RemoteError>()
     val existing = mutableSetOf<String>()
 
-    override suspend fun ensureKitchenExists(kitchenId: String, ownerUid: String, name: String) =
-        Result.success(Unit)
+    var ensuredKitchen: Pair<String, String>? = null
+    var ensureError: RemoteError? = null
+
+    override suspend fun ensureKitchenExists(kitchenId: String, ownerUid: String, name: String): Result<Unit> {
+        ensureError?.let { return Result.failure(it) }
+        ensuredKitchen = kitchenId to ownerUid
+        return Result.success(Unit)
+    }
 
     override suspend fun isKitchenPremium(kitchenId: String): Result<Boolean> {
         entitlementReads++

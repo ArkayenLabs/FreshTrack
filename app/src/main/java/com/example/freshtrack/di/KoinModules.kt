@@ -51,6 +51,41 @@ val repositoryModule = module {
     single<com.example.freshtrack.data.sync.RemoteStore> {
         com.example.freshtrack.data.remote.firestore.FirestoreRemoteStore(get())
     }
+    single<com.example.freshtrack.data.sync.SyncState> {
+        get<com.example.freshtrack.data.preferences.SyncPreferences>()
+    }
+    single {
+        com.example.freshtrack.data.sync.OutboxPusher(
+            outboxDao = get(),
+            itemDao = get(),
+            eventDao = get(),
+            remote = get(),
+            syncState = get(),
+            clientId = get<com.example.freshtrack.data.preferences.ClientIdProvider>().clientId,
+            deserialise = com.example.freshtrack.data.sync.OutboxPayload::deserialise,
+            clock = com.example.freshtrack.util.AppClock.System
+        )
+    }
+    single {
+        com.example.freshtrack.data.sync.RemoteChangeApplier(
+            itemDao = get(),
+            eventDao = get(),
+            remote = get(),
+            syncState = get(),
+            transactions = get(),
+            clientId = get<com.example.freshtrack.data.preferences.ClientIdProvider>().clientId
+        )
+    }
+    single {
+        com.example.freshtrack.data.sync.SyncRun(
+            session = get<com.example.freshtrack.data.session.KitchenSession>(),
+            remote = get(),
+            pusher = get(),
+            applier = get(),
+            syncState = get(),
+            clock = com.example.freshtrack.util.AppClock.System
+        )
+    }
     single {
         com.example.freshtrack.data.account.AccountDeleter(
             authRepository = get(),

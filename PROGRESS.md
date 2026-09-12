@@ -372,11 +372,34 @@ recognition fails exactly the test where a local edit would be regressed.
 Lint 126 warnings (was 124): two more `UseKtx` on `SyncPreferences` setters,
 matching the four the file already had.
 
-**Next: step 6, WorkManager wiring** — a `SyncWorker` that, when signed in,
-runs `OutboxPusher.push` then `RemoteChangeApplier.apply` for the active
-kitchen, scheduled periodic plus expedited after a local write, network
-constrained; Koin registration for the three sync classes; the Settings card
-shows pending and stuck counts.
+**Worker and Settings wired, 12 Sep 2026.** `SyncRun` is one run — ensure
+the kitchen document, push, pull, record the outcome — tested on the JVM (6
+tests) so `SyncWorker` only maps DEFERRED to `Result.retry()`. Scheduled
+periodic every 6h and as a one-shot when the app goes to the background (the
+natural moment, and no coupling to the write path), both network-constrained.
+Koin registers pusher, applier, run and `SyncState`. The Settings card is
+honest by state: signed out → "Sign in with Premium to back up"; NOT_ENTITLED
+→ "Backup needs Premium"; never → "Not backed up yet. Tap to back up now";
+else "Backed up N ago", plus waiting and stuck counts when non-zero. The
+unreachable `describeLastSync` now has a caller and its strings live in
+resources. Tap runs a one-shot.
+
+Verified on Pixel_35, signed out: 19/19 connected; Settings opens (so the
+graph resolves, including `SyncState` and the WorkManager flow); the card
+reads as designed; backgrounding the app starts `SyncWorker` and it returns
+SUCCESS in under 200 ms with nothing in logcat. **Not verified: any signed-in
+path** — no account can be signed in on the emulator, so ensure-kitchen, push
+and pull have not run against a real Firestore. That is the end-to-end test
+of §10, which is the next step, and it needs the Firestore emulator plus a
+way to point the app at it.
+
+Seen in passing: the splash reads a hardcoded `v1.0.0`
+(`SplashScreen.kt:83`) while `versionName` is 1.1.0. Should read
+`BuildConfig.VERSION_NAME`. Not changed here.
+
+**Next: step 7, the end-to-end test** — `SyncRun` against the Firestore
+emulator with the real rules, two fake devices, one kitchen, offline edits on
+both, reconcile, assert the ledger sums and the row agree.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
@@ -463,8 +486,9 @@ transaction instead. `import` is untouched and still serves CSV.
 
 Loose ends found during the sweep, none of them urgent:
 
-- `AdvanceNoticeDaysDialog` and `describeLastSync` in `SettingsScreen` are
-  unreachable. The first is the notification settings dialog that was removed.
+- `AdvanceNoticeDaysDialog` in `SettingsScreen` is unreachable — the
+  notification settings dialog that was removed. (`describeLastSync` was also
+  unreachable; it gained a caller with the sync wiring on 12 Sep 2026.)
 - ~~`EnhancedCategoryChip` in `ProductListScreen` and the icon mapping in
   `ProductDetailsScreen` still name Food, Cosmetics and Medicines.~~ Fixed
   with the category reshape, 12 Sep 2026.

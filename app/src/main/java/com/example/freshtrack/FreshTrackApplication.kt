@@ -36,6 +36,9 @@ class FreshTrackApplication : Application() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStop(owner: LifecycleOwner) {
                 crashLoopDetector.onAppExitCleanly()
+                // What was just done goes up when the person leaves the app.
+                // Signed out, the run is a no-op that never touches the network.
+                com.example.freshtrack.data.sync.SyncWorker.syncNow(this@FreshTrackApplication)
             }
         })
 
@@ -48,6 +51,7 @@ class FreshTrackApplication : Application() {
         createNotificationChannels()
         NotificationScheduler.scheduleDailyExpiryCheck(this)
         NotificationScheduler.scheduleWeeklySummary(this)
+        com.example.freshtrack.data.sync.SyncWorker.schedulePeriodic(this)
 
         claimLocalDataForSignedInUser()
     }

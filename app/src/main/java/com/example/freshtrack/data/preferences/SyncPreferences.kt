@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.example.freshtrack.data.sync.SyncRun
 import com.example.freshtrack.data.sync.SyncState
 
 /**
@@ -55,13 +56,20 @@ class SyncPreferences(context: Context) : SyncState {
     }
 
     /**
-     * When a sync last completed, for display. Not per pantry: the user is
-     * being told "your data is backed up", not asked to reason about pantries.
+     * When a sync last completed, for display. Not per kitchen: the user is
+     * being told "your data is backed up", not asked to reason about kitchens.
      */
-    fun lastSuccessAt(): Long = prefs.getLong(KEY_LAST_SUCCESS, 0L)
+    override fun lastSuccessAt(): Long = prefs.getLong(KEY_LAST_SUCCESS, 0L)
 
-    fun setLastSuccessAt(value: Long) {
-        prefs.edit().putLong(KEY_LAST_SUCCESS, value).apply()
+    override fun setLastSuccessAt(at: Long) {
+        prefs.edit().putLong(KEY_LAST_SUCCESS, at).apply()
+    }
+
+    override fun lastRun(): SyncRun.Result? =
+        prefs.getString(KEY_LAST_RUN, null)?.let { runCatching { SyncRun.Result.valueOf(it) }.getOrNull() }
+
+    override fun setLastRun(result: SyncRun.Result) {
+        prefs.edit().putString(KEY_LAST_RUN, result.name).apply()
     }
 
     /** Used when a user signs out, so the next account starts clean. */
@@ -75,5 +83,6 @@ class SyncPreferences(context: Context) : SyncState {
     companion object {
         private const val PREFS_NAME = "freshtrack_sync_prefs"
         private const val KEY_LAST_SUCCESS = "last_success_at"
+        private const val KEY_LAST_RUN = "last_run"
     }
 }

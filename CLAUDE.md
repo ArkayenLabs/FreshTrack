@@ -23,7 +23,7 @@
 | Preferences | `data/preferences/OnboardingPreferences.kt` — includes guest mode flag |
 | Notifications | `data/notification/` — WorkManager + NotificationHelper |
 | Auth | Firebase Auth (Email/Password + Google Sign-In) via `presentation/viewmodel/AuthViewModel.kt` |
-| Sync | `data/sync/` — outbox payload, `RemoteError`; `data/remote/firestore/`. No transport yet — see `sync-design.md` |
+| Sync | `data/sync/` — `OutboxPusher`, `RemoteChangeApplier`, `SyncRun`, `SyncWorker`, `WireFormat`; `data/remote/firestore/FirestoreRemoteStore`. Inert until `isPremium` is set — see `sync-design.md` |
 | Session | `data/session/UserSession.kt` — current uid and active pantry |
 
 **DB version: 3** (`goodbefore_database`). The previous `freshtrack_database`

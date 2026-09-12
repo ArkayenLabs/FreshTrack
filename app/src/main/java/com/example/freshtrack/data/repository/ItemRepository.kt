@@ -48,6 +48,9 @@ interface ItemRepository {
     fun observeImpact(): Flow<ImpactStats>
     fun observePendingSyncCount(): Flow<Int>
 
+    /** Changes that have failed to send often enough to need telling someone about. */
+    fun observeStuckSyncCount(): Flow<Int>
+
     suspend fun getItem(itemId: String): Item?
     suspend fun getItemByBarcode(barcode: String): Item?
 
@@ -154,6 +157,9 @@ class ItemRepositoryImpl(
             .map { rows -> rows.map(ItemEntity::toDomain) }
 
     override fun observePendingSyncCount(): Flow<Int> = outboxDao.getPendingCount(kitchen())
+
+    override fun observeStuckSyncCount(): Flow<Int> =
+        outboxDao.observeStuckCount(kitchen(), com.example.freshtrack.data.sync.OutboxPusher.STUCK_THRESHOLD)
 
     /**
      * Impact, read from the event ledger rather than from current row state.

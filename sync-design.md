@@ -35,7 +35,7 @@ contradicts this section is a plan, not a description.
 | Entitlement | `kitchens/{id}.isPremium` | Rules refuse client writes; **nothing sets it** |
 | Push engine | `data/sync/OutboxPusher.kt` | Built, 20 JVM tests (12 Sep 2026): incremental drain, retry/stuck, entitlement gate, and the first backup with resumable ledger upload |
 | Pull engine | `data/sync/RemoteChangeApplier.kt` | Built, 11 JVM tests (12 Sep 2026): paged by cursor, own writes stamp `revision`, events append with IGNORE, cursor moves after commit |
-| Worker, Settings wiring | — | **Do not exist** |
+| `SyncRun`, `SyncWorker` | `data/sync/` | Built (12 Sep 2026): one run = ensure kitchen, push, pull, record outcome. Periodic 6h + one-shot when the app goes to the background, network-constrained. Settings card shows status, pending and stuck. Device-verified signed out |
 
 ---
 
@@ -115,7 +115,9 @@ now in `firestore.rules` (12 Sep 2026):
    (The rules require the first; the second is informational.)
 
 There is still deliberately **no `list` on `/kitchens`**. The client reads its
-own user document, takes `kitchenIds`, and fetches each kitchen by id.
+own user document, takes `kitchenIds`, and fetches each kitchen by id. (The
+user document is not written yet — the personal kitchen id is derived, so
+nothing needs it until household sharing.)
 
 ---
 
@@ -164,10 +166,16 @@ more than they can locally.
 
 ## 5. Push
 
-Runs as a WorkManager unique periodic job plus an expedited one-shot after any
-local write, constrained to network-connected. Only when signed in, and only
-when the kitchen is known to be premium (§8); otherwise the worker exits
-without touching the outbox.
+Runs as a WorkManager unique periodic job (six hours — a backup is not a
+chat) plus a unique one-shot whenever the app goes to the background, which is
+the natural moment for "what I just did" to go up and needs no coupling to the
+write path; the Settings card can also trigger one. Both are constrained to
+network-connected. Signed out, the run does nothing, not even a read. Signed
+in, `SyncRun` first makes sure the kitchen document exists (the rules look it
+up on every write), then pushes, then pulls — the pull happens even if the
+push was deferred, because the other device's changes are worth having
+regardless — and records the outcome for the card. Only a deferred run asks
+WorkManager to retry: a free account is not an error.
 
 ```
 for each kitchen the session can see:
@@ -394,7 +402,10 @@ Deploying rules now would mean deploying again for each of these. **Decision,
 5. ~~Pull engine, JVM-tested.~~ Done, 12 Sep 2026. `RemoteChangeApplier`,
    11 tests; disabling own-write recognition fails exactly the test that
    shows a local edit being regressed.
-6. WorkManager wiring; Settings card shows pending count and stuck count.
+6. ~~WorkManager wiring; Settings card shows pending count and stuck
+   count.~~ Done, 12 Sep 2026. `SyncRun` (6 JVM tests), `SyncWorker`, the
+   card. Verified on Pixel_35 signed out: Settings resolves the graph, the
+   card reads correctly, backgrounding the app runs the worker to SUCCESS.
 7. End-to-end test on the emulator.
 8. Deploy rules. Then, and only then, the Play Billing server side.
 
