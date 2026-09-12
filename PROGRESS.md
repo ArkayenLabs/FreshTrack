@@ -257,6 +257,19 @@ and one misnamed:
   the US-neutral choice — and the rename must also update the `BY_CATEGORY`
   key in `ShelfLifeTable`, `CATEGORY_WORDS` in `ReceiptParser`, and existing
   rows via the same migration.
+- **Ready Meals is missing too.** The chilled aisle — ready meals, hummus and
+  dips, sandwiches, deli salads, fresh pasta — carries a 2–7 day use-by and
+  has no home: not Leftovers (home-cooked, unlabelled), so Other, and no
+  shelf-life rule, so every such receipt row comes up unresolved. A
+  "Ready Meals" category with a fridge-3 / freezer-90 fallback fixes both.
+  Folding it into Leftovers saves a chip but nobody files a shop-bought
+  lasagne there.
+- **Not missing, on purpose:** Frozen is a location; eggs sit with Dairy as
+  every supermarket shelves them ("Dairy & Eggs" as the label, if the
+  migration is happening anyway); snacks, condiments, spices, tinned and
+  nuts are all store cupboard, where the thing that matters is an *opened*
+  date — a feature, not a category; plant-based milks already land in Dairy
+  via the `MILK` keyword and keep like it.
 - **Beverages is the weakest of the rest**: one shelf-life rule (juice) and a
   category fallback, but receipts and barcodes name drinks readily, so it
   earns its chip. Fresh Produce, Dairy, Bakery, Leftovers each drive rules and
@@ -266,8 +279,11 @@ and one misnamed:
   carries a category, and analytics is opt-in and unlaunched.
 
 Neither category change was made — both alter stored data and need the
-owner's call. **Recommendation:** add Meat & Fish and rename Pantry in one
-`Migration(2, 3)`, before there is a synced installed base to migrate twice.
+owner's call. **Recommendation, nine categories:** Fresh Produce · Dairy & Eggs ·
+Meat & Fish · Ready Meals · Bakery · Beverages · Store Cupboard · Leftovers ·
+Other — two additions (the two aisles with short use-by dates) and two
+renames, in one `Migration(2, 3)` before there is a synced installed base to
+migrate twice. If nine is one too many, drop Ready Meals, not Meat & Fish.
 
 **Then the big one: sync.** Outbox proven on device; nothing consumes it.
 `sync-design.md` is stale in both directions — rewrite it against the outbox
