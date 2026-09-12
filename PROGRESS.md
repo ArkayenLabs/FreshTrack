@@ -437,10 +437,37 @@ still refusing every item and event write until a kitchen carries
 
 A debug APK of `869fffd` was built for hand testing (94 MB universal).
 
-**Next:** either the **Play Billing server side** (the thing that sets
-`isPremium` and makes all of this live) or the **design pass** (dark-only
-theme, deprecated status bar API, sparkle empty state — see Known gaps),
-which the owner has said is still to come. Owner's call.
+**Design pass, first layer — 12 Sep 2026.** The owner's brief was "modern,
+clean, smooth, premium, consistent, amazing typography" and a history of
+design passes that changed screens without changing the feel. The diagnosis
+was that the feel lives in the theme layer, which nobody had touched:
+Roboto with hierarchy faked by ninety-nine call-site Bold/SemiBold
+overrides; eight corner radii; and no navigation transitions at all. So the
+pass is a system, applied once:
+
+- **Plus Jakarta Sans**, chosen by the owner from three candidates rendered
+  on the app's own fragments (artifact, 12 Sep). Four static weights bundled
+  under the OFL (licence in `assets/`), 516 KB, offline. The scale in
+  `Type.kt` decides weight and tracking; every call-site weight is gone.
+- **Three radii** in `Theme.kt` (10 / 16 / 24); 77 literals mapped.
+- **Motion** in `Motion.kt`: shared-axis nudge-and-fade for forward/back
+  (300 ms in, 200 ms out, emphasised curves), crossfade between tabs, a
+  0.97 press-scale on cards and tiles, `animateItem` on the Today and
+  Kitchen lists.
+- **Settings rows**: a glyph, a title, a line, a chevron, on
+  `surfaceContainerLow` with no shadow. The tinted icon discs are gone.
+- **Category tiles** are tiles, not `FilterChip`s, so the labels fit.
+
+Verified on Pixel_35, light and dark: onboarding, Today, Add product,
+Settings. 272 unit, lint 0/127, 21 connected (2 e2e skipped, no emulators).
+**Not looked at on screen:** Kitchen list with items, item details, history,
+progress, login, receipt review, the scanner — they got the same type and
+shapes mechanically, and that is exactly the kind of "changed but not
+checked" this pass was meant to avoid. **Second layer, next:** walk those
+screens and fix what the system exposed; the launcher icon and system
+splash still carry the old blue-and-green mark on a grey ground.
+
+**After that:** the Play Billing server side, which sets `isPremium`.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
@@ -656,10 +683,9 @@ Not bugs to fix today, but things that are true and should not be forgotten.
 - **History is still reached from Settings**, not from Progress, though the two
   answer the same question. Deliberately not moved with the navigation change;
   it is a Progress-screen design decision, not a routing one.
-- **The theme is dark-only** and sets `window.statusBarColor`, which is
-  deprecated and ignored from API 35 where edge-to-edge is enforced — and the
-  app targets 36. There is no light scheme at all. This is the substance of the
-  design pass, not a cosmetic preference.
+- ~~**The theme is dark-only** and sets `window.statusBarColor`.~~ Stale
+  before the design pass began: `Theme.kt` had light and dark schemes and no
+  status-bar call. Struck 12 Sep 2026.
 - **The notification permission is still requested at first composition**, now
   visibly: on a fresh install the system dialog appears over the onboarding
   carousel, before the user has been shown any reason to say yes.

@@ -32,6 +32,10 @@ import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import com.example.freshtrack.presentation.theme.pressable
 
 /**
  * One item in a list.
@@ -48,10 +52,12 @@ fun ProductCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val press = remember { MutableInteractionSource() }
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .pressable(press)
+            .clickable(interactionSource = press, indication = LocalIndication.current, onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface

@@ -253,8 +253,7 @@ fun OnboardingPageContent(page: OnboardingPage) {
             text = page.description,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight.times(1.5f)
+            textAlign = TextAlign.Center
         )
     }
 }

@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -43,6 +42,11 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.remember
+import com.example.freshtrack.presentation.theme.pressable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -400,50 +404,49 @@ fun CategoryChip(
         else -> Icons.Outlined.Category
     }
 
-    FilterChip(
-        selected = isSelected,
-        onClick = onSelected,
-        label = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    category.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    // "Fresh Produce" is long enough to wrap. Center it over up to
-                    // two lines so it reads cleanly instead of wrapping raggedly;
-                    // the chip is tall enough (72dp) to hold two centered lines.
-                    maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-        },
-        modifier = modifier.height(72.dp),
+    // A tile, not a chip. FilterChip pads sixteen a side, which in a three
+    // column grid leaves no room for "Dairy & Eggs" on one line.
+    val press = remember { MutableInteractionSource() }
+    val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+    val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val outline = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+
+    Surface(
+        modifier = modifier
+            .height(80.dp)
+            .pressable(press)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(interactionSource = press, indication = LocalIndication.current, onClick = onSelected),
         shape = MaterialTheme.shapes.medium,
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = isSelected,
-            borderColor = if (isSelected)
-                MaterialTheme.colorScheme.primary
-            else
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-            selectedBorderColor = MaterialTheme.colorScheme.primary,
-            borderWidth = if (isSelected) 2.dp else 1.dp
-        )
-    )
+        color = container,
+        border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, outline)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp, vertical = 8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = content
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                category.name,
+                style = MaterialTheme.typography.labelSmall,
+                color = content,
+                // Two lines is a wrap, not a truncation: only the longest
+                // name needs it, and it centres cleanly over the icon.
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -45,6 +45,9 @@ import com.example.freshtrack.presentation.theme.GoodBefore
 import com.example.freshtrack.presentation.viewmodel.TodayViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.example.freshtrack.presentation.theme.pressable
 
 /**
  * The decision screen: a short ranked list of what is worth using now.
@@ -161,6 +164,7 @@ fun TodayScreen(
 
             items(rescue.entries, key = { it.item.id }) { entry ->
                 RescueRow(
+                    modifier = Modifier.animateItem(),
                     entry = entry,
                     onOpen = { onNavigateToItemDetails(entry.item.id) },
                     onUse = { viewModel.use(entry.item.id, entry.item.name) },
@@ -219,15 +223,18 @@ private fun RescueRow(
     onOpen: () -> Unit,
     onUse: () -> Unit,
     onDiscard: () -> Unit,
-    onSnooze: () -> Unit
+    onSnooze: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val accent = accentFor(entry.primaryReason)
+    val press = remember { MutableInteractionSource() }
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
-            .clickable(onClick = onOpen),
+            .pressable(press)
+            .clickable(interactionSource = press, indication = LocalIndication.current, onClick = onOpen),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp
     ) {

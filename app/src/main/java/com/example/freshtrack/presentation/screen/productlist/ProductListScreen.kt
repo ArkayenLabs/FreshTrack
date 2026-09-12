@@ -236,7 +236,8 @@ fun ProductListScreen(
                         ProductCard(
                             product = product,
                             today = today,
-                            onClick = { onNavigateToProductDetails(product.id) }
+                            onClick = { onNavigateToProductDetails(product.id) },
+                            modifier = Modifier.animateItem()
                         )
                     }
                 }

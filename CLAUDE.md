@@ -67,6 +67,12 @@ existing rows survive and still mean the same thing.
 - **Categories are food-only:** Fresh Produce, Dairy & Eggs, Meat & Fish, Ready Meals, Bakery, Beverages, Store Cupboard, Leftovers, Other. No Medicine/Cosmetics. Names are stored on every item, so changing one is a migration (`MIGRATION_2_3` is the pattern), and a category is never named after a location — "Pantry" is where, "Store Cupboard" is what.
 - **`notificationEnabled` stays in `ItemEntity`** (DB field) even though the UI toggle was removed — do not drop this column.
 - **No emoji in UI strings.** Use Material icons only.
+- **Type, shape and motion are decided in the theme, not at the call site.**
+  Plus Jakarta Sans via `Typography` in `Type.kt`; never set `fontWeight` or
+  `fontSize` on a `Text` — pick a bigger role. Corners are
+  `MaterialTheme.shapes.small/medium/large` (10/16/24), never a literal.
+  Screen transitions live in `Motion.kt`; tappable surfaces use
+  `Modifier.pressable`.
 - **English only for now, but structured for more later.** User-facing text
   belongs in `res/values/strings.xml`, not hardcoded in Kotlin, so adding a
   locale is a translation job rather than a refactor. `values/` is en; en-GB

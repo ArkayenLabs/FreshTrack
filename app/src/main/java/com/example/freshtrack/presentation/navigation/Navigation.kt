@@ -35,6 +35,7 @@ import com.example.freshtrack.presentation.viewmodel.AuthViewModel
 import com.google.firebase.auth.FirebaseAuth
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import com.example.freshtrack.presentation.theme.Motion
 
 /**
  * Navigation routes for the app
@@ -137,9 +138,17 @@ fun FreshTrackNavGraph(
         )
     }
 
+    // Every screen moves the same way. Deeper is a nudge in from the right
+    // with a fade; back is the reverse; a tab switch is a crossfade.
+    val topLevel = remember { TopLevelDestination.entries.map { it.matchRoute }.toSet() }
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Splash.route
+        startDestination = Screen.Splash.route,
+        enterTransition = { Motion.enter(this, topLevel) },
+        exitTransition = { Motion.exit(this, topLevel) },
+        popEnterTransition = { Motion.popEnter(this, topLevel) },
+        popExitTransition = { Motion.popExit(this, topLevel) }
     ) {
 
         // ─── Splash Screen ────────────────────────────────────────────────────────
