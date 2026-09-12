@@ -220,269 +220,37 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
-**State at the end of 12 Sep 2026 — `main` pushed, release `v1.1.0` published,
-tree clean.** 213 unit tests, lint 0 errors / 124 warnings. The connected suite
-was last run on 10 Sep (16/16) and nothing since touches a surface it exercises.
+**State at the end of 12 Sep 2026 — `main` at `f63d2cc`, pushed, tree clean.**
+272 unit tests, lint 0 errors / 127 warnings, 21 connected (2 e2e skipped
+without the emulators; 2/2 pass with `npm run test:sync-e2e:win`). Rules
+deployed to `freshtrack-3c379`. Graph current (`graphify update .`).
 
-**Done this session:**
+**Use the graph first.** `graphify query "<question>"`, `graphify path`,
+`graphify explain` — do not read the source tree to find things.
 
-- Pushed the 22 held-back commits. `v1.1.0` is on GitHub at `a5de216` with the
-  signed universal APK attached — the APK built on 10 Sep, after the last code
-  commit, so it was not rebuilt.
-- **Naming, decided and done** (`20822cf`): a receipt line printed entirely in
-  capitals is title-cased on the review sheet; a line in mixed case is left as
-  printed, and a token with a digit (`2L`, `500G`) is kept. The rule lives in
-  `ReceiptDraft`, not the parser, so what the parser saw is still what the
-  unreadable-lines list shows. Two JVM tests pin it.
-- **Firestore rules: decided, not deployed.** Nothing writes to Firestore until
-  the outbox has a transport, and the ruleset that ships with that transport
-  will also need locations, invites and entitlements. Deploying now buys
-  nothing and means deploying twice. Revisit when sync lands — see "Next".
+**Done today:** push + release v1.1.0; receipt names title-cased; categories
+reshaped to nine (`Migration(2, 3)`); `sync-design.md` rewritten and the
+whole transport built and proven end to end (rules, remote store, push,
+bootstrap, pull, quantity rebase, worker, Settings card); rules deployed;
+design pass in two layers (Plus Jakarta Sans, one type scale, three radii,
+motion, flat tinted cards, urgency pills, tiles). Details are in the
+sections below and in the git log.
 
-**Categories, audited on request.** Seven is not too many; the set is one short
-and one misnamed:
+**Next, in order of value:**
 
-- **Meat & Fish is missing.** `ShelfLifeTable` already has six rules for it
-  (poultry 2 days, mince 2, fish 2, bacon 7, sliced meat 5, red meat 4) — the
-  shortest lives and the most expensive waste in the table — but there is no
-  category for the receipt parser to guess or the kitchen to filter by, so
-  `CHICKEN BREAST` is dated correctly and filed under **Other**
-  (`ReceiptDraft.kt`, `category ?: "Other"`). This is the one gap with a real
-  cost. Adding it is a seed change for new installs *and* a `Migration(2, 3)`
-  that inserts the row for existing ones, with a device test.
-- **"Pantry" is a category named after a place.** The project rule is that
-  category and location are different things, and the location set also has
-  `Pantry` (`loc-pantry`). A tin of tuna is category Pantry, location Fridge.
-  Rename the category — "Store Cupboard" (UK) reads naturally, "Dry Goods" is
-  the US-neutral choice — and the rename must also update the `BY_CATEGORY`
-  key in `ShelfLifeTable`, `CATEGORY_WORDS` in `ReceiptParser`, and existing
-  rows via the same migration.
-- **Ready Meals is missing too.** The chilled aisle — ready meals, hummus and
-  dips, sandwiches, deli salads, fresh pasta — carries a 2–7 day use-by and
-  has no home: not Leftovers (home-cooked, unlabelled), so Other, and no
-  shelf-life rule, so every such receipt row comes up unresolved. A
-  "Ready Meals" category with a fridge-3 / freezer-90 fallback fixes both.
-  Folding it into Leftovers saves a chip but nobody files a shop-bought
-  lasagne there.
-- **Not missing, on purpose:** Frozen is a location; eggs sit with Dairy as
-  every supermarket shelves them ("Dairy & Eggs" as the label, if the
-  migration is happening anyway); snacks, condiments, spices, tinned and
-  nuts are all store cupboard, where the thing that matters is an *opened*
-  date — a feature, not a category; plant-based milks already land in Dairy
-  via the `MILK` keyword and keep like it.
-- **Beverages is the weakest of the rest**: one shelf-life rule (juice) and a
-  category fallback, but receipts and barcodes name drinks readily, so it
-  earns its chip. Fresh Produce, Dairy, Bakery, Leftovers each drive rules and
-  are the four most-wasted kinds of food. Other is required as the honest
-  fallback and correctly has no rule.
-- No usage data exists to check any of this against: no analytics event
-  carries a category, and analytics is opt-in and unlaunched.
+1. **Play Billing server side** — the only thing between the sync transport
+   and a live feature. Nothing sets `isPremium`; every paid path is inert.
+2. **Design, third layer** — receipt review and scanner not yet looked at;
+   launcher icon and login logo still the old blue-green mark (asset work).
+3. Everything else is the numbered list the owner has: locations sync,
+   household, dead code, unverified surfaces, store listing, legal dates.
 
-**Done, 12 Sep 2026.** Room is at **version 3**. `MIGRATION_2_3` renames
-Dairy → Dairy & Eggs and Pantry → Store Cupboard on both the category row and
-every item that named it, inserts Meat & Fish and Ready Meals, and rewrites
-sort order so an old install shows the new order. Values are literals in the
-migration, not read from `DefaultCategories`, so a later change to the
-defaults cannot change what 2→3 does. `ShelfLifeTable` and `ReceiptParser`
-key on `DefaultCategories.X.name` so a rename cannot drift past the compiler;
-both gained chilled-aisle rules and keywords (a ready meal wins over its meat
-by keyword length; `HAM`/`COD` were left out because three letters catches
-champagne). The four UI icon maps carry the nine, and the two that still
-named Food/Cosmetics/Medicines now name the real set.
-
-Verified: 216 unit tests, lint 0 errors / 124 warnings, **19/19 connected on
-Pixel_35** including three new migration tests — 2→3 re-points items and
-removes the old names, 2→3 yields the nine in order, and 1→3 runs the whole
-chain. Schema `3.json` differs from `2.json` only by version, as a data-only
-migration should. The add screen was opened on the device: the nine render
-as an exact 3×3 grid, both new icons resolve, and the two-word names wrap the
-way "Fresh Produce" already did. Not verified on screen: the kitchen card
-colour and the filter row with a Meat & Fish or Ready Meals item — adding one
-needs a date, and the picker was not driven.
-
-**`sync-design.md` rewritten, 12 Sep 2026.** It now describes the outbox
-contract as built, the remote shape the transport will write, push and pull
-by server cursor, conflict handling (row LWW, quantity events rebased,
-tombstone wins), bootstrap instead of replay for a first backup, and a build
-order. Two findings from the rewrite:
-
-- ~~**The claim leaves `actorUid = "guest"`** on events and outbox rows~~,
-  which the rules would refuse on push. Fixed the same day: both claim queries
-  rewrite `actorUid`, and a JVM test signs in over guest data and asserts
-  nothing still names the guest. Room compile-checked the SQL; not run on a
-  device, as no device test exercises the claim.
-- **Location writes bypass the outbox.** `LocationRepositoryImpl` never
-  enqueues, so a renamed shelf could not sync. Out of scope for the first
-  transport; needs an `entityKind` column (`Migration(3, 4)`).
-
-**Rules updated for the transport shape, 12 Sep 2026.** `serverUpdatedAt ==
-request.time` on items and events, event document id must equal its
-`operationId`, `lastOperationId` required on items. 54 emulator tests (was
-48); each new clause was weakened in turn and exactly its tests failed. The
-existing item-write tests were also tightened: several negatives had been
-passing for a second reason (a missing `expiryDate`), and now start from a
-complete valid write and break one thing. Still **not deployed** — that is
-step 8 of the build order, after the transport.
-
-**`RemoteStore` built for the new shape, 12 Sep 2026.** `RemoteProductStore`
-and `RemoteProductDataSource` (still addressing `/pantries/{id}/products`)
-are gone; `RemoteStore` + `FirestoreRemoteStore` cover kitchens/items/events:
-ensure kitchen, read `isPremium`, `push` (item + event in one batch, server
-timestamp stamped by the store), `eventExists`, erase account. `WireFormat`
-is the pure row→fields mapping, 9 JVM tests: ISO date string, enums by name,
-`lastOperationId` set, **kitchen never a field** (it is the path, from the
-claimed outbox row), guest attribution replaced by the actor, other members'
-attribution kept, `revision`/`id` never sent. `AccountDeleter` rewired; its
-tests unchanged and green.
-
-One design correction from building it: the Android SDK's batch commit
-returns no server timestamp, so `revision` cannot be stamped at ack. It is
-stamped when the device's own write comes back through the pull listener,
-which `sync-design.md` §5–§6 now say. Not verified: `FirestoreRemoteStore`
-itself — Firebase types cannot run on the JVM and there is no end-to-end
-test yet (§10).
-
-**Push engine built, 12 Sep 2026** (`883a8ba`, bootstrap in the next commit).
-`OutboxPusher.push(kitchenId)`: entitlement read once (skipped when nothing
-is queued and the kitchen is already backed up); drain oldest-first; ack only
-on success; a permission refusal is a retry if the event is already there and
-an entitlement stop otherwise; transient stops the run; permanent is tried
-once per run and stuck after five, skipped and surfaced, never dropped. First
-backup uploads every row and the whole ledger in 500-batches with a resumable
-count, then drops only what was queued before it began. 20 JVM tests; the
-once-per-run guard and the resume count were each removed and exactly their
-tests failed. `SyncPreferences` lost its dead watermark pair and now
-implements `SyncState`.
-
-Known edge, not fixed: `peek` returns the oldest 50; if fifty consecutive
-entries are stuck, nothing behind them is attempted. Fifty stuck entries is a
-broken state that is surfaced anyway.
-
-**Pull engine built, 12 Sep 2026.** `RemoteChangeApplier.apply(kitchenId)`:
-items then events, paged from separate cursors, one Room transaction per
-page, cursor moved after commit. An own write is recognised by
-`lastClientId` on the document — a new wire field, stateless, so the
-"recently acknowledged ids" set the previous note wanted is not needed — and
-only stamps `revision`; anything else is applied if strictly newer than the
-local revision. Events append with IGNORE, so replays and own events insert
-nothing. Cursors and `revision` are microseconds, because a millisecond cursor
-would re-fetch a document half a millisecond past it on every run. 11 JVM
-tests, plus round-trip tests for the reverse wire mapping; disabling own-write
-recognition fails exactly the test where a local edit would be regressed.
-Lint 126 warnings (was 124): two more `UseKtx` on `SyncPreferences` setters,
-matching the four the file already had.
-
-**Worker and Settings wired, 12 Sep 2026.** `SyncRun` is one run — ensure
-the kitchen document, push, pull, record the outcome — tested on the JVM (6
-tests) so `SyncWorker` only maps DEFERRED to `Result.retry()`. Scheduled
-periodic every 6h and as a one-shot when the app goes to the background (the
-natural moment, and no coupling to the write path), both network-constrained.
-Koin registers pusher, applier, run and `SyncState`. The Settings card is
-honest by state: signed out → "Sign in with Premium to back up"; NOT_ENTITLED
-→ "Backup needs Premium"; never → "Not backed up yet. Tap to back up now";
-else "Backed up N ago", plus waiting and stuck counts when non-zero. The
-unreachable `describeLastSync` now has a caller and its strings live in
-resources. Tap runs a one-shot.
-
-Verified on Pixel_35, signed out: 19/19 connected; Settings opens (so the
-graph resolves, including `SyncState` and the WorkManager flow); the card
-reads as designed; backgrounding the app starts `SyncWorker` and it returns
-SUCCESS in under 200 ms with nothing in logcat. **Not verified: any signed-in
-path** — no account can be signed in on the emulator, so ensure-kitchen, push
-and pull have not run against a real Firestore. That is the end-to-end test
-of §10, which is the next step, and it needs the Firestore emulator plus a
-way to point the app at it.
-
-Seen in passing: the splash reads a hardcoded `v1.0.0`
-(`SplashScreen.kt:83`) while `versionName` is 1.1.0. Should read
-`BuildConfig.VERSION_NAME`. Not changed here.
-
-**End-to-end proven, 12 Sep 2026.** `SyncEndToEndTest` (androidTest) runs
-`SyncRun` for two in-memory devices against the Firestore and Auth emulators
-with the real `firestore.rules`: both use one of three offline, reconcile,
-and both shelves say 1 while both ledgers say 2 used, with nothing left
-queued; a second test backs up a never-synced kitchen whole. **2/2 passing**,
-1.5 s and 8.7 s. `npm run test:sync-e2e:win` (`test:sync-e2e` elsewhere). The
-test skips itself when the emulators are down, so the plain connected run
-stays green (21 tests, 2 skipped).
-
-Two things had to be built to get there:
-
-- **The quantity rebase from §6**, which the step-4 pusher did not have —
-  it was plain last-write-wins, and this scenario is exactly the one that
-  exposes it. `OutboxPusher.rebased`, 6 JVM tests; disabling it fails
-  exactly the two that depend on it.
-- **The merged local row takes the server's revision.** Traced by hand
-  before the device saw it: without that, B's pull in the same run treated
-  A's document as newer and wrote it over the merge. Recorded in §6.
-
-Getting the test to actually run took three environment fixes worth
-knowing: `firebase emulators:exec` on Windows needs `.\gradlew.bat` (a bare
-`gradlew` is not found); the emulators must bind to `127.0.0.1` in
-`firebase.json`, because `localhost` resolves to `::1` and the Android
-emulator's `10.0.2.2` only reaches IPv4 loopback; and the app forbids
-cleartext HTTP, so `app/src/debug/res/xml/network_security_config.xml`
-permits it to `10.0.2.2` alone. Release builds keep the strict config.
-
-The splash no longer shows a version string (`SplashScreen.kt`); it was
-hardcoded `v1.0.0`.
-
-**Rules deployed, 12 Sep 2026** — `firebase deploy --only firestore:rules`
-to `freshtrack-3c379`: compiled, released to `cloud.firestore`. That is the
-CLI's own report; no independent read-back was done this time. The live
-ruleset is now the kitchens/items/events one with `serverUpdatedAt`,
-event-id-is-operation-id and `lastOperationId` — still deny-by-default, and
-still refusing every item and event write until a kitchen carries
-`isPremium`, which nothing sets. So production is unchanged in effect.
-
-A debug APK of `869fffd` was built for hand testing (94 MB universal).
-
-**Design pass, first layer — 12 Sep 2026.** The owner's brief was "modern,
-clean, smooth, premium, consistent, amazing typography" and a history of
-design passes that changed screens without changing the feel. The diagnosis
-was that the feel lives in the theme layer, which nobody had touched:
-Roboto with hierarchy faked by ninety-nine call-site Bold/SemiBold
-overrides; eight corner radii; and no navigation transitions at all. So the
-pass is a system, applied once:
-
-- **Plus Jakarta Sans**, chosen by the owner from three candidates rendered
-  on the app's own fragments (artifact, 12 Sep). Four static weights bundled
-  under the OFL (licence in `assets/`), 516 KB, offline. The scale in
-  `Type.kt` decides weight and tracking; every call-site weight is gone.
-- **Three radii** in `Theme.kt` (10 / 16 / 24); 77 literals mapped.
-- **Motion** in `Motion.kt`: shared-axis nudge-and-fade for forward/back
-  (300 ms in, 200 ms out, emphasised curves), crossfade between tabs, a
-  0.97 press-scale on cards and tiles, `animateItem` on the Today and
-  Kitchen lists.
-- **Settings rows**: a glyph, a title, a line, a chevron, on
-  `surfaceContainerLow` with no shadow. The tinted icon discs are gone.
-- **Category tiles** are tiles, not `FilterChip`s, so the labels fit.
-
-Verified on Pixel_35, light and dark: onboarding, Today, Add product,
-Settings. 272 unit, lint 0/127, 21 connected (2 e2e skipped, no emulators).
-
-**Second layer, same day.** With five seeded items (via `run-as` + sqlite3,
-which is the fast way to get a populated kitchen on the emulator) the
-remaining screens were walked: Kitchen, item details, Today with rows,
-Progress, History, Login. What the system exposed, and what changed:
-
-- **Kitchen cards** carried per-category colours from a hardcoded map —
-  including a saturated blue, the one hue the palette excludes — and a
-  filled urgency circle reading `0d` / `9+`. Now: a neutral glyph tile,
-  and an urgency pill in words ("Today", "Tomorrow", "5 days", "30+ days",
-  "Expired"), the urgency colour as text on a light tint of itself. Colour
-  on a card is reserved for urgency. Strings in resources.
-- **Every card** — kitchen, details, history, settings — sits flat on
-  `surfaceContainerLow` with no shadow. The shadow halo is gone everywhere.
-- **Details**: the status pill lost its icon-in-a-disc; the category chip
-  is neutral (a category is a fact, not a signal).
-- Today, Progress, Login needed nothing.
-
-**Still not looked at:** receipt review and the scanner (need a camera or
-an image). The launcher icon and the login-screen logo are the old
-blue-and-green mark — an asset, not code.
-
-**After that:** the Play Billing server side, which sets `isPremium`.
+**Habits that hold:** read the Gradle task line, not the exit code; count
+tests from the XML; weaken a rule or a guard and watch exactly its tests
+fail; look at a design change on a screen before calling it done; seed the
+emulator kitchen with `run-as` + sqlite3 rather than driving the form; the
+emulator boots in ~60 s cold and must bind Firebase emulators to
+`127.0.0.1`; `firebase emulators:exec` on Windows wants `.\gradlew.bat`.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
