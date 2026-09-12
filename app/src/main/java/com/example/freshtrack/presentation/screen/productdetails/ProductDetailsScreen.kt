@@ -117,9 +117,9 @@ fun ProductDetailsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.medium,
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -192,9 +192,9 @@ fun ProductDetailsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                             ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -408,8 +408,8 @@ fun ExpiryStatusBadge(expiryDate: LocalDate) {
     }
 
     Surface(
-        shape = RoundedCornerShape(50.dp),
-        color = color.copy(alpha = 0.15f),
+        shape = CircleShape,
+        color = color.copy(alpha = 0.14f),
         modifier = Modifier.wrapContentSize()
     ) {
         Row(
@@ -417,20 +417,12 @@ fun ExpiryStatusBadge(expiryDate: LocalDate) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(color.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = color
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = color
+            )
 
             Column {
                 Text(
@@ -514,11 +506,7 @@ fun CategoryChipCompact(category: String) {
         "Leftovers" -> Icons.Outlined.TakeoutDining
         else -> Icons.Outlined.Category
     }
-    val color = if (icon == Icons.Outlined.Category) {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    } else {
-        MaterialTheme.colorScheme.tertiary
-    }
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
 
     Surface(
         shape = MaterialTheme.shapes.small,

@@ -460,12 +460,27 @@ pass is a system, applied once:
 
 Verified on Pixel_35, light and dark: onboarding, Today, Add product,
 Settings. 272 unit, lint 0/127, 21 connected (2 e2e skipped, no emulators).
-**Not looked at on screen:** Kitchen list with items, item details, history,
-progress, login, receipt review, the scanner — they got the same type and
-shapes mechanically, and that is exactly the kind of "changed but not
-checked" this pass was meant to avoid. **Second layer, next:** walk those
-screens and fix what the system exposed; the launcher icon and system
-splash still carry the old blue-and-green mark on a grey ground.
+
+**Second layer, same day.** With five seeded items (via `run-as` + sqlite3,
+which is the fast way to get a populated kitchen on the emulator) the
+remaining screens were walked: Kitchen, item details, Today with rows,
+Progress, History, Login. What the system exposed, and what changed:
+
+- **Kitchen cards** carried per-category colours from a hardcoded map —
+  including a saturated blue, the one hue the palette excludes — and a
+  filled urgency circle reading `0d` / `9+`. Now: a neutral glyph tile,
+  and an urgency pill in words ("Today", "Tomorrow", "5 days", "30+ days",
+  "Expired"), the urgency colour as text on a light tint of itself. Colour
+  on a card is reserved for urgency. Strings in resources.
+- **Every card** — kitchen, details, history, settings — sits flat on
+  `surfaceContainerLow` with no shadow. The shadow halo is gone everywhere.
+- **Details**: the status pill lost its icon-in-a-disc; the category chip
+  is neutral (a category is a fact, not a signal).
+- Today, Progress, Login needed nothing.
+
+**Still not looked at:** receipt review and the scanner (need a camera or
+an image). The launcher icon and the login-screen logo are the old
+blue-and-green mark — an asset, not code.
 
 **After that:** the Play Billing server side, which sets `isPremium`.
 

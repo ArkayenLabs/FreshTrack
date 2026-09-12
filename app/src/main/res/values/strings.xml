@@ -228,6 +228,16 @@
     <string name="settings_export_empty">No products to export</string>
     <string name="settings_export_chooser">Export products</string>
     <string name="settings_export_failed">Failed to create export file</string>
+    <!-- The urgency pill on a kitchen card. -->
+    <string name="expiry_badge_expired">Expired</string>
+    <string name="expiry_badge_today">Today</string>
+    <string name="expiry_badge_tomorrow">Tomorrow</string>
+    <plurals name="expiry_badge_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="expiry_badge_far">30+ days</string>
+
     <string name="settings_sync">Backup and sync</string>
     <string name="settings_sync_signed_out">Sign in with Premium to back up. Your items are saved on this device.</string>
     <string name="settings_sync_needs_premium">Backup needs Premium. Your items are saved on this device.</string>

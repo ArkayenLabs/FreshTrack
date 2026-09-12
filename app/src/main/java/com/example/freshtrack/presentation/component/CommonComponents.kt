@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,11 +59,11 @@ fun ProductCard(
             .fillMaxWidth()
             .pressable(press)
             .clickable(interactionSource = press, indication = LocalIndication.current, onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = MaterialTheme.shapes.medium // More rounded for modern look
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier
@@ -77,19 +78,20 @@ fun ProductCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Category Icon with colored background
+                // The category glyph, on a neutral tile. Colour on a card is
+                // reserved for urgency, so the eye finds the thing that matters.
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(getCategoryColor(product.category).copy(alpha = 0.15f)),
+                        .size(44.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = getCategoryIcon(product.category),
                         contentDescription = product.category,
-                        tint = getCategoryColor(product.category),
-                        modifier = Modifier.size(24.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
@@ -169,7 +171,12 @@ fun ProductCard(
 }
 
 /**
- * Modern Expiry Badge - Compact and colorful
+ * The urgency pill: the urgency colour as text on a light tint of itself,
+ * with a word rather than a code. "Tomorrow" is read; "1d" is decoded.
+ *
+ * The tint works in both themes because the urgency palette already flips —
+ * a dark theme's urgency colours are light, so light text on a faint light
+ * tint over a dark card.
  */
 @Composable
 fun ExpiryBadge(
@@ -177,35 +184,33 @@ fun ExpiryBadge(
     urgency: ExpiryUrgency,
     modifier: Modifier = Modifier
 ) {
-    // The text colour travels with the fill rather than being assumed white:
-    // the dark theme puts dark text on a light badge, and hard-coding white
-    // here is what made these unreadable in one theme or the other.
     val palette = GoodBefore.urgency
-    val (backgroundColor, textColor) = when (urgency) {
-        ExpiryUrgency.SAFE -> palette.safe to palette.onSafe
-        ExpiryUrgency.WARNING -> palette.warning to palette.onWarning
-        ExpiryUrgency.CRITICAL -> palette.critical to palette.onCritical
-        ExpiryUrgency.EXPIRED -> palette.expired to palette.onExpired
+    val color = when (urgency) {
+        ExpiryUrgency.SAFE -> palette.safe
+        ExpiryUrgency.WARNING -> palette.warning
+        ExpiryUrgency.CRITICAL -> palette.critical
+        ExpiryUrgency.EXPIRED -> palette.expired
     }
 
     val text = when {
-        daysRemaining < 0 -> "!"
-        daysRemaining == 0L -> "0d"
-        daysRemaining < 10 -> "${daysRemaining}d"
-        else -> "9+"
+        daysRemaining < 0 -> stringResource(R.string.expiry_badge_expired)
+        daysRemaining == 0L -> stringResource(R.string.expiry_badge_today)
+        daysRemaining == 1L -> stringResource(R.string.expiry_badge_tomorrow)
+        daysRemaining < 30 -> pluralStringResource(R.plurals.expiry_badge_days, daysRemaining.toInt(), daysRemaining.toInt())
+        else -> stringResource(R.string.expiry_badge_far)
     }
 
     Box(
         modifier = modifier
-            .size(40.dp)
             .clip(CircleShape)
-            .background(backgroundColor),
-        contentAlignment = Alignment.Center
+            .background(color.copy(alpha = 0.16f))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = textColor
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+            maxLines = 1
         )
     }
 }
