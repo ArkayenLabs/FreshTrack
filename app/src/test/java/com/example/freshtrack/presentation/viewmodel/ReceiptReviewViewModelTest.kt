@@ -174,12 +174,12 @@ class ReceiptReviewViewModelTest {
 
     @Test
     fun `something already in the kitchen is surfaced, not acted on`() = runTest {
-        coEvery { itemRepository.findDuplicate("SEMI-SKIMMED MILK", today.plusDays(7)) } returns
-            existingItem("item-milk", "SEMI-SKIMMED MILK", today.plusDays(7), quantity = 2)
+        coEvery { itemRepository.findDuplicate("Semi-Skimmed Milk", today.plusDays(7)) } returns
+            existingItem("item-milk", "Semi-Skimmed Milk", today.plusDays(7), quantity = 2)
 
         val vm = viewModel()
         vm.onTextRecognised(receipt)
-        val milk = vm.uiState.value.rows.first { it.name.contains("MILK") }
+        val milk = vm.uiState.value.rows.first { it.name.contains("Milk") }
 
         assertEquals("item-milk", milk.duplicate?.itemId)
         assertEquals(2, milk.duplicate?.quantity)
@@ -192,8 +192,8 @@ class ReceiptReviewViewModelTest {
         // The reason this screen does not reuse the CSV import path: that one
         // decides for itself what is a duplicate and skips it, which would
         // silently throw away the batch the person just chose to keep.
-        coEvery { itemRepository.findDuplicate("SEMI-SKIMMED MILK", today.plusDays(7)) } returns
-            existingItem("item-milk", "SEMI-SKIMMED MILK", today.plusDays(7), quantity = 2)
+        coEvery { itemRepository.findDuplicate("Semi-Skimmed Milk", today.plusDays(7)) } returns
+            existingItem("item-milk", "Semi-Skimmed Milk", today.plusDays(7), quantity = 2)
 
         val vm = viewModel()
         vm.onTextRecognised(receipt)
@@ -207,18 +207,18 @@ class ReceiptReviewViewModelTest {
         vm.commit()
 
         coVerify { itemRepository.commitReceipt(capture(newItems), capture(additions)) }
-        assertTrue(newItems.captured.any { it.name == "SEMI-SKIMMED MILK" })
+        assertTrue(newItems.captured.any { it.name == "Semi-Skimmed Milk" })
         assertTrue(additions.captured.isEmpty())
     }
 
     @Test
     fun `merging sends units to the existing batch instead of adding a row`() = runTest {
-        coEvery { itemRepository.findDuplicate("SEMI-SKIMMED MILK", today.plusDays(7)) } returns
-            existingItem("item-milk", "SEMI-SKIMMED MILK", today.plusDays(7), quantity = 2)
+        coEvery { itemRepository.findDuplicate("Semi-Skimmed Milk", today.plusDays(7)) } returns
+            existingItem("item-milk", "Semi-Skimmed Milk", today.plusDays(7), quantity = 2)
 
         val vm = viewModel()
         vm.onTextRecognised(receipt)
-        val milk = vm.uiState.value.rows.first { it.name.contains("MILK") }
+        val milk = vm.uiState.value.rows.first { it.name.contains("Milk") }
         vm.updateQuantity(milk.candidateId, 3)
         vm.setDecision(milk.candidateId, RowDecision.MERGE)
         vm.setDecision(
@@ -231,7 +231,7 @@ class ReceiptReviewViewModelTest {
         vm.commit()
 
         coVerify { itemRepository.commitReceipt(capture(newItems), capture(additions)) }
-        assertFalse(newItems.captured.any { it.name.contains("MILK") })
+        assertFalse(newItems.captured.any { it.name.contains("Milk") })
         assertEquals(mapOf("item-milk" to 3), additions.captured)
     }
 
@@ -244,8 +244,8 @@ class ReceiptReviewViewModelTest {
             SEMI-SKIMMED MILK         1.85
             TOTAL                     3.70
         """.trimIndent()
-        coEvery { itemRepository.findDuplicate("SEMI-SKIMMED MILK", today.plusDays(7)) } returns
-            existingItem("item-milk", "SEMI-SKIMMED MILK", today.plusDays(7), quantity = 1)
+        coEvery { itemRepository.findDuplicate("Semi-Skimmed Milk", today.plusDays(7)) } returns
+            existingItem("item-milk", "Semi-Skimmed Milk", today.plusDays(7), quantity = 1)
 
         val vm = viewModel()
         vm.onTextRecognised(twoLines)
@@ -260,12 +260,12 @@ class ReceiptReviewViewModelTest {
 
     @Test
     fun `renaming away from a duplicate takes the merge decision with it`() = runTest {
-        coEvery { itemRepository.findDuplicate("SEMI-SKIMMED MILK", today.plusDays(7)) } returns
-            existingItem("item-milk", "SEMI-SKIMMED MILK", today.plusDays(7), quantity = 2)
+        coEvery { itemRepository.findDuplicate("Semi-Skimmed Milk", today.plusDays(7)) } returns
+            existingItem("item-milk", "Semi-Skimmed Milk", today.plusDays(7), quantity = 2)
 
         val vm = viewModel()
         vm.onTextRecognised(receipt)
-        val milk = vm.uiState.value.rows.first { it.name.contains("MILK") }
+        val milk = vm.uiState.value.rows.first { it.name.contains("Milk") }
         vm.setDecision(milk.candidateId, RowDecision.MERGE)
 
         vm.updateName(milk.candidateId, "Oat milk")

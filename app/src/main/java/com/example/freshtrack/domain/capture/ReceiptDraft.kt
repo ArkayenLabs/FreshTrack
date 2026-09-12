@@ -178,6 +178,26 @@ object ReceiptDraft {
      */
     private val MEASURES = setOf("KG", "G", "GM", "GMS", "L", "ML")
 
+    /**
+     * The name a row is saved under.
+     *
+     * Tills print in capitals, and a kitchen of SEMI-SKIMMED MILK reads as
+     * shouting. A line with no lowercase letter carries no casing worth
+     * keeping, so it is title-cased; one printed in mixed case already says
+     * how it wants to be written and is left alone. A token with a digit in
+     * it ("2L", "500G") is kept as printed, because "2l" is not a size. The
+     * sheet is editable either way, and matching is case-blind throughout.
+     */
+    private fun kitchenName(printed: String): String {
+        if (printed.any { it.isLowerCase() }) return printed
+        return printed.split(' ').joinToString(" ") { word ->
+            word.split('-').joinToString("-") { part ->
+                if (part.any { it.isDigit() }) part
+                else part.lowercase().replaceFirstChar { it.uppercase() }
+            }
+        }
+    }
+
     fun rowsFrom(candidates: ReceiptCandidates, today: LocalDate): List<ReceiptRow> =
         candidates.items.map { candidate -> rowFrom(candidate, today) }
 
@@ -192,7 +212,7 @@ object ReceiptDraft {
 
         return ReceiptRow(
             candidateId = candidate.candidateId,
-            name = candidate.name,
+            name = kitchenName(candidate.name),
             quantity = quantity,
             category = candidate.categoryGuess,
             // No location is assumed. Where food is kept changes how long it

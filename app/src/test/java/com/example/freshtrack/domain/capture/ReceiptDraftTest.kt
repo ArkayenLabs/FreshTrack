@@ -35,7 +35,7 @@ class ReceiptDraftTest {
 
     private fun rows() = ReceiptDraft.rowsFrom(ReceiptParser.parse(receipt), today)
 
-    private fun row(name: String) = rows().first { it.name.contains(name) }
+    private fun row(name: String) = rows().first { it.name.contains(name, ignoreCase = true) }
 
     // ─── Dates ──────────────────────────────────────────────────────────────
 
@@ -94,6 +94,24 @@ class ReceiptDraftTest {
 
         assertNull(renamed.expiry)
         assertTrue(renamed.isUnresolved)
+    }
+
+    // ─── Names ──────────────────────────────────────────────────────────────
+
+    @Test
+    fun `a name printed in capitals is title-cased, and a size is left alone`() {
+        val rows = ReceiptDraft.rowsFrom(ReceiptParser.parse("SEMI-SKIMMED MILK 2L    1.85"), today)
+
+        assertEquals("Semi-Skimmed Milk 2L", rows.single().name)
+    }
+
+    @Test
+    fun `a name printed in mixed case is kept as printed`() {
+        // Mixed case is a choice somebody already made. Only capitals, which
+        // carry no casing at all, are rewritten.
+        val rows = ReceiptDraft.rowsFrom(ReceiptParser.parse("McVitie's Digestives    1.20"), today)
+
+        assertEquals("McVitie's Digestives", rows.single().name)
     }
 
     // ─── Quantities ─────────────────────────────────────────────────────────
