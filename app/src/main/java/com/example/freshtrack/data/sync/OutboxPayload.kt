@@ -2,6 +2,7 @@ package com.example.freshtrack.data.sync
 
 import com.example.freshtrack.data.local.entities.ItemEntity
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializer
 import com.google.gson.JsonPrimitive
 import com.google.gson.JsonSerializer
 import java.time.LocalDate
@@ -27,7 +28,14 @@ object OutboxPayload {
             LocalDate::class.java,
             JsonSerializer<LocalDate> { src, _, _ -> JsonPrimitive(src.toString()) }
         )
+        .registerTypeAdapter(
+            LocalDate::class.java,
+            JsonDeserializer { json, _, _ -> LocalDate.parse(json.asString) }
+        )
         .create()
 
     fun serialise(item: ItemEntity): String = gson.toJson(item)
+
+    /** The snapshot back, for the push engine. Exactly what [serialise] wrote. */
+    fun deserialise(json: String): ItemEntity = gson.fromJson(json, ItemEntity::class.java)
 }
