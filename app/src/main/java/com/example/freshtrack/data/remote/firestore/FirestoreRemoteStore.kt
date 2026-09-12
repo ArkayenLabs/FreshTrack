@@ -1,10 +1,13 @@
 package com.example.freshtrack.data.remote.firestore
 
+import com.example.freshtrack.data.sync.RemoteDocument
 import com.example.freshtrack.data.sync.RemoteError
 import com.example.freshtrack.data.sync.RemoteStore
 import com.example.freshtrack.data.sync.RemoteWrite
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.Query
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.tasks.await
@@ -94,6 +97,31 @@ class FirestoreRemoteStore(
         Unit
     }.mapRemoteError()
 
+    override suspend fun fetchItemsSince(kitchenId: String, after: Long, limit: Int) =
+        fetchSince(items(kitchenId), after, limit)
+
+    override suspend fun fetchEventsSince(kitchenId: String, after: Long, limit: Int) =
+        fetchSince(events(kitchenId), after, limit)
+
+    private suspend fun fetchSince(
+        collection: CollectionReference,
+        after: Long,
+        limit: Int
+    ): Result<List<RemoteDocument>> = runCatching {
+        collection
+            .whereGreaterThan(SERVER_UPDATED_AT, timestampOf(after))
+            .orderBy(SERVER_UPDATED_AT, Query.Direction.ASCENDING)
+            .limit(limit.toLong())
+            .get()
+            .await()
+            .documents
+            .mapNotNull { doc ->
+                val stamp = doc.getTimestamp(SERVER_UPDATED_AT) ?: return@mapNotNull null
+                val fields = doc.data ?: return@mapNotNull null
+                RemoteDocument(doc.id, fields - SERVER_UPDATED_AT, microsOf(stamp))
+            }
+    }.mapRemoteError()
+
     override suspend fun deleteAccountData(kitchenId: String, uid: String): Result<Unit> =
         runCatching {
             deleteAll(items(kitchenId))
@@ -135,6 +163,15 @@ class FirestoreRemoteStore(
     private fun <T> Result<T>.mapRemoteError(): Result<T> =
         fold(onSuccess = { Result.success(it) }, onFailure = { Result.failure(classify(it)) })
 
+    // A Firestore timestamp is seconds and nanoseconds. Microseconds are the
+    // finest unit that fits a Long for any plausible date and that the server
+    // actually distinguishes, so the cursor round-trips exactly.
+    private fun microsOf(stamp: Timestamp): Long =
+        stamp.seconds * 1_000_000L + stamp.nanoseconds / 1_000L
+
+    private fun timestampOf(micros: Long): Timestamp =
+        Timestamp(micros / 1_000_000L, ((micros % 1_000_000L) * 1_000L).toInt())
+
     companion object {
         private val RETRYABLE_CODES = setOf(
             FirebaseFirestoreException.Code.UNAVAILABLE,
@@ -148,6 +185,7 @@ class FirestoreRemoteStore(
         private const val USERS = "users"
         private const val ITEMS = "items"
         private const val EVENTS = "events"
+        private const val SERVER_UPDATED_AT = "serverUpdatedAt"
         private const val BATCH_LIMIT = 500
     }
 }

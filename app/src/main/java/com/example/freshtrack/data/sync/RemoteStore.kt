@@ -60,6 +60,19 @@ interface RemoteStore {
     suspend fun pushEvents(kitchenId: String, events: List<Pair<String, Map<String, Any?>>>): Result<Unit>
 
     /**
+     * Items changed on the server after [after], oldest first, at most [limit].
+     *
+     * [after] and each result's [RemoteDocument.serverUpdatedAt] are the same
+     * unit — microseconds, see [RemoteDocument] — so that a cursor set from a
+     * result excludes exactly that result next time. A lossy conversion here
+     * would re-deliver the same document on every run.
+     */
+    suspend fun fetchItemsSince(kitchenId: String, after: Long, limit: Int): Result<List<RemoteDocument>>
+
+    /** Events appended on the server after [after], oldest first, at most [limit]. */
+    suspend fun fetchEventsSince(kitchenId: String, after: Long, limit: Int): Result<List<RemoteDocument>>
+
+    /**
      * Erases everything stored for this user: every item, every event, the
      * kitchen, and the user profile.
      *
@@ -74,6 +87,20 @@ interface RemoteStore {
         const val MAX_BATCH = 500
     }
 }
+
+/**
+ * One document as read from the server.
+ *
+ * [serverUpdatedAt] is the server's clock in microseconds since the epoch —
+ * a Firestore timestamp is seconds plus nanoseconds, and microseconds round
+ * trip through a Long exactly where milliseconds would not. It is the pull
+ * cursor and, once applied, the row's `revision`.
+ */
+data class RemoteDocument(
+    val id: String,
+    val fields: Map<String, Any?>,
+    val serverUpdatedAt: Long
+)
 
 /**
  * One operation, ready for the wire.

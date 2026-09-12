@@ -40,14 +40,14 @@ class WireFormatTest {
 
     @Test
     fun `expiry travels as an ISO date string, never a number`() {
-        val fields = WireFormat.item(snapshot(), "op-1", "alice")
+        val fields = WireFormat.item(snapshot(), "op-1", "alice", "device-a")
 
         assertEquals("2026-09-20", fields["expiryDate"])
     }
 
     @Test
     fun `enums travel by name`() {
-        val fields = WireFormat.item(snapshot(), "op-1", "alice")
+        val fields = WireFormat.item(snapshot(), "op-1", "alice", "device-a")
 
         assertEquals("USE_BY", fields["dateKind"])
         assertEquals("USER", fields["dateSource"])
@@ -57,7 +57,7 @@ class WireFormatTest {
 
     @Test
     fun `the item names the operation that produced it`() {
-        assertEquals("op-1", WireFormat.item(snapshot(), "op-1", "alice")["lastOperationId"])
+        assertEquals("op-1", WireFormat.item(snapshot(), "op-1", "alice", "device-a")["lastOperationId"])
     }
 
     @Test
@@ -65,14 +65,14 @@ class WireFormatTest {
         // The payload was serialised before sign-in and still says "local".
         // The path comes from the outbox row, which the claim rewrote, so the
         // kitchen must not be a field at all.
-        val fields = WireFormat.item(snapshot(kitchenId = LOCAL_KITCHEN_ID), "op-1", "alice")
+        val fields = WireFormat.item(snapshot(kitchenId = LOCAL_KITCHEN_ID), "op-1", "alice", "device-a")
 
         assertFalse(fields.containsKey("kitchenId"))
     }
 
     @Test
     fun `guest attribution becomes the actor who claimed it`() {
-        val fields = WireFormat.item(snapshot(), "op-1", "alice")
+        val fields = WireFormat.item(snapshot(), "op-1", "alice", "device-a")
 
         assertEquals("alice", fields["createdBy"])
         assertEquals("alice", fields["lastEditedBy"])
@@ -82,7 +82,7 @@ class WireFormatTest {
     fun `attribution to another member is kept`() {
         // Bob created it in the shared kitchen; Alice edited it. Bob's uid is
         // real attribution and must not be overwritten by the pusher's.
-        val fields = WireFormat.item(snapshot(createdBy = "bob", lastEditedBy = "alice"), "op-1", "alice")
+        val fields = WireFormat.item(snapshot(createdBy = "bob", lastEditedBy = "alice"), "op-1", "alice", "device-a")
 
         assertEquals("bob", fields["createdBy"])
         assertEquals("alice", fields["lastEditedBy"])
@@ -90,11 +90,40 @@ class WireFormatTest {
 
     @Test
     fun `local bookkeeping stays local`() {
-        val fields = WireFormat.item(snapshot(), "op-1", "alice")
+        val fields = WireFormat.item(snapshot(), "op-1", "alice", "device-a")
 
         assertFalse(fields.containsKey("revision"))
         assertFalse(fields.containsKey("id"))
         assertFalse("the store stamps the server clock, not the mapper", fields.containsKey("serverUpdatedAt"))
+    }
+
+    @Test
+    fun `the item names the installation that wrote it`() {
+        assertEquals("device-a", WireFormat.item(snapshot(), "op-1", "alice", "device-a")["lastClientId"])
+    }
+
+    @Test
+    fun `an item survives the round trip, with the server's revision`() {
+        // Firestore hands numbers back as Long or Double whatever went in.
+        val original = snapshot(createdBy = "alice", lastEditedBy = "alice")
+        val fields = WireFormat.item(original, "op-1", "alice", "device-a")
+            .mapValues { (_, v) -> if (v is Int) v.toLong() else if (v is Float) v.toDouble() else v }
+
+        val back = WireFormat.itemFrom(fields, "item-1", "personal-alice", revision = 4_200L)
+
+        assertEquals(original.copy(kitchenId = "personal-alice", revision = 4_200L), back)
+    }
+
+    @Test
+    fun `an event survives the round trip under its operation id`() {
+        val original = ItemEventEntity(
+            id = "op-9", itemId = "item-1", kitchenId = "personal-alice",
+            type = ItemEventType.QUANTITY_DISCARDED, actorUid = "bob", quantity = 1,
+            occurredAt = 300L, operationId = "op-9"
+        )
+        val fields = WireFormat.event(original).mapValues { (_, v) -> if (v is Int) v.toLong() else v }
+
+        assertEquals(original, WireFormat.eventFrom(fields, "op-9", "personal-alice"))
     }
 
     @Test

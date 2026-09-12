@@ -31,6 +31,7 @@ class OutboxPusher(
     private val eventDao: ItemEventDao,
     private val remote: RemoteStore,
     private val syncState: SyncState,
+    private val clientId: String,
     private val deserialise: (String) -> ItemEntity,
     private val clock: AppClock,
     private val batchSize: Int = 50,
@@ -100,7 +101,7 @@ class OutboxPusher(
         // Rows first. Setting a document is idempotent, so an interrupted
         // upload is simply repeated.
         val rows = itemDao.getAllIncludingDeleted(kitchenId).map { row ->
-            row.id to WireFormat.item(row, "bootstrap-${row.id}", row.lastEditedBy)
+            row.id to WireFormat.item(row, "bootstrap-${row.id}", row.lastEditedBy, clientId)
         }
         remote.pushItems(kitchenId, rows).onFailure { return stopped(it, 0) }
 
@@ -149,7 +150,7 @@ class OutboxPusher(
         val write = RemoteWrite(
             kitchenId = op.kitchenId,
             itemId = op.entityId,
-            itemFields = WireFormat.item(deserialise(op.payload), op.operationId, op.actorUid),
+            itemFields = WireFormat.item(deserialise(op.payload), op.operationId, op.actorUid, op.clientId),
             operationId = op.operationId,
             eventFields = WireFormat.event(event)
         )

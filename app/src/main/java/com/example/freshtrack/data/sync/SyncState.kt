@@ -18,4 +18,15 @@ interface SyncState {
     /** How many ledger events, in `ItemEventDao.getAllForKitchen` order, are on the server. */
     fun bootstrapEventsUploaded(kitchenId: String): Int
     fun setBootstrapEventsUploaded(kitchenId: String, count: Int)
+
+    /**
+     * The highest server timestamp applied so far, in the unit
+     * `RemoteDocument.serverUpdatedAt` uses. Items and events are paged
+     * separately, so each has its own; one shared cursor could skip whatever
+     * the shorter page had not reached.
+     */
+    fun itemsCursor(kitchenId: String): Long
+    fun setItemsCursor(kitchenId: String, cursor: Long)
+    fun eventsCursor(kitchenId: String): Long
+    fun setEventsCursor(kitchenId: String, cursor: Long)
 }

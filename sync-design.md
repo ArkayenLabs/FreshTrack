@@ -34,7 +34,8 @@ contradicts this section is a plan, not a description.
 | Firestore rules for `users`, `kitchens`, `kitchens/items`, `kitchens/events` | `firestore.rules` | Written for the transport shape (§3), 54 tests, **not deployed**; live project still runs the old `pantries/products` ruleset from 5 Aug 2026, deny-by-default |
 | Entitlement | `kitchens/{id}.isPremium` | Rules refuse client writes; **nothing sets it** |
 | Push engine | `data/sync/OutboxPusher.kt` | Built, 20 JVM tests (12 Sep 2026): incremental drain, retry/stuck, entitlement gate, and the first backup with resumable ledger upload |
-| Pull engine, worker | — | **Do not exist** |
+| Pull engine | `data/sync/RemoteChangeApplier.kt` | Built, 11 JVM tests (12 Sep 2026): paged by cursor, own writes stamp `revision`, events append with IGNORE, cursor moves after commit |
+| Worker, Settings wiring | — | **Do not exist** |
 
 ---
 
@@ -107,9 +108,11 @@ now in `firestore.rules` (12 Sep 2026):
    with one read: if `events/{operationId}` exists, the push was a retry and
    is acknowledged. That read plus the no-update rule is the whole idempotency
    mechanism — no Cloud Function needed.
-3. **`lastOperationId` on items** so a device can tell, on pull, whether an item
-   change is its own write coming back (its operation id is in — or was just
-   removed from — its outbox) and skip re-applying it.
+3. **`lastOperationId` on items**, so the operation that produced a state is
+   named, and **`lastClientId`**, the installation that wrote it. On pull a
+   device recognises its own write coming back by `lastClientId` — stateless,
+   and unaffected by whether the outbox row has already been acknowledged.
+   (The rules require the first; the second is informational.)
 
 There is still deliberately **no `list` on `/kitchens`**. The client reads its
 own user document, takes `kitchenIds`, and fetches each kitchen by id.
@@ -221,19 +224,28 @@ ledger — not the outbox — is the history. (Not built; the queue is small.)
 
 ## 6. Pull
 
-**By cursor, not by time.** Each kitchen keeps `lastServerUpdatedAt`, the
-highest `serverUpdatedAt` applied so far. A Firestore listener on
-`items where serverUpdatedAt > cursor` and the same on `events` delivers
-changes in server order. The cursor advances only after the Room transaction
-that applied the batch commits, so a crash mid-apply re-delivers rather than
-skips.
+**By cursor, not by time.** Each kitchen keeps two cursors — one for `items`,
+one for `events` — each the highest `serverUpdatedAt` applied so far. They are
+separate because the two are paged separately, and one shared cursor could
+skip whatever the shorter page had not reached. A paged query,
+`where serverUpdatedAt > cursor order by serverUpdatedAt limit N`, is run per
+sync rather than a live listener: it fits a WorkManager run and is testable on
+the JVM; a foreground listener can be layered on later using the same
+applier. Each page is applied in one Room transaction and the cursor moves
+only after that commits, so a crash mid-page re-delivers rather than skips.
+
+**The cursor is in microseconds.** A Firestore timestamp is seconds plus
+nanoseconds; milliseconds would truncate, and a document half a millisecond
+past the cursor would be re-fetched on every run forever. Microseconds round
+trip through a Long exactly. `revision` is the same value.
 
 Applying a pulled **item**:
 
 ```
-if doc.lastOperationId was pushed by this device (in or just removed from its outbox)
+if doc.lastClientId == this installation
     → stamp local revision = doc.serverUpdatedAt; do not touch the row
-      (this is how a device learns the server's revision of its own write)
+      (our own write back from the server: the row already says this, or
+      something newer that is still queued; only the ordering value is news)
 else if local.revision >= doc.serverUpdatedAt
     → skip; already applied
 else
@@ -379,7 +391,9 @@ Deploying rules now would mean deploying again for each of these. **Decision,
 4. ~~Push engine, JVM-tested. Bootstrap path included.~~ Done, 12 Sep 2026.
    `OutboxPusher`, 20 tests; the once-per-run guard and the resume count were
    each verified by removing them and watching exactly their tests fail.
-5. Pull engine, JVM-tested.
+5. ~~Pull engine, JVM-tested.~~ Done, 12 Sep 2026. `RemoteChangeApplier`,
+   11 tests; disabling own-write recognition fails exactly the test that
+   shows a local edit being regressed.
 6. WorkManager wiring; Settings card shows pending count and stuck count.
 7. End-to-end test on the emulator.
 8. Deploy rules. Then, and only then, the Play Billing server side.

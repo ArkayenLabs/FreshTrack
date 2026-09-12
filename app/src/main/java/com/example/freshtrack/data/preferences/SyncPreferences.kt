@@ -42,6 +42,18 @@ class SyncPreferences(context: Context) : SyncState {
         prefs.edit().putInt(eventsUploadedKey(kitchenId), count).apply()
     }
 
+    override fun itemsCursor(kitchenId: String): Long = prefs.getLong("items_cursor_$kitchenId", 0L)
+
+    override fun setItemsCursor(kitchenId: String, cursor: Long) {
+        prefs.edit().putLong("items_cursor_$kitchenId", cursor).apply()
+    }
+
+    override fun eventsCursor(kitchenId: String): Long = prefs.getLong("events_cursor_$kitchenId", 0L)
+
+    override fun setEventsCursor(kitchenId: String, cursor: Long) {
+        prefs.edit().putLong("events_cursor_$kitchenId", cursor).apply()
+    }
+
     /**
      * When a sync last completed, for display. Not per pantry: the user is
      * being told "your data is backed up", not asked to reason about pantries.

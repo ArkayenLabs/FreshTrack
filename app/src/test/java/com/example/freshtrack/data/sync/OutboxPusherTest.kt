@@ -41,7 +41,7 @@ class OutboxPusherTest {
     }
 
     private fun pusher(batchSize: Int = 50, stuckThreshold: Int = 5) = OutboxPusher(
-        outboxDao, itemDao, eventDao, remote, syncState, OutboxPayload::deserialise, clock, batchSize, stuckThreshold
+        outboxDao, itemDao, eventDao, remote, syncState, "device-a", OutboxPayload::deserialise, clock, batchSize, stuckThreshold
     )
 
     /** Queues one change the way ItemRepositoryImpl.record does: row snapshot plus event. */
@@ -291,7 +291,7 @@ class OutboxPusherBootstrapTest {
     }
 
     private fun pusher() = OutboxPusher(
-        outboxDao, itemDao, eventDao, remote, syncState, OutboxPayload::deserialise, clock
+        outboxDao, itemDao, eventDao, remote, syncState, "device-a", OutboxPayload::deserialise, clock
     )
 
     private suspend fun history(itemId: String, sequence: Long, deleted: Boolean = false) {
@@ -430,66 +430,4 @@ class OutboxPusherBootstrapTest {
         assertEquals(listOf("op-late"), remote.pushes.map { it.operationId })
         assertTrue(outboxDao.operations.isEmpty())
     }
-}
-
-/** Per-kitchen sync progress, in memory. */
-private class FakeSyncState : SyncState {
-    private val bootstrapped = mutableSetOf<String>()
-    private val uploaded = mutableMapOf<String, Int>()
-    override fun isBootstrapped(kitchenId: String) = kitchenId in bootstrapped
-    override fun markBootstrapped(kitchenId: String) { bootstrapped += kitchenId }
-    override fun bootstrapEventsUploaded(kitchenId: String) = uploaded[kitchenId] ?: 0
-    override fun setBootstrapEventsUploaded(kitchenId: String, count: Int) { uploaded[kitchenId] = count }
-}
-
-/** A scripted server: says whether the kitchen is premium, and fails the pushes it is told to. */
-private class FakeRemoteStore : RemoteStore {
-    var premium = true
-    var premiumError: RemoteError? = null
-    var entitlementReads = 0
-    val pushes = mutableListOf<RemoteWrite>()
-    val failWith = mutableMapOf<String, RemoteError>()
-    val existing = mutableSetOf<String>()
-
-    override suspend fun ensureKitchenExists(kitchenId: String, ownerUid: String, name: String) =
-        Result.success(Unit)
-
-    override suspend fun isKitchenPremium(kitchenId: String): Result<Boolean> {
-        entitlementReads++
-        premiumError?.let { return Result.failure(it) }
-        return Result.success(premium)
-    }
-
-    override suspend fun push(write: RemoteWrite): Result<Unit> {
-        pushes += write
-        failWith[write.operationId]?.let { return Result.failure(it) }
-        existing += write.operationId
-        return Result.success(Unit)
-    }
-
-    override suspend fun eventExists(kitchenId: String, operationId: String): Result<Boolean> =
-        Result.success(operationId in existing)
-
-    val bootstrappedItems = mutableMapOf<String, Map<String, Any?>>()
-    val bootstrappedEvents = mutableListOf<String>()
-    var onBootstrapItems: (suspend () -> Unit)? = null
-    var failEventBatch: Int? = null
-    val refuseEventBatchesContaining = mutableSetOf<String>()
-    private var eventBatches = 0
-
-    override suspend fun pushItems(kitchenId: String, items: List<Pair<String, Map<String, Any?>>>): Result<Unit> {
-        items.forEach { (id, fields) -> bootstrappedItems[id] = fields }
-        onBootstrapItems?.invoke()
-        return Result.success(Unit)
-    }
-
-    override suspend fun pushEvents(kitchenId: String, events: List<Pair<String, Map<String, Any?>>>): Result<Unit> {
-        eventBatches++
-        if (events.any { it.first in refuseEventBatchesContaining }) return Result.failure(RemoteError.PermissionDenied())
-        if (eventBatches == failEventBatch) return Result.failure(RemoteError.Transient())
-        events.forEach { (id, _) -> bootstrappedEvents += id; existing += id }
-        return Result.success(Unit)
-    }
-
-    override suspend fun deleteAccountData(kitchenId: String, uid: String) = Result.success(Unit)
 }

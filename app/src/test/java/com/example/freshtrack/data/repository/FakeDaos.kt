@@ -212,6 +212,11 @@ class FakeItemDao : ItemDao {
 
     override suspend fun getAllIncludingDeleted(kitchenId: String): List<ItemEntity> =
         rows.values.filter { it.kitchenId == kitchenId }
+
+    override suspend fun setRevision(itemId: String, revision: Long) {
+        rows[itemId]?.let { rows[itemId] = it.copy(revision = revision) }
+        changes.value += 1
+    }
 }
 
 class FakeItemEventDao : ItemEventDao {

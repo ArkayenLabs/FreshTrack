@@ -261,4 +261,11 @@ interface ItemDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertFromRemote(items: List<ItemEntity>)
+
+    /**
+     * Records the server's ordering value for a state this device already
+     * has — its own write coming back. Nothing else on the row moves.
+     */
+    @Query("UPDATE items SET revision = :revision WHERE id = :itemId")
+    suspend fun setRevision(itemId: String, revision: Long)
 }

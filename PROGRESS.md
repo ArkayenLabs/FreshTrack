@@ -358,12 +358,25 @@ Known edge, not fixed: `peek` returns the oldest 50; if fifty consecutive
 entries are stuck, nothing behind them is attempted. Fifty stuck entries is a
 broken state that is surfaced anyway.
 
-**Next: step 5, the pull engine** — a listener per kitchen on
-`items`/`events where serverUpdatedAt > cursor`, own writes recognised by
-`lastOperationId` and used to stamp `revision`, events appended with IGNORE,
-cursor advanced only after the Room transaction commits. Needs a set of
-recently acknowledged operation ids so an own write that arrives after its
-outbox row was deleted is still recognised.
+**Pull engine built, 12 Sep 2026.** `RemoteChangeApplier.apply(kitchenId)`:
+items then events, paged from separate cursors, one Room transaction per
+page, cursor moved after commit. An own write is recognised by
+`lastClientId` on the document — a new wire field, stateless, so the
+"recently acknowledged ids" set the previous note wanted is not needed — and
+only stamps `revision`; anything else is applied if strictly newer than the
+local revision. Events append with IGNORE, so replays and own events insert
+nothing. Cursors and `revision` are microseconds, because a millisecond cursor
+would re-fetch a document half a millisecond past it on every run. 11 JVM
+tests, plus round-trip tests for the reverse wire mapping; disabling own-write
+recognition fails exactly the test where a local edit would be regressed.
+Lint 126 warnings (was 124): two more `UseKtx` on `SyncPreferences` setters,
+matching the four the file already had.
+
+**Next: step 6, WorkManager wiring** — a `SyncWorker` that, when signed in,
+runs `OutboxPusher.push` then `RemoteChangeApplier.apply` for the active
+kitchen, scheduled periodic plus expedited after a local write, network
+constrained; Koin registration for the three sync classes; the Settings card
+shows pending and stuck counts.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
