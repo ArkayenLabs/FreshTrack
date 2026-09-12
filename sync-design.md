@@ -8,7 +8,8 @@ This one describes the outbox that replaced it and the transport that has not
 been written yet.
 
 Status, 12 Sep 2026: **outbox and ledger built and device-verified; rules
-written and tested (48) but not deployed; no transport.** Nothing consumes the
+written for the transport shape and tested (54) but not deployed; no
+transport.** Nothing consumes the
 outbox. The Settings card says so.
 
 Rules tests: `npm run test:rules` (Firestore emulator, project `demo-freshtrack`,
@@ -30,7 +31,7 @@ contradicts this section is a plan, not a description.
 | Guest → account claim | `ItemRepositoryImpl.claimLocalData` | Built; rewrites `kitchenId` on items, events and outbox rows |
 | `RemoteProductStore` | `data/sync`, `data/remote/firestore` | Reduced to `ensurePantryExists` and `deleteAccountData`, and still addresses `/pantries/{id}/products` — the old shape |
 | `RemoteError` classification | `data/sync/RemoteError.kt` | Built: `PermissionDenied` / `Transient` / `Permanent` |
-| Firestore rules for `users`, `kitchens`, `kitchens/items`, `kitchens/events` | `firestore.rules` | Written, 48 tests, **not deployed**; live project still runs the old `pantries/products` ruleset from 5 Aug 2026, deny-by-default |
+| Firestore rules for `users`, `kitchens`, `kitchens/items`, `kitchens/events` | `firestore.rules` | Written for the transport shape (§3), 54 tests, **not deployed**; live project still runs the old `pantries/products` ruleset from 5 Aug 2026, deny-by-default |
 | Entitlement | `kitchens/{id}.isPremium` | Rules refuse client writes; **nothing sets it** |
 | Transport (push, pull, worker) | — | **Does not exist** |
 
@@ -89,8 +90,8 @@ subscription for anyone with a decompiler.
 /kitchens/{kitchenId}/locations/{locationId}   planned — see §9
 ```
 
-Three things here are new relative to the rules as written, and the rules must
-change to match before deployment:
+Three things here were new relative to the rules as first written, and are
+now in `firestore.rules` (12 Sep 2026):
 
 1. **`serverUpdatedAt` must equal `request.time`.** The client writes
    `FieldValue.serverTimestamp()`; the rule checks
@@ -340,9 +341,11 @@ Deploying rules now would mean deploying again for each of these. **Decision,
   make an op stuck; a pulled own-write is skipped; a pulled newer row is
   applied; a pulled older row is not; a replayed event inserts once; a quantity
   conflict rebases.
-- **Rules on the emulator.** Extend `rules.test.mjs` for `serverUpdatedAt ==
-  request.time`, event id == operation id, and `lastOperationId` presence.
-  Keep the habit: weaken a rule, watch exactly its test fail.
+- **Rules on the emulator.** `rules.test.mjs` covers `serverUpdatedAt ==
+  request.time` (absent, client-supplied timestamp, numeric), event id ==
+  operation id, `lastOperationId` presence, and that a retried event is
+  refused rather than duplicated. Keep the habit: weaken a rule, watch
+  exactly its test fail.
 - **One end-to-end.** The thing PROGRESS.md lists as missing: engine plus rules
   together, on the emulator, two fake devices, one kitchen, offline edits on
   both, reconcile, assert the ledger sums and the row agree. This is the test
@@ -353,8 +356,9 @@ Deploying rules now would mean deploying again for each of these. **Decision,
 ## 11. Build order
 
 1. ~~Fix the claim (§7).~~ Done, 12 Sep 2026.
-2. Rules: add `serverUpdatedAt`, event-id-is-operation-id, `lastOperationId`;
-   extend tests.
+2. ~~Rules: add `serverUpdatedAt`, event-id-is-operation-id,
+   `lastOperationId`; extend tests.~~ Done, 12 Sep 2026 — 54 tests, each new
+   clause verified by weakening it and watching only its tests fail.
 3. `RemoteStore` interface for the new shape; Firestore implementation;
    retire `RemoteProductStore` and the `/pantries` constants.
 4. Push engine, JVM-tested. Bootstrap path included.

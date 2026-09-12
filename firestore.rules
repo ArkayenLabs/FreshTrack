@@ -56,6 +56,16 @@ service cloud.firestore {
       return isPremium ? 6 : 1;
     }
 
+    // The sync cursor. Devices' clocks are not comparable with each other, so
+    // ordering across devices is settled by the server's clock instead: every
+    // write must carry serverUpdatedAt equal to the time the server accepted
+    // it, which a client can only produce with FieldValue.serverTimestamp().
+    // A client-supplied value is refused, so no device can back-date a write
+    // past another device's cursor.
+    function stampedByServer() {
+      return request.resource.data.serverUpdatedAt == request.time;
+    }
+
     // ─── Users ──────────────────────────────────────────────────────────────
     //
     // `plan` is an entitlement. It must only ever be written by a trusted server
@@ -121,14 +131,19 @@ service cloud.firestore {
         // Writing to the cloud is the premium feature. Free accounts are fully
         // functional offline; nothing is capped locally.
         //
-        // Two shape checks, because a malformed row is worse than a refused
-        // one once several devices are reconciling:
-        //   updatedAt orders writes, so a write without one cannot be ordered.
+        // Shape checks, because a malformed row is worse than a refused one
+        // once several devices are reconciling:
+        //   serverUpdatedAt is the pull cursor and must be the server's clock.
+        //   lastOperationId names the operation that produced this state, so
+        //   a device can recognise its own write coming back on pull.
+        //   updatedAt is the device's own clock, kept for display.
         //   expiryDate is an ISO calendar date string, never a number. Rejecting
         //   a numeric timestamp here stops a client that still thinks in epoch
         //   millis from writing dates that every other client would misread.
         allow create, update: if isMemberOf(kitchenId)
                               && kitchenIsPremium(kitchenId)
+                              && stampedByServer()
+                              && request.resource.data.lastOperationId is string
                               && request.resource.data.updatedAt is number
                               && request.resource.data.expiryDate is string;
 
@@ -161,11 +176,18 @@ service cloud.firestore {
 
         // An event must name its actor honestly. Without this check a member
         // could append events attributed to someone else in the household.
+        //
+        // The document id is the operation id. That, with the absence of any
+        // update rule, is what makes a push idempotent: a retried write of the
+        // same operation lands on the same document, is an update, and is
+        // refused — so a replayed sync can never double count a use.
         allow create: if isMemberOf(kitchenId)
                       && kitchenIsPremium(kitchenId)
                       && request.resource.data.actorUid == uid()
                       && request.resource.data.occurredAt is number
-                      && request.resource.data.operationId is string;
+                      && request.resource.data.operationId is string
+                      && request.resource.data.operationId == eventId
+                      && stampedByServer();
 
         // No update, ever. Not even for the owner.
 

@@ -315,9 +315,18 @@ order. Two findings from the rewrite:
   enqueues, so a renamed shelf could not sync. Out of scope for the first
   transport; needs an `entityKind` column (`Migration(3, 4)`).
 
-**Next: build the transport in the order §11 gives**, from step 2: the rules
-changes (`serverUpdatedAt == request.time`, event id = operation id,
-`lastOperationId`) with their emulator tests.
+**Rules updated for the transport shape, 12 Sep 2026.** `serverUpdatedAt ==
+request.time` on items and events, event document id must equal its
+`operationId`, `lastOperationId` required on items. 54 emulator tests (was
+48); each new clause was weakened in turn and exactly its tests failed. The
+existing item-write tests were also tightened: several negatives had been
+passing for a second reason (a missing `expiryDate`), and now start from a
+complete valid write and break one thing. Still **not deployed** — that is
+step 8 of the build order, after the transport.
+
+**Next: build the transport in the order §11 gives**, from step 3: the
+`RemoteStore` interface for the new shape and its Firestore implementation,
+retiring `RemoteProductStore` and the `/pantries` constants.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
@@ -428,8 +437,8 @@ Loose ends found during the sweep, none of them urgent:
 - [ ] **Rebuild sync on the outbox.** Designed — `sync-design.md` §4–§6 and
       the build order in §11. The queue and its idempotency keys exist; the
       transport does not. First step is the claim fix (§7).
-- [ ] **Deploy the Firestore rules.** Written, 48 tests, verified meaningful by
-      deliberately weakening three rules and confirming exactly three failed.
+- [ ] **Deploy the Firestore rules.** Written, 54 tests, verified meaningful by
+      deliberately weakening rules and confirming exactly their tests failed.
       Still **not deployed**, but no longer an unknown: the live ruleset was
       read back from the Rules API on 8 Sep 2026 and is the *old* FreshTrack
       `pantries/products` version, published 5 Aug 2026. It is deny-by-default

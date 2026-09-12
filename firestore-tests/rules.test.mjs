@@ -5,7 +5,7 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 // Each test asserts one property claimed in sync-design.md. If a rule is
 // loosened, the corresponding test here should fail.
@@ -47,6 +47,8 @@ beforeEach(async () => {
       name: 'Milk',
       expiryDate: '2026-09-11',
       updatedAt: 100,
+      serverUpdatedAt: Timestamp.fromMillis(100),
+      lastOperationId: 'op-milk',
       isDeleted: false,
     });
     // A premium kitchen, flagged the way a Cloud Function would after verifying
@@ -62,22 +64,44 @@ beforeEach(async () => {
       name: 'Eggs',
       expiryDate: '2026-09-20',
       updatedAt: 100,
+      serverUpdatedAt: Timestamp.fromMillis(100),
+      lastOperationId: 'op-1',
       isDeleted: false,
     });
     // One ledger entry, so the append-only rules have something to fail against.
-    await setDoc(doc(db, 'kitchens', PREMIUM_KITCHEN, 'events', 'evt-1'), {
+    // Its document id is its operation id, as every event's must be.
+    await setDoc(doc(db, 'kitchens', PREMIUM_KITCHEN, 'events', 'op-1'), {
       itemId: 'eggs',
       type: 'ITEM_CREATED',
       actorUid: ALICE,
       quantity: 1,
       occurredAt: 100,
       operationId: 'op-1',
+      serverUpdatedAt: Timestamp.fromMillis(100),
     });
     await setDoc(doc(db, 'users', ALICE), { displayName: 'Alice', plan: 'free' });
   });
 });
 
 const alice = () => testEnv.authenticatedContext(ALICE).firestore();
+
+// A complete, valid item write. Tests that want to prove one property is
+// enforced start from this and break only that property, so they cannot pass
+// for some other reason.
+const item = (over = {}) => ({
+  name: 'Item',
+  expiryDate: '2026-09-20',
+  updatedAt: 300,
+  serverUpdatedAt: serverTimestamp(),
+  lastOperationId: 'op-item',
+  ...over,
+});
+
+// Drop one key from an object, to test that the rule notices its absence.
+const without = (key, obj) => {
+  const { [key]: _, ...rest } = obj;
+  return rest;
+};
 const bob = () => testEnv.authenticatedContext(BOB).firestore();
 const anon = () => testEnv.unauthenticatedContext().firestore();
 
@@ -116,10 +140,7 @@ describe('kitchen membership', () => {
 
   it('a non-member cannot write items even to a premium kitchen', async () => {
     await assertFails(
-      setDoc(doc(bob(), 'kitchens', PREMIUM_KITCHEN, 'items', 'stolen'), {
-        name: 'Stolen',
-        updatedAt: 200,
-      })
+      setDoc(doc(bob(), 'kitchens', PREMIUM_KITCHEN, 'items', 'stolen'), item({ name: 'Stolen' }))
     );
   });
 });
@@ -184,30 +205,19 @@ describe('kitchen ownership is not transferable by members', () => {
 describe('item writes (premium kitchen)', () => {
   it('a member can update a item', async () => {
     await assertSucceeds(
-      updateDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'eggs'), {
-        name: 'Free Range Eggs',
-        expiryDate: '2026-09-20',
-        updatedAt: 300,
-      })
+      updateDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'eggs'), item({ name: 'Free Range Eggs' }))
     );
   });
 
   it('a write without updatedAt is rejected', async () => {
     await assertFails(
-      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'no-ts'), {
-        name: 'No timestamp',
-        expiryDate: '2026-09-20',
-      })
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'no-ts'), without('updatedAt', item()))
     );
   });
 
   it('a write with a non-numeric updatedAt is rejected', async () => {
     await assertFails(
-      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'bad-ts'), {
-        name: 'Bad timestamp',
-        expiryDate: '2026-09-20',
-        updatedAt: 'yesterday',
-      })
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'bad-ts'), item({ updatedAt: 'yesterday' }))
     );
   });
 
@@ -232,14 +242,45 @@ describe('item writes (premium kitchen)', () => {
     );
   });
 
+  it('a write without serverUpdatedAt is rejected', async () => {
+    // The pull cursor. A document without one can never be delivered to
+    // another device, because the listener orders by it.
+    await assertFails(
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'no-cursor'),
+        without('serverUpdatedAt', item()))
+    );
+  });
+
+  it('a client-supplied serverUpdatedAt is rejected', async () => {
+    // Only FieldValue.serverTimestamp() satisfies == request.time. A device
+    // that could write its own value could back-date a change past every
+    // other device's cursor and it would never be pulled.
+    await assertFails(
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'backdated'),
+        item({ serverUpdatedAt: Timestamp.fromMillis(1) }))
+    );
+    await assertFails(
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'numeric'),
+        item({ serverUpdatedAt: 500 }))
+    );
+  });
+
+  it('a write without lastOperationId is rejected', async () => {
+    // Without it a device cannot tell its own write coming back from a
+    // change made elsewhere, and would re-apply everything it pushed.
+    await assertFails(
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'no-op'),
+        without('lastOperationId', item()))
+    );
+  });
+
   it('soft delete via isDeleted is allowed', async () => {
     await assertSucceeds(
-      updateDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'eggs'), {
+      updateDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'eggs'), item({
         isDeleted: true,
-        expiryDate: '2026-09-20',
         deletedAt: 400,
         updatedAt: 400,
-      })
+      }))
     );
   });
 });
@@ -247,21 +288,13 @@ describe('item writes (premium kitchen)', () => {
 describe('free tier gates cloud writes, not reads', () => {
   it('a free kitchen cannot write items', async () => {
     await assertFails(
-      setDoc(doc(alice(), 'kitchens', KITCHEN, 'items', 'new-item'), {
-        name: 'New Item',
-        expiryDate: '2026-09-11',
-        updatedAt: 500,
-      })
+      setDoc(doc(alice(), 'kitchens', KITCHEN, 'items', 'new-item'), item({ name: 'New Item' }))
     );
   });
 
   it('a free kitchen cannot update existing items', async () => {
     await assertFails(
-      updateDoc(doc(alice(), 'kitchens', KITCHEN, 'items', 'milk'), {
-        name: 'Changed',
-        expiryDate: '2026-09-11',
-        updatedAt: 500,
-      })
+      updateDoc(doc(alice(), 'kitchens', KITCHEN, 'items', 'milk'), item({ name: 'Changed' }))
     );
   });
 
@@ -365,12 +398,41 @@ describe('the event ledger is append only', () => {
     quantity: 1,
     occurredAt: 500,
     operationId: 'op-new',
+    serverUpdatedAt: serverTimestamp(),
     ...over,
   });
 
   it('a member can append an event', async () => {
     await assertSucceeds(
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-new'), event())
+    );
+  });
+
+  it('an event must be stored under its own operation id', async () => {
+    // The id is the idempotency key. An event filed under any other id could
+    // be pushed again under a fresh one and count twice.
+    await assertFails(
       setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'evt-2'), event())
+    );
+  });
+
+  it('a retried event is refused, not duplicated', async () => {
+    // The push path's idempotency: the same operation lands on the same
+    // document, which already exists, and there is no update rule. The
+    // client treats this refusal as an acknowledgement after checking the
+    // document is there.
+    await assertSucceeds(
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-new'), event())
+    );
+    await assertFails(
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-new'), event())
+    );
+  });
+
+  it('an event without serverUpdatedAt is rejected', async () => {
+    await assertFails(
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-new'),
+        without('serverUpdatedAt', event()))
     );
   });
 
@@ -378,7 +440,7 @@ describe('the event ledger is append only', () => {
     // The whole point of the ledger: impact is read from it, so a mutable
     // event would let a client rewrite what the household was told it did.
     await assertFails(
-      updateDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'evt-1'), {
+      updateDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-1'), {
         quantity: 99,
       })
     );
@@ -393,7 +455,7 @@ describe('the event ledger is append only', () => {
     });
     await assertFails(
       setDoc(
-        doc(bob(), 'kitchens', PREMIUM_KITCHEN, 'events', 'evt-forged'),
+        doc(bob(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-new'),
         event({ actorUid: ALICE })
       )
     );
@@ -402,7 +464,7 @@ describe('the event ledger is append only', () => {
   it('an event without a usable timestamp is rejected', async () => {
     await assertFails(
       setDoc(
-        doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'evt-bad'),
+        doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-new'),
         event({ occurredAt: 'later' })
       )
     );
@@ -413,25 +475,25 @@ describe('the event ledger is append only', () => {
     // sync would double count a use.
     const { operationId, ...withoutId } = event();
     await assertFails(
-      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'evt-noop'), withoutId)
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-new'), withoutId)
     );
   });
 
   it('a free kitchen cannot append events', async () => {
     await assertFails(
-      setDoc(doc(alice(), 'kitchens', KITCHEN, 'events', 'evt-free'), event())
+      setDoc(doc(alice(), 'kitchens', KITCHEN, 'events', 'op-new'), event())
     );
   });
 
   it('a non-member cannot read the ledger', async () => {
     await assertFails(
-      getDoc(doc(bob(), 'kitchens', PREMIUM_KITCHEN, 'events', 'evt-1'))
+      getDoc(doc(bob(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-1'))
     );
   });
 
   it('the owner may delete events, for account deletion', async () => {
     await assertSucceeds(
-      deleteDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'evt-1'))
+      deleteDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'events', 'op-1'))
     );
   });
 });
@@ -441,21 +503,13 @@ describe('item shape', () => {
     // A client still thinking in instants would write dates every other client
     // misreads, and by then the damage is in everyone's inventory.
     await assertFails(
-      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'epoch'), {
-        name: 'Epoch',
-        expiryDate: 1789000000000,
-        updatedAt: 500,
-      })
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'epoch'), item({ expiryDate: 1789000000000 }))
     );
   });
 
   it('an ISO date expiry is accepted', async () => {
     await assertSucceeds(
-      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'iso'), {
-        name: 'Iso',
-        expiryDate: '2026-12-01',
-        updatedAt: 500,
-      })
+      setDoc(doc(alice(), 'kitchens', PREMIUM_KITCHEN, 'items', 'iso'), item({ expiryDate: '2026-12-01' }))
     );
   });
 });
