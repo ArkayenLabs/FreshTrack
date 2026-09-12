@@ -8,7 +8,7 @@ This one describes the outbox that replaced it and the transport that has not
 been written yet.
 
 Status, 12 Sep 2026: **transport built and proven end to end against the
-Firestore emulator with the real rules; rules not deployed; nothing sets
+Firestore emulator with the real rules; rules deployed; nothing sets
 `isPremium`, so it is inert in production.** Nothing consumes the
 outbox. The Settings card says so.
 
@@ -425,7 +425,7 @@ Deploying rules now would mean deploying again for each of these. **Decision,
    card reads correctly, backgrounding the app runs the worker to SUCCESS.
 7. ~~End-to-end test on the emulator.~~ Done, 12 Sep 2026, and it found
    its first bug before it ran (the merged row's revision, above).
-8. Deploy rules. Then, and only then, the Play Billing server side.
+8. ~~Deploy rules.~~ Done, 12 Sep 2026. Then the Play Billing server side.
 
 ---
 

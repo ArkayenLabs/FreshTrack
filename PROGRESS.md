@@ -427,9 +427,20 @@ permits it to `10.0.2.2` alone. Release builds keep the strict config.
 The splash no longer shows a version string (`SplashScreen.kt`); it was
 hardcoded `v1.0.0`.
 
-**Next: step 8 — deploy the rules.** Every reason to wait has gone: the
-transport that writes the shape exists and is proven against them. After
-that, the Play Billing server side, which is what finally sets `isPremium`.
+**Rules deployed, 12 Sep 2026** — `firebase deploy --only firestore:rules`
+to `freshtrack-3c379`: compiled, released to `cloud.firestore`. That is the
+CLI's own report; no independent read-back was done this time. The live
+ruleset is now the kitchens/items/events one with `serverUpdatedAt`,
+event-id-is-operation-id and `lastOperationId` — still deny-by-default, and
+still refusing every item and event write until a kitchen carries
+`isPremium`, which nothing sets. So production is unchanged in effect.
+
+A debug APK of `869fffd` was built for hand testing (94 MB universal).
+
+**Next:** either the **Play Billing server side** (the thing that sets
+`isPremium` and makes all of this live) or the **design pass** (dark-only
+theme, deprecated status bar API, sparkle empty state — see Known gaps),
+which the owner has said is still to come. Owner's call.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
@@ -541,8 +552,8 @@ Loose ends found during the sweep, none of them urgent:
 - [ ] **Rebuild sync on the outbox.** Designed — `sync-design.md` §4–§6 and
       the build order in §11. The queue and its idempotency keys exist; the
       transport does not. First step is the claim fix (§7).
-- [ ] **Deploy the Firestore rules.** Written, 54 tests, verified meaningful by
-      deliberately weakening rules and confirming exactly their tests failed.
+- [x] ~~**Deploy the Firestore rules.**~~ Deployed 12 Sep 2026 after the
+      end-to-end test passed against them. 54 emulator tests.
       Still **not deployed**, but no longer an unknown: the live ruleset was
       read back from the Rules API on 8 Sep 2026 and is the *old* FreshTrack
       `pantries/products` version, published 5 Aug 2026. It is deny-by-default

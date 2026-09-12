@@ -106,8 +106,9 @@ Settings "Sign Out" clears guest flag AND Firebase session, returns to Login.
 **See `PROGRESS.md`** — it is the single source of truth for what is done, what is
 next, and what is knowingly incomplete. Do not reconstruct status from git log.
 
-Short version: Phase 1 done. Backup & Sync built but inert, because nothing sets
-`isPremium` yet. Rules written and tested but not deployed.
+Short version: Phase 1 done. Backup & Sync built, proven end to end on the
+emulators, rules deployed — and inert in production because nothing sets
+`isPremium` yet. A design pass is still owed.
 
 ---
 
