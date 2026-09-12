@@ -300,9 +300,22 @@ way "Fresh Produce" already did. Not verified on screen: the kitchen card
 colour and the filter row with a Meat & Fish or Ready Meals item — adding one
 needs a date, and the picker was not driven.
 
-**Then the big one: sync.** Outbox proven on device; nothing consumes it.
-`sync-design.md` is stale in both directions — rewrite it against the outbox
-contract before any transport. This is a session on its own.
+**`sync-design.md` rewritten, 12 Sep 2026.** It now describes the outbox
+contract as built, the remote shape the transport will write, push and pull
+by server cursor, conflict handling (row LWW, quantity events rebased,
+tombstone wins), bootstrap instead of replay for a first backup, and a build
+order. Two findings from the rewrite:
+
+- **The claim leaves `actorUid = "guest"`** on events and outbox rows, and the
+  rules require `actorUid == uid()` on every event create — so every change a
+  person made before signing in would be refused on push and sit as "stuck".
+  Documented in §7; fix is small and is step 1 of the build order.
+- **Location writes bypass the outbox.** `LocationRepositoryImpl` never
+  enqueues, so a renamed shelf could not sync. Out of scope for the first
+  transport; needs an `entityKind` column (`Migration(3, 4)`).
+
+**Next: build the transport in the order §11 gives.** Step 1 (fix the claim)
+is a JVM-tested change with no device needed.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
@@ -410,9 +423,9 @@ Loose ends found during the sweep, none of them urgent:
       details and Today agree (`e81c198`). Verified on device.
 - [x] ~~**A date a year out renders as `Sep 10`.**~~ Done in the same commit:
       the year is shown when it differs from today's.
-- [ ] **Rebuild sync on the outbox.** Push queued operations, pull by cursor,
-      order by server revision rather than device clock. The queue and its
-      idempotency keys exist; the transport does not.
+- [ ] **Rebuild sync on the outbox.** Designed — `sync-design.md` §4–§6 and
+      the build order in §11. The queue and its idempotency keys exist; the
+      transport does not. First step is the claim fix (§7).
 - [ ] **Deploy the Firestore rules.** Written, 48 tests, verified meaningful by
       deliberately weakening three rules and confirming exactly three failed.
       Still **not deployed**, but no longer an unknown: the live ruleset was
@@ -447,8 +460,11 @@ Not bugs to fix today, but things that are true and should not be forgotten.
   explicit outbox makes the pending set a fact rather than an inference. The
   transport that consumes it is not written yet.
 - **No sync at all, by choice.** The polling client was deleted with the
-  schema it mirrored. `sync-design.md` now describes neither what exists nor
-  what is planned and needs rewriting against the outbox contract.
+  schema it mirrored. `sync-design.md` was rewritten against the outbox
+  contract on 12 Sep 2026 and is the plan for the transport.
+- **The guest claim does not rewrite `actorUid`** on events or outbox rows, and
+  the rules will refuse such events on push. Found during the sync-design
+  rewrite; see `sync-design.md` §7. Must be fixed before the transport.
 - **No end-to-end test.** The engine is tested with mocks and the rules against
   the emulator, but never the two together.
 - **Cross-account claim edge case.** If a user signs out, updates, and a
@@ -547,8 +563,7 @@ rediscovered as surprises.
 
 - **The Firestore rules guard a shape the client no longer writes.** They pass
   their tests, which makes this easy to miss.
-- **`sync-design.md` is stale in both directions** — it describes an
-  implementation that was deleted and a design that was superseded.
+- ~~**`sync-design.md` is stale in both directions.**~~ Rewritten 12 Sep 2026.
 - **22 tests were deleted, not replaced.** They covered the old syncer,
   document mapping and repository. The behaviour is gone; the coverage those
   areas will need in the new model does not exist yet.

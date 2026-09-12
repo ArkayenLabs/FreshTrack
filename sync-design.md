@@ -1,174 +1,382 @@
-# FreshTrack — Backup & Sync Design
+# GoodBefore — Backup & Sync Design
 
-Decisions for Phase 2. Written before any sync client code, so the expensive
-choices are settled on paper rather than in a migration against live data.
+How local changes reach the cloud and other devices, written against what the
+app actually stores today rather than what it used to. The previous version of
+this document described a polling client that mirrored rows by timestamp; that
+client and the schema it mirrored were deleted in the GoodBefore migration.
+This one describes the outbox that replaced it and the transport that has not
+been written yet.
 
-Status: **design agreed, rules written and tested, sync client not implemented.**
+Status, 12 Sep 2026: **outbox and ledger built and device-verified; rules
+written and tested (48) but not deployed; no transport.** Nothing consumes the
+outbox. The Settings card says so.
 
-Rules tests: `npm run test:rules` (needs Java for the Firestore emulator; runs
-against project `demo-freshtrack`, which can never reach production).
-
----
-
-## Source of truth
-
-**Room stays the source of truth. Firestore is a mirror.**
-
-The app's whole position is offline-first and private. If Firestore became the
-source of truth, every read would depend on the network and the offline promise
-would be a lie. Instead:
-
-- All reads come from Room. The UI never waits on the network.
-- Writes go to Room first, then push to Firestore in the background.
-- Firestore changes pull into Room and the UI updates through the existing Flows.
-- A user who never signs in is unaffected — nothing leaves the device.
-
-This also means sync can fail, retry, or be offline indefinitely without the app
-degrading.
+Rules tests: `npm run test:rules` (Firestore emulator, project `demo-freshtrack`,
+which can never reach production).
 
 ---
 
-## Document shape
+## 1. What exists
+
+Facts about the code, checked on 12 Sep 2026. Anything in later sections that
+contradicts this section is a plan, not a description.
+
+| Piece | Where | State |
+|---|---|---|
+| `items` table with `kitchenId`, `revision`, `isDeleted`, `updatedAt` | `ItemEntity` | Built |
+| `item_events` append-only ledger, unique on `operationId` | `ItemEventEntity`, `ItemEventDao` | Built |
+| `outbox` queue, one row per change, same transaction as the change | `OutboxEntity`, `OutboxDao`, `ItemRepositoryImpl.record` | Built, proven on device: contiguous `clientSequence`, each event's `operationId` matches one outbox row |
+| `locations` table with `kitchenId`, `updatedAt` | `LocationEntity` | Built, **not queued** — `LocationRepositoryImpl` writes bypass the outbox |
+| Guest → account claim | `ItemRepositoryImpl.claimLocalData` | Built; rewrites `kitchenId` on items, events and outbox rows |
+| `RemoteProductStore` | `data/sync`, `data/remote/firestore` | Reduced to `ensurePantryExists` and `deleteAccountData`, and still addresses `/pantries/{id}/products` — the old shape |
+| `RemoteError` classification | `data/sync/RemoteError.kt` | Built: `PermissionDenied` / `Transient` / `Permanent` |
+| Firestore rules for `users`, `kitchens`, `kitchens/items`, `kitchens/events` | `firestore.rules` | Written, 48 tests, **not deployed**; live project still runs the old `pantries/products` ruleset from 5 Aug 2026, deny-by-default |
+| Entitlement | `kitchens/{id}.isPremium` | Rules refuse client writes; **nothing sets it** |
+| Transport (push, pull, worker) | — | **Does not exist** |
+
+---
+
+## 2. Principles that do not change
+
+**Room is the source of truth. Firestore is a mirror.** Every read comes from
+Room; the UI never waits on the network; a sync failure never blocks a read.
+A user who never signs in is unaffected — nothing leaves the device.
+
+**`kitchenId` is the access key.** Items, events and locations belong to a
+kitchen, never to a viewer's uid. A household is a kitchen with more entries in
+`memberUids`. `createdBy` and `actorUid` are attribution only.
+
+**Deletes are soft.** `isDeleted` is set and the tombstone syncs like any other
+change. Hard deletes exist only for account erasure.
+
+**History is a ledger.** Impact is read from `item_events`, never counted off
+row state. Sync must never rewrite or drop an event; it may only append.
+
+**Premium is a feature gate, not a cap.** The free tier is the whole app,
+offline, with no item limit. Writing to the cloud is the paid feature. Reads of
+data already uploaded survive a lapse — data is never held hostage.
+
+**`isPremium` is server-written only.** A client-writable entitlement is a free
+subscription for anyone with a decompiler.
+
+---
+
+## 3. Remote shape
 
 ```
 /users/{uid}
-    displayName   string
-    plan          "free" | "premium"    server-written only
-    pantryIds     [pantryId]
-    createdAt     number
+    displayName       string
+    kitchenIds        [kitchenId]
+    createdAt         number
 
-/pantries/{pantryId}
-    name          string
-    ownerUid      uid
-    memberUids    [uid]                 the access-control list
-    createdAt     number
+/kitchens/{kitchenId}                       kitchenId = "personal-{uid}" for the personal one
+    name              string
+    ownerUid          uid
+    memberUids        [uid]                  the access-control list
+    isPremium         bool                   server-written only
+    createdAt         number
 
-/pantries/{pantryId}/products/{productId}
-    ... all ProductEntity fields ...
-    updatedAt     number                drives conflict resolution
-    isDeleted     bool                  tombstone
-    deletedAt     number | null
+/kitchens/{kitchenId}/items/{itemId}
+    ...every ItemEntity field...
+    expiryDate        string  ISO-8601 calendar date, never a number
+    serverUpdatedAt   timestamp  == request.time on every write; the sync cursor
+    lastOperationId   string  the operation that produced this state
+
+/kitchens/{kitchenId}/events/{operationId}  document id IS the operation id
+    ...every ItemEventEntity field...
+    serverUpdatedAt   timestamp
+
+/kitchens/{kitchenId}/locations/{locationId}   planned — see §9
 ```
 
-**Why a pantry layer instead of `/users/{uid}/products`.** Household sharing is
-on the roadmap. Nesting products under a user makes sharing a migration of every
-product document of every sharing user, in production, while people are writing
-to them. With a pantry in between, a household is a pantry with more entries in
-`memberUids` — no data moves, ever. Each user gets one personal pantry at signup.
+Three things here are new relative to the rules as written, and the rules must
+change to match before deployment:
 
-**Local rows carry `pantryId` too.** Room mirrors the remote key: `ProductEntity`
-has `pantryId` as its access key (added in `Migration(6, 7)`), with `userId` kept
-only for attribution. Filtering locally by the viewer's uid would break the
-moment a shared pantry is downloaded — the same item would be either mislabelled
-as theirs or invisible, depending which uid was stamped. Signed out, rows sit in
-the `local` pantry; on sign-in they are claimed into `personal-{uid}`.
+1. **`serverUpdatedAt` must equal `request.time`.** The client writes
+   `FieldValue.serverTimestamp()`; the rule checks
+   `request.resource.data.serverUpdatedAt == request.time`. This is what makes
+   the pull cursor a server fact rather than a device clock. Two devices'
+   clocks are not comparable; one server's clock is.
+2. **Event document id is the operation id.** The rules allow `create` on
+   events and never `update`, so writing the same event twice is refused. The
+   Android SDK has no create-only write — a batch `set` on an existing event
+   is an update and comes back `PERMISSION_DENIED` — so the client cannot tell
+   "already there" from "not allowed" by the error alone. It tells them apart
+   with one read: if `events/{operationId}` exists, the push was a retry and
+   is acknowledged. That read plus the no-update rule is the whole idempotency
+   mechanism — no Cloud Function needed.
+3. **`lastOperationId` on items** so a device can tell, on pull, whether an item
+   change is its own write coming back (its operation id is in — or was just
+   removed from — its outbox) and skip re-applying it.
 
-**Pantry ids are derived, not allocated.** A personal pantry is always
-`personal-{uid}`, so the client can address it without a round trip and creating
-it twice is harmless.
-
-**Why `memberUids` is an array on the pantry document.** Security rules can read
-it in a single `get()`. A separate members subcollection would need to be kept in
-sync with the rules' view of membership, which is a second source of truth for
-the thing that controls access — the last place that is worth having one.
-
----
-
-## Access control
-
-Rules live in `firestore.rules`. Key properties:
-
-- Deny by default.
-- **No `list` permission on `/pantries`.** Rules cannot reliably constrain what a
-  collection query returns. The client reads its own user document, takes
-  `pantryIds`, and fetches each pantry by id. This removes a whole class of
-  accidental exposure.
-- `ownerUid` is immutable, and only the owner edits `memberUids`, so a member
-  cannot promote themselves or evict the owner.
-- A pantry must be created owned by, and containing only, its creator.
-- `plan` cannot be written by a client. Entitlements come from a Cloud Function
-  that has verified a Play Billing purchase. A client-writable plan field is a
-  free premium subscription for anyone who decompiles the app.
-- Hard deletes are refused. Deletion is setting `isDeleted`, so it can propagate.
+There is still deliberately **no `list` on `/kitchens`**. The client reads its
+own user document, takes `kitchenIds`, and fetches each kitchen by id.
 
 ---
 
-## Conflict resolution
+## 4. The outbox contract
 
-**Last write wins, compared on `updatedAt`.**
+One row per change, written in the same transaction as the row and its event
+(`ItemRepositoryImpl.record`). A change cannot exist locally without being
+queued, and an entry leaves only on acknowledgement, never on a timestamp.
 
-`updatedAt` already exists in the schema and is stamped by the repository on
-every write, so no new plumbing is needed. On conflict the higher `updatedAt`
-wins outright.
-
-This can lose an edit when two devices change the same item while both offline.
-For a pantry tracker that is a minor annoyance, not data loss, and it is simple
-enough to explain to a user. Per-field merge was considered and rejected as far
-more code and edge cases than the problem justifies.
-
-Rules reject any write without a numeric `updatedAt`, so a malformed write
-cannot silently win.
-
----
-
-## Sync algorithm
-
-1. On sign-in, claim guest rows locally (already implemented), then push any rows
-   not yet in Firestore.
-2. Maintain a `lastSyncedAt` watermark per pantry.
-3. Pull: listen to products where `updatedAt > lastSyncedAt`. For each, if the
-   remote `updatedAt` is newer than the local row, overwrite locally.
-4. Push: send local rows whose `updatedAt` is newer than the last successful
-   push. Retry with backoff; a failed push must never block the UI.
-5. Tombstones apply on both sides — `isDeleted` rows sync like any other change
-   and are filtered out of every user-facing query.
-
----
-
-## Free tier limits
-
-**There are no quantity caps. The paywall is a feature gate.**
-
-| | Free | Premium |
+| Field | Meaning | Who sets it |
 |---|---|---|
-| Local inventory | Unlimited | Unlimited |
-| Barcode scan, notifications, CSV export, history | Yes | Yes |
-| Cloud backup & sync (writes) | No | Yes |
-| Reading data already uploaded | Yes | Yes |
-| Household members | 1 | 6 |
+| `operationId` | Idempotency key. Same id → server no-op. Also the event's `operationId` and the event's remote document id | `record` |
+| `entityId` | Item id | `record` |
+| `kitchenId` | Which kitchen; rewritten by claim | `record`, `claimLocalData` |
+| `actorUid` | Who; **see §7, currently wrong after claim** | `record` |
+| `clientId` | This installation | `ClientIdProvider` |
+| `clientSequence` | Monotonic per install; push order | `record` |
+| `baseRevision` | Item `revision` the change was made against; null for create | `record` |
+| `operationType` | `CREATE` / `UPDATE` / `TOMBSTONE` / `RESTORE`; `EVENT_APPEND` is declared but nothing produces it | `record` |
+| `occurredAtClient` | Device time the change happened | `record` |
+| `payload` | JSON snapshot of the `ItemEntity` **at the moment of the change**, local format, not the wire format | `OutboxPayload.serialise` |
+| `attemptCount`, `lastAttemptAt`, `lastError` | Retry bookkeeping | transport |
 
-Three reasons there is no item cap:
+The payload is a snapshot on purpose: pushing whatever the row says at send time
+would collapse several offline edits into the last one. The mapping from the
+snapshot to the wire document happens at push time, so the backend contract can
+change without rewriting queued rows.
 
-1. **It would break live users.** People are already using the app with unlimited
-   local items. A retroactive cap would strand data on their phones.
-2. **It contradicts the listing.** "No account, 100% offline" is what the 5.0
-   reviews praise. Capping offline storage undermines the thing that works.
-3. **Local storage is free to us.** Firestore reads and writes are not. The
-   paywall belongs where the cost is.
+What an operation means to the server:
 
-This also removes the counter infrastructure entirely — no `productCount`, no
-transactional increments, no Cloud Function trigger to keep a count accurate.
+- **CREATE** — set the item document from the snapshot. If it already exists
+  (retry after a lost ack), treat as done.
+- **UPDATE** — set the item document from the snapshot, subject to §6 conflict
+  handling.
+- **TOMBSTONE** — an UPDATE whose snapshot has `isDeleted = true`. Named
+  separately so the queue is readable and so a future server can refuse a hard
+  delete without inspecting the payload.
+- **RESTORE** — an UPDATE that reverses a resolution. The event carries
+  `reversesEventId`; the item snapshot carries the restored quantity.
 
-**Reads survive a downgrade.** If a subscription lapses, the user can still read
-and export everything already uploaded; only further backup stops. Locking people
-out of data they already gave us would be holding it hostage.
+Every operation also appends its event. **Item write and event append are one
+Firestore batch**, so the ledger and the row cannot diverge on the server any
+more than they can locally.
 
-**Where the entitlement lives.** `isPremium` sits on the pantry document, not the
-owner's user profile. The rules already fetch the pantry to check membership, so
-this costs no extra billed read; checking the owner's profile would double the
-reads on every product write. A Cloud Function sets it after verifying a Play
-Billing purchase — rules refuse any client write to it, on both create and
-update.
+---
 
-**Household size** is enforced with `memberUids.size()`, which needs no counter
-because the list is already on the document.
+## 5. Push
 
-## Open items before implementation
+Runs as a WorkManager unique periodic job plus an expedited one-shot after any
+local write, constrained to network-connected. Only when signed in, and only
+when the kitchen is known to be premium (§8); otherwise the worker exits
+without touching the outbox.
 
-- [x] Free-tier model decided: feature gate, no quantity caps. See above.
-- [x] Rules unit tests — 27 tests in `firestore-tests/rules.test.mjs`, run with
-      `npm run test:rules`. Verified meaningful by deliberately loosening two
-      rules and confirming the matching tests failed.
-- [ ] Cloud Function for Play Billing verification to write `plan`
-- [ ] Account deletion path (must clean up pantries; cannot be a client delete)
-- [ ] Reconcile analytics with the "no data collection" store listing
+```
+for each kitchen the session can see:
+    batch = outboxDao.peek(kitchenId, 50)          oldest clientSequence first
+    for op in batch:
+        doc  = wire(op.payload)                     map snapshot → wire fields
+        write = firestore.batch()
+            .set(items/{op.entityId}, doc + serverUpdatedAt + lastOperationId=op.operationId)
+            .create(events/{op.operationId}, event(op))
+        result = commit(write)
+        on success            → ack(op)
+        on PermissionDenied   → if events/{op.operationId} exists → ack(op)   a retry; the server has it
+                                else → stop this kitchen             free or lapsed; expected, not an error
+        on Transient          → recordFailure, stop, let WorkManager back off
+        on Permanent          → recordFailure; after 5 attempts it is "stuck"
+```
+
+`ack(op)` is one Room transaction: set `items.revision` to the server
+timestamp the write returned, then `outboxDao.acknowledge([op.operationId])`.
+Revision first, then delete — if the process dies between, the op is retried,
+refused because its event already exists, recognised as a retry by the
+existence read, and acknowledged. Harmless.
+
+The existence read costs one document read per retry, never per push, so it
+is free in the common case.
+
+Stuck entries (`getStuck`, threshold 5) are surfaced in Settings as "N changes
+could not be backed up", never silently dropped. The likely cause is a rules
+rejection of a malformed document, which is a bug to fix, not a row to lose.
+
+**Order matters within an entity and is preserved by `clientSequence`.** Across
+entities it does not, but the queue is pushed in order anyway because it is
+simpler and the batches are small.
+
+**First backup is not a replay.** When a kitchen becomes premium for the first
+time, the outbox may hold months of operations from before there was anywhere
+to send them, many superseded. Bootstrap instead: upload every non-deleted and
+deleted row as a CREATE, upload the whole ledger as events, clear the outbox for
+that kitchen, then continue incrementally. This also bounds the outbox for free
+users: a kitchen that has never bootstrapped may be compacted to one entry per
+entity at any time, because the ledger — not the outbox — is the history.
+
+---
+
+## 6. Pull
+
+**By cursor, not by time.** Each kitchen keeps `lastServerUpdatedAt`, the
+highest `serverUpdatedAt` applied so far. A Firestore listener on
+`items where serverUpdatedAt > cursor` and the same on `events` delivers
+changes in server order. The cursor advances only after the Room transaction
+that applied the batch commits, so a crash mid-apply re-delivers rather than
+skips.
+
+Applying a pulled **item**:
+
+```
+if doc.lastOperationId is in this device's outbox, or was acknowledged by it
+    → skip; it is our own write coming back                (clientId check as backstop)
+else if local.revision >= doc.serverUpdatedAt
+    → skip; already applied
+else
+    → itemDao.upsertFromRemote(row with revision = doc.serverUpdatedAt)
+```
+
+Applying a pulled **event**: `eventDao.appendAll` with `IGNORE`. The unique
+index on `operationId` makes replay free. Events are never compared or
+resolved; they are facts.
+
+The pull path writes **no outbox entries and no events of its own.** A pulled
+change is something that already happened elsewhere; recording it again would
+push it back and double-count it.
+
+### Conflicts
+
+Two devices edit the same item offline. When the second push arrives, the
+server document's `lastOperationId` is not what the pusher's `baseRevision`
+saw.
+
+- **Row state: last write wins, in server order.** The later push overwrites.
+  This can lose one edit to a name or a date — a nuisance, not data loss, and
+  explainable to a person. Per-field merge was considered and rejected as far
+  more code than the problem justifies.
+- **Quantity events are deltas and are rebased, not overwritten.** Both devices
+  "use 1" of 3 offline; each snapshot says quantity 2; naive LWW leaves 2 while
+  the ledger says 2 were used. The pusher detects the conflict, reads the
+  server row, applies its event's delta (`quantity` on a `QUANTITY_USED` /
+  `QUANTITY_DISCARDED` event) to the server quantity, and pushes that. The
+  ledger already carries the delta, so this is a read and a subtraction, not
+  a merge engine.
+- **Tombstone beats update.** A deleted item stays deleted; a concurrent edit to
+  it is dropped. A RESTORE is an explicit later decision and wins over the
+  tombstone it reverses.
+
+The client detects a conflict by reading the server document before an UPDATE
+whose `baseRevision` is non-null and comparing `lastOperationId` with what it
+expected. That is one read per update. Acceptable at the write rates of a
+kitchen; not acceptable for a bulk bootstrap, which is why bootstrap is CREATE
+only.
+
+---
+
+## 7. Sign-in and the claim — a defect to fix before any transport
+
+`claimLocalData` moves guest rows into `personal-{uid}`. Today it rewrites
+`kitchenId` on items, events and outbox rows, and `createdBy`/`lastEditedBy` on
+items. It does **not** rewrite:
+
+- `item_events.actorUid`, which stays `"guest"`;
+- `outbox.actorUid`, which stays `"guest"`;
+- the `kitchenId`, `createdBy` and `lastEditedBy` **inside** `outbox.payload`,
+  which is a JSON snapshot taken before sign-in.
+
+The rules require `request.resource.data.actorUid == uid()` on every event
+create. So every event a person recorded before signing in would be refused
+the moment it was pushed, and would sit in the outbox as "stuck". The person
+has, by signing in, said that the guest was them; the claim should say so
+everywhere. Fix: `claimLocalEvents` and `claimLocalOperations` set `actorUid`
+too, and push maps `kitchenId` and attribution **from the outbox columns**, not
+from the payload, so a stale snapshot cannot reintroduce `"local"` or
+`"guest"`. Both are small; both need a JVM test that signs in over guest data
+and asserts no row anywhere still says guest.
+
+The cross-account edge case stays: sign out, act, sign in as a different
+account, and that account claims the rows. Narrow, and recorded in
+`PROGRESS.md`; not made worse by anything here.
+
+---
+
+## 8. Entitlement
+
+`isPremium` lives on the kitchen document because the rules already fetch the
+kitchen for membership; checking the owner's profile would double the billed
+reads on every write.
+
+Nothing sets it. Play Billing verification needs a trusted server — a Cloud
+Function on the purchase notification, or a scheduled reconciliation against
+the Play Developer API — and this project has no Cloud Functions yet. Until it
+does, every paid path is inert by construction, and the transport must not be
+built on the assumption that it can be tested end to end against production:
+it is tested against the emulator with `isPremium` set by the test.
+
+The client learns its entitlement by reading its kitchen document, caches the
+answer, and re-reads on app start and on `PermissionDenied`. A `false` means the
+worker does not push, not that it pushes and fails.
+
+Household size (`memberUids.size() <= 6` when premium, `1` otherwise) is
+enforced in rules with no counter.
+
+---
+
+## 9. What is out of scope for the first transport, and why
+
+- **Locations.** `LocationEntity` has `kitchenId` and `updatedAt` but its
+  repository never writes an outbox entry, so a renamed shelf would not sync.
+  Fix needs an `entityKind` column on `outbox` — `Migration(3, 4)`, additive —
+  and a `kitchens/{id}/locations` rule. Items sync first; a location the other
+  device has not seen resolves to "no location", which the UI already renders.
+- **Invites.** Household sharing is a kitchen with more members. The invite
+  flow (a code, a pending-member document, owner acceptance) is its own rule
+  set and its own screen; nothing in §4–§6 changes for it because access is
+  already by `kitchenId`.
+- **Entitlements collection and aiJobs.** Named in the target model; neither
+  has a consumer yet.
+
+Deploying rules now would mean deploying again for each of these. **Decision,
+12 Sep 2026: rules deploy alongside the transport, not before.**
+
+---
+
+## 10. Testing
+
+- **Engine on the JVM.** The push/pull logic takes `OutboxDao`, `ItemDao`,
+  `ItemEventDao` and a `RemoteStore` interface; `FakeDaos.kt` already exists.
+  Tests: ack removes exactly the acknowledged op and stamps revision;
+  `PermissionDenied` with the event already present acks; `PermissionDenied`
+  with no event stops without touching attempt counts; a Transient failure increments and stops; five Permanent failures
+  make an op stuck; a pulled own-write is skipped; a pulled newer row is
+  applied; a pulled older row is not; a replayed event inserts once; a quantity
+  conflict rebases.
+- **Rules on the emulator.** Extend `rules.test.mjs` for `serverUpdatedAt ==
+  request.time`, event id == operation id, and `lastOperationId` presence.
+  Keep the habit: weaken a rule, watch exactly its test fail.
+- **One end-to-end.** The thing PROGRESS.md lists as missing: engine plus rules
+  together, on the emulator, two fake devices, one kitchen, offline edits on
+  both, reconcile, assert the ledger sums and the row agree. This is the test
+  that proves §6 rather than describes it.
+
+---
+
+## 11. Build order
+
+1. Fix the claim (§7). Small, testable, and a precondition for everything.
+2. Rules: add `serverUpdatedAt`, event-id-is-operation-id, `lastOperationId`;
+   extend tests.
+3. `RemoteStore` interface for the new shape; Firestore implementation;
+   retire `RemoteProductStore` and the `/pantries` constants.
+4. Push engine, JVM-tested. Bootstrap path included.
+5. Pull engine, JVM-tested.
+6. WorkManager wiring; Settings card shows pending count and stuck count.
+7. End-to-end test on the emulator.
+8. Deploy rules. Then, and only then, the Play Billing server side.
+
+---
+
+## Open decisions
+
+- **Cursor granularity.** `serverUpdatedAt` is a timestamp; two writes in the
+  same millisecond are possible under bootstrap. The listener uses `>` and
+  events are deduplicated by id, so the worst case is one re-applied item,
+  which is idempotent. Acceptable; noted.
+- **`EVENT_APPEND`.** Declared, unused. Either remove it or give it the one job
+  it plausibly has — an event with no row change, which the current write path
+  never produces. Lean: remove.
+- **Bootstrap size.** A kitchen of a few hundred items and a few thousand
+  events is a few thousand writes once. Fine. Ten thousand events is not
+  unthinkable for a long-standing household; batch in 500s and resume by
+  cursor if interrupted.
