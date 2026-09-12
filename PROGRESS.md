@@ -397,9 +397,39 @@ Seen in passing: the splash reads a hardcoded `v1.0.0`
 (`SplashScreen.kt:83`) while `versionName` is 1.1.0. Should read
 `BuildConfig.VERSION_NAME`. Not changed here.
 
-**Next: step 7, the end-to-end test** — `SyncRun` against the Firestore
-emulator with the real rules, two fake devices, one kitchen, offline edits on
-both, reconcile, assert the ledger sums and the row agree.
+**End-to-end proven, 12 Sep 2026.** `SyncEndToEndTest` (androidTest) runs
+`SyncRun` for two in-memory devices against the Firestore and Auth emulators
+with the real `firestore.rules`: both use one of three offline, reconcile,
+and both shelves say 1 while both ledgers say 2 used, with nothing left
+queued; a second test backs up a never-synced kitchen whole. **2/2 passing**,
+1.5 s and 8.7 s. `npm run test:sync-e2e:win` (`test:sync-e2e` elsewhere). The
+test skips itself when the emulators are down, so the plain connected run
+stays green (21 tests, 2 skipped).
+
+Two things had to be built to get there:
+
+- **The quantity rebase from §6**, which the step-4 pusher did not have —
+  it was plain last-write-wins, and this scenario is exactly the one that
+  exposes it. `OutboxPusher.rebased`, 6 JVM tests; disabling it fails
+  exactly the two that depend on it.
+- **The merged local row takes the server's revision.** Traced by hand
+  before the device saw it: without that, B's pull in the same run treated
+  A's document as newer and wrote it over the merge. Recorded in §6.
+
+Getting the test to actually run took three environment fixes worth
+knowing: `firebase emulators:exec` on Windows needs `.\gradlew.bat` (a bare
+`gradlew` is not found); the emulators must bind to `127.0.0.1` in
+`firebase.json`, because `localhost` resolves to `::1` and the Android
+emulator's `10.0.2.2` only reaches IPv4 loopback; and the app forbids
+cleartext HTTP, so `app/src/debug/res/xml/network_security_config.xml`
+permits it to `10.0.2.2` alone. Release builds keep the strict config.
+
+The splash no longer shows a version string (`SplashScreen.kt`); it was
+hardcoded `v1.0.0`.
+
+**Next: step 8 — deploy the rules.** Every reason to wait has gone: the
+transport that writes the shape exists and is proven against them. After
+that, the Play Billing server side, which is what finally sets `isPremium`.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
@@ -550,11 +580,16 @@ Not bugs to fix today, but things that are true and should not be forgotten.
 - **The outbox payload snapshot still says `local`/`guest`** after a claim.
   Deliberate — the transport must take kitchen and actor from the outbox
   columns, never the payload. See `sync-design.md` §7.
-- **No end-to-end test.** The engine is tested with mocks and the rules against
-  the emulator, but never the two together.
+- ~~**No end-to-end test.**~~ `SyncEndToEndTest`, 12 Sep 2026: engine and
+  rules together on the emulators, two devices, passing.
 - **Cross-account claim edge case.** If a user signs out, updates, and a
   different account signs in as the first action after the update, that account
   claims the previous user's unclaimed rows. Narrow, but real.
+- **`ItemRepositoryImplTest.sampleItem` says the repository mints its own
+  id. It does not** — `Item.toEntity()` keeps the id it is given and `add`
+  returns it. Found when the e2e test gave three items the same placeholder
+  id and they overwrote one another. The comment is misleading; the tests
+  pass because they never add two items. Worth a one-line fix.
 - **Release build now builds, but is still unexercised.** A signed minified
   APK is produced, and the heap that prevented it is fixed. Only the debug
   build has been installed, so nobody has confirmed the barcode lookup or

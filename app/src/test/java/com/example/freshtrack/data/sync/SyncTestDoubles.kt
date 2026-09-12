@@ -89,6 +89,13 @@ class FakeRemoteStore : RemoteStore {
     override suspend fun fetchEventsSince(kitchenId: String, after: Long, limit: Int): Result<List<RemoteDocument>> =
         fetch(serverEvents, after, limit)
 
+    var itemFetches = 0
+    override suspend fun fetchItem(kitchenId: String, itemId: String): Result<RemoteDocument?> {
+        itemFetches++
+        fetchError?.let { return Result.failure(it) }
+        return Result.success(serverItems.filter { it.id == itemId }.maxByOrNull { it.serverUpdatedAt })
+    }
+
     private fun fetch(from: List<RemoteDocument>, after: Long, limit: Int): Result<List<RemoteDocument>> {
         fetches++
         fetchError?.let { return Result.failure(it) }

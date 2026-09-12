@@ -77,15 +77,5 @@ fun SplashScreen(
                 strokeWidth = 3.dp
             )
         }
-
-        // Version text at the bottom
-        Text(
-            text = "v1.0.0",
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp),
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

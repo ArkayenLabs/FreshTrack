@@ -7,9 +7,9 @@ client and the schema it mirrored were deleted in the GoodBefore migration.
 This one describes the outbox that replaced it and the transport that has not
 been written yet.
 
-Status, 12 Sep 2026: **outbox and ledger built and device-verified; rules
-written for the transport shape and tested (54) but not deployed; no
-transport.** Nothing consumes the
+Status, 12 Sep 2026: **transport built and proven end to end against the
+Firestore emulator with the real rules; rules not deployed; nothing sets
+`isPremium`, so it is inert in production.** Nothing consumes the
 outbox. The Settings card says so.
 
 Rules tests: `npm run test:rules` (Firestore emulator, project `demo-freshtrack`,
@@ -35,7 +35,9 @@ contradicts this section is a plan, not a description.
 | Entitlement | `kitchens/{id}.isPremium` | Rules refuse client writes; **nothing sets it** |
 | Push engine | `data/sync/OutboxPusher.kt` | Built, 20 JVM tests (12 Sep 2026): incremental drain, retry/stuck, entitlement gate, and the first backup with resumable ledger upload |
 | Pull engine | `data/sync/RemoteChangeApplier.kt` | Built, 11 JVM tests (12 Sep 2026): paged by cursor, own writes stamp `revision`, events append with IGNORE, cursor moves after commit |
-| `SyncRun`, `SyncWorker` | `data/sync/` | Built (12 Sep 2026): one run = ensure kitchen, push, pull, record outcome. Periodic 6h + one-shot when the app goes to the background, network-constrained. Settings card shows status, pending and stuck. Device-verified signed out |
+| `SyncRun`, `SyncWorker` | `data/sync/` | Built (12 Sep 2026): one run = ensure kitchen, push, pull, record outcome. Periodic 6h + one-shot when the app goes to the background, network-constrained. Settings card shows status, pending and stuck |
+| Quantity rebase | `OutboxPusher.rebased` | Built (12 Sep 2026), 6 JVM tests: a quantity event pushed against a row someone else changed applies its delta to theirs |
+| End-to-end | `androidTest/.../SyncEndToEndTest.kt` | **Passing** (12 Sep 2026): two devices, real rules, Firestore + Auth emulators. `npm run test:sync-e2e` (`:win` on Windows); skips when the emulators are down |
 
 ---
 
@@ -284,16 +286,22 @@ saw.
   server row, applies its event's delta (`quantity` on a `QUANTITY_USED` /
   `QUANTITY_DISCARDED` event) to the server quantity, and pushes that. The
   ledger already carries the delta, so this is a read and a subtraction, not
-  a merge engine.
+  a merge engine. The local row takes the merged answer too — no event, no
+  outbox entry, nothing new happened — **and the server's revision**, because
+  it now incorporates that state; without that, the pull in the same run
+  would see the other device's document as newer and write it over the
+  merge. If the delta empties the item it resolves the way the repository
+  resolves one: state set, quantity left. Built and proven end to end.
 - **Tombstone beats update.** A deleted item stays deleted; a concurrent edit to
   it is dropped. A RESTORE is an explicit later decision and wins over the
   tombstone it reverses.
 
-The client detects a conflict by reading the server document before an UPDATE
-whose `baseRevision` is non-null and comparing `lastOperationId` with what it
-expected. That is one read per update. Acceptable at the write rates of a
-kitchen; not acceptable for a bulk bootstrap, which is why bootstrap is CREATE
-only.
+The client detects a conflict by reading the server document before pushing
+a **quantity event** with a non-null `baseRevision`, and comparing the
+document's `serverUpdatedAt` with that base (a document last written by this
+same installation is never a conflict). One read per quantity event, none for
+other edits or creates. Acceptable at the write rates of a kitchen; not
+acceptable for a bulk bootstrap, which is why bootstrap is CREATE only.
 
 ---
 
@@ -378,10 +386,19 @@ Deploying rules now would mean deploying again for each of these. **Decision,
   operation id, `lastOperationId` presence, and that a retried event is
   refused rather than duplicated. Keep the habit: weaken a rule, watch
   exactly its test fail.
-- **One end-to-end.** The thing PROGRESS.md lists as missing: engine plus rules
-  together, on the emulator, two fake devices, one kitchen, offline edits on
-  both, reconcile, assert the ledger sums and the row agree. This is the test
-  that proves §6 rather than describes it.
+- **One end-to-end — built and passing.** `SyncEndToEndTest`: engine plus
+  rules together, two in-memory devices with their own client ids, one
+  account and one kitchen on the Firestore + Auth emulators, the kitchen
+  flagged premium through the emulator's owner endpoint (standing in for the
+  Cloud Function). Both use one of three offline; after three runs both
+  shelves say 1 and both ledgers say 2 used; nothing is left queued. A second
+  test backs a never-synced kitchen up whole and checks the other device has
+  every row and every event. Run with `npm run test:sync-e2e` (`:win` on
+  Windows). It skips itself when the emulators are not up, so the ordinary
+  connected run does not need them. It uses a private `demo-freshtrack`
+  FirebaseApp, so it cannot reach production; and debug builds carry a
+  network-security override allowing plain HTTP to `10.0.2.2` only — the
+  emulator host — which release builds do not have.
 
 ---
 
@@ -406,7 +423,8 @@ Deploying rules now would mean deploying again for each of these. **Decision,
    count.~~ Done, 12 Sep 2026. `SyncRun` (6 JVM tests), `SyncWorker`, the
    card. Verified on Pixel_35 signed out: Settings resolves the graph, the
    card reads correctly, backgrounding the app runs the worker to SUCCESS.
-7. End-to-end test on the emulator.
+7. ~~End-to-end test on the emulator.~~ Done, 12 Sep 2026, and it found
+   its first bug before it ran (the merged row's revision, above).
 8. Deploy rules. Then, and only then, the Play Billing server side.
 
 ---

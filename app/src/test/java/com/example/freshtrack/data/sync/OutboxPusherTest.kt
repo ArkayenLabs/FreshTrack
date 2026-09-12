@@ -4,6 +4,7 @@ import com.example.freshtrack.data.local.entities.GUEST_USER_ID
 import com.example.freshtrack.data.local.entities.ItemEntity
 import com.example.freshtrack.data.local.entities.ItemEventEntity
 import com.example.freshtrack.data.local.entities.ItemEventType
+import com.example.freshtrack.data.local.entities.ItemState
 import com.example.freshtrack.data.local.entities.LOCAL_KITCHEN_ID
 import com.example.freshtrack.data.local.entities.OutboxEntity
 import com.example.freshtrack.data.local.entities.OutboxOperationType
@@ -272,6 +273,175 @@ class OutboxPusherTest {
         assertEquals(OutboxPusher.Outcome.NotEntitled(0), outcome)
         assertEquals(2, outboxDao.operations.size)
         assertTrue(outboxDao.operations.all { it.attemptCount == 0 })
+    }
+}
+
+// ─── Conflicts ──────────────────────────────────────────────────────────────
+
+/**
+ * Two devices change the same item offline. Row edits are last write wins;
+ * quantity events are deltas and are rebased onto what the server has, so the
+ * shelf ends up agreeing with the ledger.
+ */
+class OutboxPusherRebaseTest {
+
+    private val kitchen = "personal-alice"
+    private val outboxDao = FakeOutboxDao()
+    private val itemDao = FakeItemDao()
+    private val eventDao = FakeItemEventDao()
+    private val remote = FakeRemoteStore()
+    private val syncState = FakeSyncState().apply { markBootstrapped("personal-alice") }
+    private val clock = object : AppClock {
+        override fun nowMillis() = 1_000L
+        override fun today(): LocalDate = LocalDate.of(2026, 9, 12)
+    }
+
+    private fun pusher() = OutboxPusher(
+        outboxDao, itemDao, eventDao, remote, syncState, "device-a", OutboxPayload::deserialise, clock
+    )
+
+    private fun row(quantity: Int, revision: Long, state: ItemState = ItemState.ACTIVE) = ItemEntity(
+        id = "milk", kitchenId = kitchen, name = "Milk", category = "Dairy & Eggs",
+        expiryDate = LocalDate.of(2026, 9, 20), dateKind = DateKind.USE_BY,
+        dateSource = DateSource.USER, dateConfidence = 1f, createdBy = "alice",
+        lastEditedBy = "alice", quantity = quantity, originalQuantity = 3,
+        revision = revision, state = state
+    )
+
+    /** This device took [used] of the milk while its row was at [base] on the server. */
+    private suspend fun queueUse(used: Int, base: Long, type: ItemEventType = ItemEventType.QUANTITY_USED) {
+        val after = row(quantity = 3 - used, revision = base)
+        itemDao.insert(after)
+        eventDao.append(
+            ItemEventEntity(
+                id = "evt-a", itemId = "milk", kitchenId = kitchen, type = type,
+                actorUid = "alice", quantity = used, occurredAt = 200L, operationId = "op-a"
+            )
+        )
+        outboxDao.enqueue(
+            OutboxEntity(
+                operationId = "op-a", entityId = "milk", kitchenId = kitchen, actorUid = "alice",
+                clientId = "device-a", clientSequence = 1, baseRevision = base,
+                operationType = OutboxOperationType.UPDATE, occurredAtClient = 200L,
+                payload = OutboxPayload.serialise(after)
+            )
+        )
+    }
+
+    /** What the server holds: [quantity] left, written by [by] at [at]. */
+    private fun serverHas(quantity: Int, at: Long, by: String = "device-b") {
+        remote.serverItems += RemoteDocument(
+            "milk", WireFormat.item(row(quantity, revision = 0), "op-$by", "bob", by), at
+        )
+    }
+
+    @Test
+    fun `a use pushed against a row nobody else touched goes up as taken`() = runTest {
+        serverHas(quantity = 3, at = 100, by = "device-a")
+        queueUse(used = 1, base = 100)
+
+        pusher().push(kitchen)
+
+        assertEquals(2, remote.pushes.single().itemFields["quantity"])
+        assertEquals(2, itemDao.rows.getValue("milk").quantity)
+    }
+
+    @Test
+    fun `a use pushed against a row someone else used from is rebased, not written over`() = runTest {
+        // Both saw 3. Bob used one and his push landed first; the server says
+        // 2. Alice's snapshot also says 2. Writing it would lose Bob's use.
+        serverHas(quantity = 2, at = 500)
+        queueUse(used = 1, base = 100)
+
+        pusher().push(kitchen)
+
+        assertEquals(1, remote.pushes.single().itemFields["quantity"])
+        // The local row agrees with what was pushed, and now stands at the
+        // server's revision: it has Bob's change in it, so the pull that
+        // follows must not treat Bob's document as news and write it back.
+        val local = itemDao.rows.getValue("milk")
+        assertEquals(1, local.quantity)
+        assertEquals(500L, local.revision)
+        assertEquals(ItemState.ACTIVE, local.state)
+        // Reconciling is not an event. The ledger has Alice's use, and will
+        // get Bob's on pull; a third entry would count something that did not happen.
+        assertEquals(1, eventDao.events.size)
+    }
+
+    @Test
+    fun `a rebase that leaves nothing resolves the item the way the repository would`() = runTest {
+        serverHas(quantity = 1, at = 500)
+        queueUse(used = 2, base = 100, type = ItemEventType.QUANTITY_DISCARDED)
+
+        pusher().push(kitchen)
+
+        val pushed = remote.pushes.single().itemFields
+        assertEquals("DISCARDED", pushed["state"])
+        assertEquals(200L, pushed["resolvedAt"])
+        assertEquals(ItemState.DISCARDED, itemDao.rows.getValue("milk").state)
+    }
+
+    @Test
+    fun `an edit that is not a quantity event is last write wins, and reads nothing first`() = runTest {
+        serverHas(quantity = 2, at = 500)
+        val edited = row(quantity = 3, revision = 100).copy(name = "Whole milk")
+        itemDao.insert(edited)
+        eventDao.append(
+            ItemEventEntity(
+                id = "evt-a", itemId = "milk", kitchenId = kitchen, type = ItemEventType.ITEM_EDITED,
+                actorUid = "alice", occurredAt = 200L, operationId = "op-a"
+            )
+        )
+        outboxDao.enqueue(
+            OutboxEntity(
+                operationId = "op-a", entityId = "milk", kitchenId = kitchen, actorUid = "alice",
+                clientId = "device-a", clientSequence = 1, baseRevision = 100,
+                operationType = OutboxOperationType.UPDATE, occurredAtClient = 200L,
+                payload = OutboxPayload.serialise(edited)
+            )
+        )
+
+        pusher().push(kitchen)
+
+        assertEquals(0, remote.itemFetches)
+        assertEquals("Whole milk", remote.pushes.single().itemFields["name"])
+    }
+
+    @Test
+    fun `a create is never rebased`() = runTest {
+        // No base revision: there was nothing on the server to conflict with.
+        val fresh = row(quantity = 3, revision = 0)
+        itemDao.insert(fresh)
+        eventDao.append(
+            ItemEventEntity(
+                id = "evt-a", itemId = "milk", kitchenId = kitchen, type = ItemEventType.QUANTITY_USED,
+                actorUid = "alice", quantity = 1, occurredAt = 200L, operationId = "op-a"
+            )
+        )
+        outboxDao.enqueue(
+            OutboxEntity(
+                operationId = "op-a", entityId = "milk", kitchenId = kitchen, actorUid = "alice",
+                clientId = "device-a", clientSequence = 1, baseRevision = null,
+                operationType = OutboxOperationType.CREATE, occurredAtClient = 200L,
+                payload = OutboxPayload.serialise(fresh)
+            )
+        )
+
+        pusher().push(kitchen)
+
+        assertEquals(0, remote.itemFetches)
+    }
+
+    @Test
+    fun `if the server cannot be read the push waits rather than guesses`() = runTest {
+        queueUse(used = 1, base = 100)
+        remote.fetchError = RemoteError.Transient()
+
+        val outcome = pusher().push(kitchen)
+
+        assertTrue(outcome is OutboxPusher.Outcome.Deferred)
+        assertTrue(remote.pushes.isEmpty())
+        assertEquals(1, outboxDao.operations.size)
     }
 }
 

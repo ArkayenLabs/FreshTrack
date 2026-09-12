@@ -4,6 +4,9 @@ import com.example.freshtrack.data.local.dao.ItemDao
 import com.example.freshtrack.data.local.dao.ItemEventDao
 import com.example.freshtrack.data.local.dao.OutboxDao
 import com.example.freshtrack.data.local.entities.ItemEntity
+import com.example.freshtrack.data.local.entities.ItemEventEntity
+import com.example.freshtrack.data.local.entities.ItemEventType
+import com.example.freshtrack.data.local.entities.ItemState
 import com.example.freshtrack.data.local.entities.OutboxEntity
 import com.example.freshtrack.util.AppClock
 
@@ -147,10 +150,13 @@ class OutboxPusher(
         val event = eventDao.findByOperationId(op.operationId)
             ?: return fail(op, "no event for operation")
 
+        val snapshot = rebased(op, event, deserialise(op.payload))
+            ?: return PushResult.Stop(RemoteError.Transient())
+
         val write = RemoteWrite(
             kitchenId = op.kitchenId,
             itemId = op.entityId,
-            itemFields = WireFormat.item(deserialise(op.payload), op.operationId, op.actorUid, op.clientId),
+            itemFields = WireFormat.item(snapshot, op.operationId, op.actorUid, op.clientId),
             operationId = op.operationId,
             eventFields = WireFormat.event(event)
         )
@@ -184,6 +190,63 @@ class OutboxPusher(
 
             is RemoteError.Permanent -> fail(op, error.message)
         }
+    }
+
+    /**
+     * What to push for [op]: the snapshot as taken, unless it is a quantity
+     * event and somebody else has written the item since — in which case the
+     * event's delta is applied to *their* quantity rather than ours being
+     * written over theirs.
+     *
+     * "Both used one of three offline" is the case. Each snapshot says two;
+     * writing either would leave two on the shelf while the ledger says two
+     * were used. The ledger already carries the delta, so the merge is a read
+     * and a subtraction, and the local row is brought to the same answer so
+     * this device does not keep showing a number the server no longer has.
+     *
+     * Only quantity events are rebased. An edit to a name or a date is last
+     * write wins, as designed: a nuisance, not a loss.
+     *
+     * Returns null when the server could not be read, so the caller stops
+     * rather than guesses.
+     */
+    private suspend fun rebased(op: OutboxEntity, event: ItemEventEntity, snapshot: ItemEntity): ItemEntity? {
+        val delta = event.quantity ?: return snapshot
+        if (!event.type.isResolution || op.baseRevision == null) return snapshot
+
+        val server = remote.fetchItem(op.kitchenId, op.entityId).getOrElse { return null }
+            ?: return snapshot
+        val untouched = server.serverUpdatedAt <= op.baseRevision ||
+            server.fields["lastClientId"] == op.clientId
+        if (untouched) return snapshot
+
+        val theirs = WireFormat.itemFrom(server.fields, op.entityId, op.kitchenId, server.serverUpdatedAt)
+        val remaining = theirs.quantity - delta
+        val merged = if (remaining > 0) {
+            theirs.copy(quantity = remaining)
+        } else {
+            // Nothing left: the item resolves, the way the repository resolves
+            // one — state marks it, quantity is left as it was.
+            theirs.copy(
+                state = if (event.type == ItemEventType.QUANTITY_DISCARDED) ItemState.DISCARDED else ItemState.USED,
+                resolvedAt = event.occurredAt
+            )
+        }.copy(lastEditedBy = op.actorUid, updatedAt = snapshot.updatedAt)
+
+        // The local row takes the merged answer too. No event and no outbox
+        // entry: nothing new happened, two things that did are being
+        // reconciled. It also takes the server's revision, because it now
+        // incorporates that state — otherwise the pull that follows would see
+        // the other device's document as newer and write it over the merge.
+        itemDao.getByIdIncludingDeleted(op.entityId)?.let { local ->
+            itemDao.update(
+                local.copy(
+                    quantity = merged.quantity, state = merged.state,
+                    resolvedAt = merged.resolvedAt, revision = server.serverUpdatedAt
+                )
+            )
+        }
+        return merged
     }
 
     private suspend fun fail(

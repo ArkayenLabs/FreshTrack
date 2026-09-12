@@ -72,6 +72,9 @@ interface RemoteStore {
     /** Events appended on the server after [after], oldest first, at most [limit]. */
     suspend fun fetchEventsSince(kitchenId: String, after: Long, limit: Int): Result<List<RemoteDocument>>
 
+    /** One item as the server currently has it, or null if it is not there. */
+    suspend fun fetchItem(kitchenId: String, itemId: String): Result<RemoteDocument?>
+
     /**
      * Erases everything stored for this user: every item, every event, the
      * kitchen, and the user profile.

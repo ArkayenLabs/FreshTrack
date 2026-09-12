@@ -97,6 +97,14 @@ class FirestoreRemoteStore(
         Unit
     }.mapRemoteError()
 
+    override suspend fun fetchItem(kitchenId: String, itemId: String): Result<RemoteDocument?> =
+        runCatching {
+            val doc = items(kitchenId).document(itemId).get().await()
+            val stamp = doc.getTimestamp(SERVER_UPDATED_AT) ?: return@runCatching null
+            val fields = doc.data ?: return@runCatching null
+            RemoteDocument(doc.id, fields - SERVER_UPDATED_AT, microsOf(stamp))
+        }.mapRemoteError()
+
     override suspend fun fetchItemsSince(kitchenId: String, after: Long, limit: Int) =
         fetchSince(items(kitchenId), after, limit)
 
