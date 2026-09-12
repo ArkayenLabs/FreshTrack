@@ -220,30 +220,58 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
-**State at the end of 10 Sep 2026 — `main` at `8a7e8a0`, tree clean, all gates
-green on it.** 211 unit tests, lint 0 errors / 124 warnings, signed release APK
-built, 16/16 connected tests on Pixel_35. Nothing is unverified in the tree.
+**State at the end of 12 Sep 2026 — `main` pushed, release `v1.1.0` published,
+tree clean.** 213 unit tests, lint 0 errors / 124 warnings. The connected suite
+was last run on 10 Sep (16/16) and nothing since touches a surface it exercises.
 
-**Do first, in this order:**
+**Done this session:**
 
-1. `git push origin main` — 21 commits are local only, held back deliberately
-   for a day. Push them.
-2. Then create the GitHub release the owner asked for: tag `8a7e8a0` (or
-   whatever `main` is after the push), attach
-   `app/build/outputs/apk/release/app-release.apk` (rebuild it if the file is
-   older than the commit). `gh` is installed and logged in; no release exists
-   yet. This was blocked only because a release tag needs a pushed commit.
+- Pushed the 22 held-back commits. `v1.1.0` is on GitHub at `a5de216` with the
+  signed universal APK attached — the APK built on 10 Sep, after the last code
+  commit, so it was not rebuilt.
+- **Naming, decided and done** (`20822cf`): a receipt line printed entirely in
+  capitals is title-cased on the review sheet; a line in mixed case is left as
+  printed, and a token with a digit (`2L`, `500G`) is kept. The rule lives in
+  `ReceiptDraft`, not the parser, so what the parser saw is still what the
+  unreadable-lines list shows. Two JVM tests pin it.
+- **Firestore rules: decided, not deployed.** Nothing writes to Firestore until
+  the outbox has a transport, and the ruleset that ships with that transport
+  will also need locations, invites and entitlements. Deploying now buys
+  nothing and means deploying twice. Revisit when sync lands — see "Next".
 
-**Then pick one, and ask the owner which:**
+**Categories, audited on request.** Seven is not too many; the set is one short
+and one misnamed:
 
-- **Naming.** Receipt items save exactly as printed, so the kitchen fills with
-  `SEMI-SKIMMED MILK 2L`. Asked three times, never answered; it has now been
-  seen on a device. Leave as printed, or title-case. Twenty minutes either way.
-- **Sync.** The big gap. Outbox proven on device (contiguous sequence, ids
-  matching events); nothing consumes it. `sync-design.md` is stale in both
-  directions — rewrite it against the outbox contract before any transport.
-- **Firestore rules deploy.** Decision, not work. Tested, not deployed, and the
-  new rules omit locations/invites/entitlements so deploying now means twice.
+- **Meat & Fish is missing.** `ShelfLifeTable` already has six rules for it
+  (poultry 2 days, mince 2, fish 2, bacon 7, sliced meat 5, red meat 4) — the
+  shortest lives and the most expensive waste in the table — but there is no
+  category for the receipt parser to guess or the kitchen to filter by, so
+  `CHICKEN BREAST` is dated correctly and filed under **Other**
+  (`ReceiptDraft.kt`, `category ?: "Other"`). This is the one gap with a real
+  cost. Adding it is a seed change for new installs *and* a `Migration(2, 3)`
+  that inserts the row for existing ones, with a device test.
+- **"Pantry" is a category named after a place.** The project rule is that
+  category and location are different things, and the location set also has
+  `Pantry` (`loc-pantry`). A tin of tuna is category Pantry, location Fridge.
+  Rename the category — "Store Cupboard" (UK) reads naturally, "Dry Goods" is
+  the US-neutral choice — and the rename must also update the `BY_CATEGORY`
+  key in `ShelfLifeTable`, `CATEGORY_WORDS` in `ReceiptParser`, and existing
+  rows via the same migration.
+- **Beverages is the weakest of the rest**: one shelf-life rule (juice) and a
+  category fallback, but receipts and barcodes name drinks readily, so it
+  earns its chip. Fresh Produce, Dairy, Bakery, Leftovers each drive rules and
+  are the four most-wasted kinds of food. Other is required as the honest
+  fallback and correctly has no rule.
+- No usage data exists to check any of this against: no analytics event
+  carries a category, and analytics is opt-in and unlaunched.
+
+Neither category change was made — both alter stored data and need the
+owner's call. **Recommendation:** add Meat & Fish and rename Pantry in one
+`Migration(2, 3)`, before there is a synced installed base to migrate twice.
+
+**Then the big one: sync.** Outbox proven on device; nothing consumes it.
+`sync-design.md` is stale in both directions — rewrite it against the outbox
+contract before any transport. This is a session on its own.
 
 **The receipt review sheet is done and device-verified.** Details under "Where
 we are". The only receipt surface not exercised is the camera path (emulator
@@ -368,6 +396,10 @@ Loose ends found during the sweep, none of them urgent:
       kitchens/items/events only, while the target model in the upgrade pack
       also has locations, invites, entitlements and aiJobs. Deploying now means
       deploying again when sync and household land.
+
+      **Decided 12 Sep 2026: not until the transport exists.** Nothing writes
+      to Firestore before then, so a deploy now protects nothing and is done
+      twice. Deploy alongside the sync transport, with the full model covered.
 - [ ] **Play Billing.** Nothing grants an entitlement, so every paid path is
       inert by construction.
 - [ ] **Legal & compliance** — see `COMPLIANCE.md`. The listing still claims
@@ -402,11 +434,10 @@ Not bugs to fix today, but things that are true and should not be forgotten.
 - **Duplicate prevention covers import and receipts only.** Adding the same item
   twice by hand is still possible. `findDuplicate` exists on the repository and
   the add flow does not call it.
-- **Receipt item names are saved exactly as printed**, so the kitchen fills with
-  `SEMI-SKIMMED MILK`. Deliberate — silently rewriting text read off a receipt
-  is the thing this codebase avoids everywhere else, and the sheet is editable —
-  but it is the default outcome for every row rather than an edge case, so it is
-  a decision to revisit rather than a settled one.
+- ~~**Receipt item names are saved exactly as printed.**~~ Decided 12 Sep 2026:
+  a line printed entirely in capitals is title-cased on the sheet, mixed case
+  is left alone, and digit tokens are kept (`20822cf`). The parser still
+  reports text as printed.
 - **A receipt line total is divided into a per-unit price and rounded.** 1.50 for
   two tomatoes is 75p each, stamped `PriceSource.RECEIPT`. For quantities that do
   not divide evenly the per-unit price will not multiply back to the printed
