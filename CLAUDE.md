@@ -26,10 +26,11 @@
 | Sync | `data/sync/` — ProductSyncer + SyncWorker; `data/remote/firestore/` |
 | Session | `data/session/UserSession.kt` — current uid and active pantry |
 
-**DB version: 2** (`goodbefore_database`). The previous `freshtrack_database`
+**DB version: 3** (`goodbefore_database`). The previous `freshtrack_database`
 and its 1→7 migration chain were deleted during the GoodBefore model migration,
 which was only safe because there is no installed base. That freedom is spent:
-`Migration(1, 2)` (undo's reversal columns) is the pattern to follow — every
+`Migration(1, 2)` (undo's reversal columns) and `Migration(2, 3)` (a data-only
+reshape of the category set) are the patterns to follow — every
 schema change needs a real `Migration(n, n+1)` plus a device test that proves
 existing rows survive and still mean the same thing.
 `fallbackToDestructiveMigration` must never be added.
@@ -63,7 +64,7 @@ existing rows survive and still mean the same thing.
   local storage would strand data for existing users and contradict the listing.
 - **`isPremium` is server-written only.** Rules refuse any client write to it.
 - **`COLLATE NOCASE`** on `name` and `category` fields — prevents milk/Milk duplicates.
-- **Categories are food-only:** Fresh Produce, Dairy, Bakery, Beverages, Pantry, Leftovers, Other. No Medicine/Cosmetics.
+- **Categories are food-only:** Fresh Produce, Dairy & Eggs, Meat & Fish, Ready Meals, Bakery, Beverages, Store Cupboard, Leftovers, Other. No Medicine/Cosmetics. Names are stored on every item, so changing one is a migration (`MIGRATION_2_3` is the pattern), and a category is never named after a location — "Pantry" is where, "Store Cupboard" is what.
 - **`notificationEnabled` stays in `ItemEntity`** (DB field) even though the UI toggle was removed — do not drop this column.
 - **No emoji in UI strings.** Use Material icons only.
 - **English only for now, but structured for more later.** User-facing text

@@ -1,5 +1,6 @@
 package com.example.freshtrack.domain.capture
 
+import com.example.freshtrack.data.local.entities.DefaultCategories
 import com.example.freshtrack.data.local.entities.LocationType
 
 /**
@@ -74,6 +75,15 @@ object ShelfLifeTable {
         Rule("bacon", listOf("BACON"), fridge = 7, freezer = 30, otherwise = 7),
         Rule("sliced meat", listOf("HAM", "SALAMI", "DELI", "SAUSAGE"), fridge = 5, freezer = 60, otherwise = 5),
 
+        // Chilled prepared food. Short-dated whatever it is made of, which is
+        // why these sit above the meat rules: "chicken tikka" is a ready meal
+        // first and chicken second, and the longest-keyword rule below picks
+        // "chicken tikka" over "chicken".
+        Rule("ready meal", listOf("READY MEAL", "LASAGNE", "LASAGNA", "CHICKEN TIKKA", "TIKKA MASALA", "KORMA", "QUICHE", "PIZZA"), fridge = 3, freezer = 90, otherwise = 3),
+        Rule("dip", listOf("HUMMUS", "HOUMOUS", "TZATZIKI", "GUACAMOLE", "COLESLAW"), fridge = 4, otherwise = 4),
+        Rule("sandwich", listOf("SANDWICH", "SUSHI"), fridge = 1, otherwise = 1),
+        Rule("fresh pasta", listOf("TORTELLINI", "RAVIOLI", "GNOCCHI", "FRESH PASTA"), fridge = 4, freezer = 90, otherwise = 4),
+
         // Bakery
         Rule("bread", listOf("BREAD", "LOAF", "BAGUETTE", "ROLL", "BUN", "BAGEL"), pantry = 5, counter = 5, fridge = 14, freezer = 90, otherwise = 5),
         Rule("cake", listOf("CAKE", "MUFFIN", "PASTRY", "CROISSANT"), pantry = 3, fridge = 7, otherwise = 3),
@@ -111,12 +121,16 @@ object ShelfLifeTable {
      * category-level number is barely better than a shrug.
      */
     private val BY_CATEGORY = mapOf(
-        "Dairy" to Rule("Dairy", emptyList(), fridge = 10, otherwise = 7),
-        "Bakery" to Rule("Bakery", emptyList(), pantry = 5, counter = 5, fridge = 14, freezer = 90, otherwise = 5),
-        "Fresh Produce" to Rule("Fresh Produce", emptyList(), fridge = 7, counter = 5, pantry = 14, otherwise = 5),
-        "Beverages" to Rule("Beverages", emptyList(), fridge = 7, pantry = 180, otherwise = 7),
-        "Pantry" to Rule("Pantry", emptyList(), pantry = 365, fridge = 90, otherwise = 180),
-        "Leftovers" to Rule("Leftovers", emptyList(), fridge = 4, freezer = 90, otherwise = 4)
+        DefaultCategories.DAIRY.name to Rule("Dairy & Eggs", emptyList(), fridge = 10, otherwise = 7),
+        // Poultry and fish keep two days, red meat four: three is the honest
+        // middle for a cut the table could not name.
+        DefaultCategories.MEAT_FISH.name to Rule("Meat & Fish", emptyList(), fridge = 3, freezer = 180, otherwise = 3),
+        DefaultCategories.READY_MEALS.name to Rule("Ready Meals", emptyList(), fridge = 3, freezer = 90, otherwise = 3),
+        DefaultCategories.BAKERY.name to Rule("Bakery", emptyList(), pantry = 5, counter = 5, fridge = 14, freezer = 90, otherwise = 5),
+        DefaultCategories.FRESH_PRODUCE.name to Rule("Fresh Produce", emptyList(), fridge = 7, counter = 5, pantry = 14, otherwise = 5),
+        DefaultCategories.BEVERAGES.name to Rule("Beverages", emptyList(), fridge = 7, pantry = 180, otherwise = 7),
+        DefaultCategories.STORE_CUPBOARD.name to Rule("Store Cupboard", emptyList(), pantry = 365, fridge = 90, otherwise = 180),
+        DefaultCategories.LEFTOVERS.name to Rule("Leftovers", emptyList(), fridge = 4, freezer = 90, otherwise = 4)
         // "Other" is deliberately absent. A category that means "we do not know
         // what this is" cannot support a guess about how long it keeps.
     )

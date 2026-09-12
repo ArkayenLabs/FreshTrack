@@ -314,11 +314,17 @@ fun EnhancedCategoryChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    // The real category set. This previously mapped Food/Cosmetics/Medicines,
+    // which the product does not have, so every chip but Beverages fell through.
     val icon = when (category) {
-        "Food" -> Icons.Outlined.Restaurant
-        "Cosmetics" -> Icons.Outlined.Face
-        "Medicines" -> Icons.Outlined.MedicalServices
+        "Fresh Produce" -> Icons.Outlined.Eco
+        "Dairy & Eggs" -> Icons.Outlined.WaterDrop
+        "Meat & Fish" -> Icons.Outlined.SetMeal
+        "Ready Meals" -> Icons.Outlined.LunchDining
+        "Bakery" -> Icons.Outlined.BakeryDining
         "Beverages" -> Icons.Outlined.LocalCafe
+        "Store Cupboard" -> Icons.Outlined.Kitchen
+        "Leftovers" -> Icons.Outlined.TakeoutDining
         else -> Icons.Outlined.Category
     }
 

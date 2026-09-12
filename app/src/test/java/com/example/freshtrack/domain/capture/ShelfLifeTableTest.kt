@@ -57,6 +57,28 @@ class ShelfLifeTableTest {
     }
 
     @Test
+    fun `a ready meal is short-dated whatever it is made of`() {
+        // "Chicken" alone keeps two days raw; a chilled tikka masala is a
+        // ready meal first, and the longer keyword has to win.
+        val tikka = ShelfLifeTable.estimate("Chicken Tikka Masala", storage = LocationType.FRIDGE)!!
+
+        assertEquals(3, tikka.days)
+        assertTrue(tikka.basis.startsWith("ready meal"))
+    }
+
+    @Test
+    fun `an unnamed cut of meat falls back to its category`() {
+        val cut = ShelfLifeTable.estimate(
+            name = "Zorbani cutlets",
+            category = "Meat & Fish",
+            storage = LocationType.FRIDGE
+        )!!
+
+        assertEquals(3, cut.days)
+        assertEquals("Meat & Fish kept in a fridge", cut.basis)
+    }
+
+    @Test
     fun `no name and no useful category means no guess`() {
         // Refusing is the honest answer. A number here would look, on screen,
         // exactly like one that came from somewhere.
@@ -75,8 +97,8 @@ class ShelfLifeTableTest {
 
     @Test
     fun `a category guess is trusted less than a named one`() {
-        val named = ShelfLifeTable.estimate("Milk", category = "Dairy", storage = LocationType.FRIDGE)!!
-        val category = ShelfLifeTable.estimate("Zorbani", category = "Dairy", storage = LocationType.FRIDGE)!!
+        val named = ShelfLifeTable.estimate("Milk", category = "Dairy & Eggs", storage = LocationType.FRIDGE)!!
+        val category = ShelfLifeTable.estimate("Zorbani", category = "Dairy & Eggs", storage = LocationType.FRIDGE)!!
 
         assertTrue(category.confidence < named.confidence)
     }
@@ -90,7 +112,7 @@ class ShelfLifeTableTest {
         val samples = listOf(
             ShelfLifeTable.estimate("Milk", storage = LocationType.FRIDGE),
             ShelfLifeTable.estimate("Bread", storage = LocationType.FREEZER),
-            ShelfLifeTable.estimate("Zorbani", category = "Pantry")
+            ShelfLifeTable.estimate("Zorbani", category = "Store Cupboard")
         )
 
         samples.forEach { estimate ->

@@ -278,12 +278,27 @@ and one misnamed:
 - No usage data exists to check any of this against: no analytics event
   carries a category, and analytics is opt-in and unlaunched.
 
-Neither category change was made — both alter stored data and need the
-owner's call. **Recommendation, nine categories:** Fresh Produce · Dairy & Eggs ·
-Meat & Fish · Ready Meals · Bakery · Beverages · Store Cupboard · Leftovers ·
-Other — two additions (the two aisles with short use-by dates) and two
-renames, in one `Migration(2, 3)` before there is a synced installed base to
-migrate twice. If nine is one too many, drop Ready Meals, not Meat & Fish.
+**Done, 12 Sep 2026.** Room is at **version 3**. `MIGRATION_2_3` renames
+Dairy → Dairy & Eggs and Pantry → Store Cupboard on both the category row and
+every item that named it, inserts Meat & Fish and Ready Meals, and rewrites
+sort order so an old install shows the new order. Values are literals in the
+migration, not read from `DefaultCategories`, so a later change to the
+defaults cannot change what 2→3 does. `ShelfLifeTable` and `ReceiptParser`
+key on `DefaultCategories.X.name` so a rename cannot drift past the compiler;
+both gained chilled-aisle rules and keywords (a ready meal wins over its meat
+by keyword length; `HAM`/`COD` were left out because three letters catches
+champagne). The four UI icon maps carry the nine, and the two that still
+named Food/Cosmetics/Medicines now name the real set.
+
+Verified: 216 unit tests, lint 0 errors / 124 warnings, **19/19 connected on
+Pixel_35** including three new migration tests — 2→3 re-points items and
+removes the old names, 2→3 yields the nine in order, and 1→3 runs the whole
+chain. Schema `3.json` differs from `2.json` only by version, as a data-only
+migration should. The add screen was opened on the device: the nine render
+as an exact 3×3 grid, both new icons resolve, and the two-word names wrap the
+way "Fresh Produce" already did. Not verified on screen: the kitchen card
+colour and the filter row with a Meat & Fish or Ready Meals item — adding one
+needs a date, and the picker was not driven.
 
 **Then the big one: sync.** Outbox proven on device; nothing consumes it.
 `sync-design.md` is stale in both directions — rewrite it against the outbox
@@ -376,9 +391,9 @@ Loose ends found during the sweep, none of them urgent:
 
 - `AdvanceNoticeDaysDialog` and `describeLastSync` in `SettingsScreen` are
   unreachable. The first is the notification settings dialog that was removed.
-- `EnhancedCategoryChip` in `ProductListScreen` and the icon mapping in
-  `ProductDetailsScreen` still name Food, Cosmetics and Medicines — categories
-  the product does not have. Inert, but wrong.
+- ~~`EnhancedCategoryChip` in `ProductListScreen` and the icon mapping in
+  `ProductDetailsScreen` still name Food, Cosmetics and Medicines.~~ Fixed
+  with the category reshape, 12 Sep 2026.
 - `assembleRelease` builds a four-ABI universal APK that Play does not ship.
   `bundleRelease` is the artefact that matches distribution and is not gated.
 

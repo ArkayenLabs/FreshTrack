@@ -510,12 +510,23 @@ fun InfoRow(
 
 @Composable
 fun CategoryChipCompact(category: String) {
-    val (icon, color) = when (category) {
-        "Food" -> Icons.Outlined.Restaurant to MaterialTheme.colorScheme.primary
-        "Cosmetics" -> Icons.Outlined.Face to MaterialTheme.colorScheme.secondary
-        "Medicines" -> Icons.Outlined.MedicalServices to MaterialTheme.colorScheme.error
-        "Beverages" -> Icons.Outlined.LocalCafe to MaterialTheme.colorScheme.tertiary
-        else -> Icons.Outlined.Category to MaterialTheme.colorScheme.onSurfaceVariant
+    // The real category set. This previously mapped Food/Cosmetics/Medicines,
+    // which the product does not have, so every chip but Beverages fell through.
+    val icon = when (category) {
+        "Fresh Produce" -> Icons.Outlined.Eco
+        "Dairy & Eggs" -> Icons.Outlined.WaterDrop
+        "Meat & Fish" -> Icons.Outlined.SetMeal
+        "Ready Meals" -> Icons.Outlined.LunchDining
+        "Bakery" -> Icons.Outlined.BakeryDining
+        "Beverages" -> Icons.Outlined.LocalCafe
+        "Store Cupboard" -> Icons.Outlined.Kitchen
+        "Leftovers" -> Icons.Outlined.TakeoutDining
+        else -> Icons.Outlined.Category
+    }
+    val color = if (icon == Icons.Outlined.Category) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.tertiary
     }
 
     Surface(

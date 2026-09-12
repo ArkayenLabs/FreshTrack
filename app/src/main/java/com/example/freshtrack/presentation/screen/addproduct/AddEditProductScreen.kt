@@ -393,10 +393,12 @@ fun CategoryChip(
     // they all showed the same icon.
     val icon = when (category.name) {
         "Fresh Produce" -> Icons.Outlined.Eco
-        "Dairy" -> Icons.Outlined.WaterDrop
+        "Dairy & Eggs" -> Icons.Outlined.WaterDrop
+        "Meat & Fish" -> Icons.Outlined.SetMeal
+        "Ready Meals" -> Icons.Outlined.LunchDining
         "Bakery" -> Icons.Outlined.BakeryDining
         "Beverages" -> Icons.Outlined.LocalCafe
-        "Pantry" -> Icons.Outlined.Kitchen
+        "Store Cupboard" -> Icons.Outlined.Kitchen
         "Leftovers" -> Icons.Outlined.TakeoutDining
         else -> Icons.Outlined.Category
     }

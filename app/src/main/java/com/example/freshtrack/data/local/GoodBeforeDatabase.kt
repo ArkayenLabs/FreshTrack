@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
         ItemEventEntity::class,
         OutboxEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -85,10 +85,50 @@ abstract class GoodBeforeDatabase : RoomDatabase() {
         }
 
         /**
+         * Reshapes the category set: two renames and two additions.
+         *
+         * No DDL. Category names are stored on every item as plain text with
+         * no foreign key, so a rename is two UPDATEs — the category row and
+         * the items that name it — and must be both, or the kitchen filter
+         * loses every item that used the old name. The two new rows are
+         * inserted with OR IGNORE so a database that somehow already has them
+         * migrates cleanly rather than failing on the primary key. Sort order
+         * is rewritten for every default so the picker shows the new order on
+         * an old install, not just a fresh one.
+         *
+         * Values are spelled out rather than read from [DefaultCategories] on
+         * purpose: a migration describes the past and must not change when the
+         * defaults do.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE categories SET name = 'Dairy & Eggs' WHERE name = 'Dairy'")
+                db.execSQL("UPDATE items SET category = 'Dairy & Eggs' WHERE category = 'Dairy'")
+                db.execSQL("UPDATE categories SET name = 'Store Cupboard' WHERE name = 'Pantry'")
+                db.execSQL("UPDATE items SET category = 'Store Cupboard' WHERE category = 'Pantry'")
+                db.execSQL(
+                    "INSERT OR IGNORE INTO categories (name, colorHex, icon, sortOrder) " +
+                        "VALUES ('Meat & Fish', '#E53935', 'set_meal', 2)"
+                )
+                db.execSQL(
+                    "INSERT OR IGNORE INTO categories (name, colorHex, icon, sortOrder) " +
+                        "VALUES ('Ready Meals', '#8E24AA', 'lunch_dining', 3)"
+                )
+                listOf(
+                    "Fresh Produce" to 0, "Dairy & Eggs" to 1, "Meat & Fish" to 2,
+                    "Ready Meals" to 3, "Bakery" to 4, "Beverages" to 5,
+                    "Store Cupboard" to 6, "Leftovers" to 7, "Other" to 8
+                ).forEach { (name, order) ->
+                    db.execSQL("UPDATE categories SET sortOrder = $order WHERE name = '$name'")
+                }
+            }
+        }
+
+        /**
          * Every migration, in one place, so the app and the migration test can
          * never disagree about which migrations exist.
          */
-        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2)
+        val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 
         @Volatile
         private var INSTANCE: GoodBeforeDatabase? = null

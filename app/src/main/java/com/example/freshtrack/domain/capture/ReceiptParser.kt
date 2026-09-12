@@ -1,5 +1,7 @@
 package com.example.freshtrack.domain.capture
 
+import com.example.freshtrack.data.local.entities.DefaultCategories
+
 /**
  * One line of a receipt that looks like food someone bought.
  *
@@ -123,26 +125,40 @@ object ReceiptParser {
      * row with one, only as needing a moment more attention.
      */
     private val CATEGORY_WORDS = listOf(
-        "Dairy" to listOf(
+        // First match wins, so the chilled aisle goes first: "chicken salad
+        // sandwich" is a sandwich before it is chicken or salad.
+        DefaultCategories.READY_MEALS.name to listOf(
+            "READY MEAL", "LASAGNE", "LASAGNA", "TIKKA", "KORMA", "MASALA",
+            "QUICHE", "PIZZA", "HUMMUS", "HOUMOUS", "TZATZIKI", "GUACAMOLE",
+            "COLESLAW", "SANDWICH", "SUSHI", "TORTELLINI", "RAVIOLI", "GNOCCHI"
+        ),
+        DefaultCategories.DAIRY.name to listOf(
             "MILK", "CHEESE", "CHEDDAR", "BRIE", "BUTTER", "YOGHURT", "YOGURT",
             "CREAM", "EGG", "EGGS"
         ),
-        "Bakery" to listOf(
+        // No "HAM" or "COD": three letters is too few for a substring match
+        // on a till line, and champagne is not a meat.
+        DefaultCategories.MEAT_FISH.name to listOf(
+            "CHICKEN", "TURKEY", "BEEF", "PORK", "LAMB", "STEAK", "MINCE",
+            "SAUSAGE", "BACON", "SALAMI", "SALMON", "TUNA", "HADDOCK",
+            "PRAWN", "SHRIMP", "FISH"
+        ),
+        DefaultCategories.BAKERY.name to listOf(
             "BREAD", "LOAF", "BAGUETTE", "BUN", "ROLL", "BAGEL", "CROISSANT",
             "CAKE", "MUFFIN", "SCONE", "PASTRY", "BISCUIT", "COOKIE"
         ),
-        "Beverages" to listOf(
+        DefaultCategories.BEVERAGES.name to listOf(
             "JUICE", "WATER", "COLA", "SODA", "LEMONADE", "SQUASH", "TEA",
             "COFFEE", "BEER", "WINE", "CIDER", "DRINK"
         ),
-        "Fresh Produce" to listOf(
+        DefaultCategories.FRESH_PRODUCE.name to listOf(
             "TOMATO", "ONION", "POTATO", "APPLE", "BANANA", "SPINACH", "KALE",
             "CARROT", "CUCUMBER", "LEMON", "LIME", "ORANGE", "GRAPE", "BERRY",
             "BERRIES", "STRAWBERR", "LETTUCE", "SALAD", "BROCCOLI", "PEPPER",
             "COURGETTE", "ZUCCHINI", "AUBERGINE", "EGGPLANT", "PARSNIP",
             "CELERY", "MUSHROOM", "AVOCADO", "CORIANDER", "CILANTRO"
         ),
-        "Pantry" to listOf(
+        DefaultCategories.STORE_CUPBOARD.name to listOf(
             "RICE", "PASTA", "NOODLE", "FLOUR", "SUGAR", "SALT", "OIL",
             "CEREAL", "OATS", "GRANOLA", "HONEY", "LENTIL", "BEANS", "TINNED",
             "CANNED"

@@ -392,10 +392,12 @@ fun StatCard(
 private fun getCategoryColor(category: String): Color {
     return when (category.lowercase()) {
         "fresh produce" -> Color(0xFF4CAF50)
-        "dairy" -> Color(0xFF2196F3)
+        "dairy & eggs" -> Color(0xFF2196F3)
+        "meat & fish" -> Color(0xFFE53935)
+        "ready meals" -> Color(0xFF8E24AA)
         "bakery" -> Color(0xFFFF9800)
         "beverages" -> Color(0xFF00BCD4)
-        "pantry" -> Color(0xFF795548)
+        "store cupboard" -> Color(0xFF795548)
         "leftovers" -> Color(0xFFFF5722)
         else -> CategoryOther
     }
@@ -404,10 +406,12 @@ private fun getCategoryColor(category: String): Color {
 private fun getCategoryIcon(category: String): ImageVector {
     return when (category.lowercase()) {
         "fresh produce" -> Icons.Default.Eco
-        "dairy" -> Icons.Default.WaterDrop
+        "dairy & eggs" -> Icons.Default.WaterDrop
+        "meat & fish" -> Icons.Default.SetMeal
+        "ready meals" -> Icons.Default.LunchDining
         "bakery" -> Icons.Default.BakeryDining
         "beverages" -> Icons.Default.LocalCafe
-        "pantry" -> Icons.Default.Kitchen
+        "store cupboard" -> Icons.Default.Kitchen
         "leftovers" -> Icons.Default.TakeoutDining
         else -> Icons.Default.Category
     }

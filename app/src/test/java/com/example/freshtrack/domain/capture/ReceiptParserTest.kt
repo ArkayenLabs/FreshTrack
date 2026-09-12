@@ -60,10 +60,26 @@ class ReceiptParserTest {
     fun `guesses a category where the name gives one away`() {
         val items = ReceiptParser.parse(receipt).items.associateBy { it.name }
 
-        assertEquals("Dairy", items["SEMI-SKIMMED MILK 2L"]?.categoryGuess)
+        assertEquals("Dairy & Eggs", items["SEMI-SKIMMED MILK 2L"]?.categoryGuess)
         assertEquals("Bakery", items["SOURDOUGH LOAF"]?.categoryGuess)
         assertEquals("Fresh Produce", items["TOMATOES"]?.categoryGuess)
-        assertEquals("Pantry", items["BASMATI RICE 1KG"]?.categoryGuess)
+        assertEquals("Store Cupboard", items["BASMATI RICE 1KG"]?.categoryGuess)
+    }
+
+    @Test
+    fun `the chilled aisles are guessed, and a ready meal wins over its meat`() {
+        val chilled = """
+            CHICKEN BREAST 500G       3.20
+            CHICKEN TIKKA MASALA      3.50
+            HOUMOUS 200G              1.00
+            SMOKED SALMON             2.75
+        """.trimIndent()
+        val items = ReceiptParser.parse(chilled).items.associateBy { it.name }
+
+        assertEquals("Meat & Fish", items["CHICKEN BREAST 500G"]?.categoryGuess)
+        assertEquals("Ready Meals", items["CHICKEN TIKKA MASALA"]?.categoryGuess)
+        assertEquals("Ready Meals", items["HOUMOUS 200G"]?.categoryGuess)
+        assertEquals("Meat & Fish", items["SMOKED SALMON"]?.categoryGuess)
     }
 
     @Test
