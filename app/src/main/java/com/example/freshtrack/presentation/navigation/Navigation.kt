@@ -66,6 +66,7 @@ sealed class Screen(val route: String) {
     }
     object History : Screen("history")
     object Impact : Screen("impact")
+    object Premium : Screen("premium")
 
     /**
      * Capture and review are one destination, not two.
@@ -365,6 +366,7 @@ fun FreshTrackNavGraph(
                 onNavigateBack = { navController.navigateUp() },
                 onNavigateToLicenses = { navController.navigate(Screen.OpenSourceLicenses.route) },
                 onNavigateToHistory = { navController.navigate(Screen.History.route) },
+                onNavigateToPremium = { navController.navigate(Screen.Premium.route) },
                 onSignOut = {
                     // Clear guest mode flag so they land on Login, not Today
                     onboardingPreferences.setGuestMode(false)
@@ -372,6 +374,14 @@ fun FreshTrackNavGraph(
                         popUpTo(Screen.Today.route) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // ─── Premium ──────────────────────────────────────────────────────────────
+        composable(Screen.Premium.route) {
+            com.example.freshtrack.presentation.screen.premium.PremiumScreen(
+                onNavigateBack = { navController.navigateUp() },
+                onNavigateToLogin = { navController.navigate(Screen.Login.route) }
             )
         }
 

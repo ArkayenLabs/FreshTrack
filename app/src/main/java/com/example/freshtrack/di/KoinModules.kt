@@ -54,6 +54,26 @@ val repositoryModule = module {
     single<com.example.freshtrack.data.sync.SyncState> {
         get<com.example.freshtrack.data.preferences.SyncPreferences>()
     }
+
+    // Play Billing. One BillingClient for the process; the entitlement it
+    // produces is verified by the Cloud Function in asia-south1, never here.
+    single<com.example.freshtrack.data.billing.PlayBilling> {
+        com.example.freshtrack.data.billing.PlayBillingClient(androidContext())
+    }
+    single { com.google.firebase.functions.FirebaseFunctions.getInstance("asia-south1") }
+    single<com.example.freshtrack.data.billing.EntitlementRemote> {
+        com.example.freshtrack.data.billing.FirebaseEntitlementRemote(functions = get(), firestore = get())
+    }
+    single {
+        com.example.freshtrack.data.billing.PremiumClaim(
+            billing = get(),
+            remote = get(),
+            session = get(),
+            // The backup was waiting on exactly this; start it now rather
+            // than at the next background moment.
+            onEntitled = { com.example.freshtrack.data.sync.SyncWorker.syncNow(androidContext()) }
+        )
+    }
     single {
         com.example.freshtrack.data.sync.OutboxPusher(
             outboxDao = get(),
@@ -226,6 +246,15 @@ val viewModelModule = module {
 
     viewModel<HistoryViewModel> {
         HistoryViewModel(itemRepository = get())
+    }
+
+    viewModel<com.example.freshtrack.presentation.viewmodel.PremiumViewModel> {
+        com.example.freshtrack.presentation.viewmodel.PremiumViewModel(
+            billing = get(),
+            remote = get(),
+            claim = get(),
+            session = get()
+        )
     }
 
     // Auth ViewModel

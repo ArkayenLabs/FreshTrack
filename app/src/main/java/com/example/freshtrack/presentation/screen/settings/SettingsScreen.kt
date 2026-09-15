@@ -45,6 +45,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToLicenses: () -> Unit,
     onNavigateToHistory: () -> Unit = {},
+    onNavigateToPremium: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel(),
     authViewModel: AuthViewModel = koinViewModel()
@@ -98,6 +99,8 @@ fun SettingsScreen(
     val lastRun = remember(syncWork) { syncState.lastRun() }
     val lastSuccessAt = remember(syncWork) { syncState.lastSuccessAt() }
     val isSignedIn = FirebaseAuth.getInstance().currentUser != null
+    val needsPremium = !isSignedIn ||
+        lastRun == com.example.freshtrack.data.sync.SyncRun.Result.NOT_ENTITLED
 
     // OpenDocument rather than GetContent: it returns a persistable URI and lets
     // the user pick from any provider, including Drive.
@@ -345,8 +348,12 @@ fun SettingsScreen(
                         pending = pendingChanges,
                         stuck = stuckChanges
                     ),
-                    enabled = isSignedIn,
-                    onClick = { com.example.freshtrack.data.sync.SyncWorker.syncNow(context) }
+                    // Without premium the card is the way to it; with it, a tap
+                    // backs up now.
+                    onClick = {
+                        if (needsPremium) onNavigateToPremium()
+                        else com.example.freshtrack.data.sync.SyncWorker.syncNow(context)
+                    }
                 )
             }
 
@@ -965,9 +972,11 @@ private fun describeSync(
     stuck: Int
 ): String {
     val status = when {
-        !isSignedIn -> stringResource(R.string.settings_sync_signed_out)
+        !isSignedIn -> stringResource(R.string.settings_sync_signed_out) +
+            " " + stringResource(R.string.settings_sync_see_plans)
         lastRun == com.example.freshtrack.data.sync.SyncRun.Result.NOT_ENTITLED ->
-            stringResource(R.string.settings_sync_needs_premium)
+            stringResource(R.string.settings_sync_needs_premium) +
+                " " + stringResource(R.string.settings_sync_see_plans)
         lastRun == com.example.freshtrack.data.sync.SyncRun.Result.DEFERRED && lastSuccessAt <= 0L ->
             stringResource(R.string.settings_sync_unreachable)
         lastSuccessAt <= 0L -> stringResource(R.string.settings_sync_never)

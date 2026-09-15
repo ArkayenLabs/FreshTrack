@@ -369,6 +369,13 @@ ever syncing) it is created in the shape `ensureKitchenExists` would have
 used, because a bare `{isPremium}` document would pass that method's existence
 check and leave a kitchen with no members.
 
+On the client, `data/billing/PremiumClaim` is the only caller of
+`verifyPurchase`: after the purchase sheet, on every resume for a purchase
+Play still holds unacknowledged, and from "Restore purchase". The app never
+acknowledges a purchase itself, so one the server never verified is refunded
+by Play rather than kept. `PremiumScreen` reads `entitlements/{uid}` to say
+"renews on" or "ends on".
+
 Tests: `npm run test:functions` — 26 on the Firestore emulator with Play
 faked; each guard above was broken once and failed exactly its own test.
 The engine is still tested with `isPremium` set by the test, which stays

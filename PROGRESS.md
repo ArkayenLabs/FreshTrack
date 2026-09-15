@@ -220,9 +220,11 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
-**State on 15 Sep 2026.** Android gates untouched since `f63d2cc`: 272 unit
-tests, lint 0 errors / 127 warnings, 21 connected (2 e2e skipped without the
-emulators; 2/2 pass with `npm run test:sync-e2e:win`). Rules: 61 (`npm run
+**State on 15 Sep 2026.** 281 unit tests, lint 0 errors / 128 warnings
+(the new one is `GradleDependency` noting Billing Library 9.1.0 exists; 8.3.0
+is deliberate, see below), 21 connected — **not re-run since the billing
+client**; no androidTest references the two sync strings that changed, checked
+by grep, not by running. Rules: 61 (`npm run
 test:rules`). Functions: 26 (`npm run test:functions`). Rules deployed to
 `freshtrack-3c379` on 12 Sep and again on 15 Sep with the `entitlements`
 rule; functions deployed 15 Sep. Graph current (`graphify update .`).
@@ -276,13 +278,43 @@ notification" (it should appear in the function log); invite
 permissions with *View financial data* and *Manage orders and
 subscriptions*; add a license tester.
 
+**Done 15 Sep 2026, later: the Play Billing client.** `data/billing/`:
+`PlayBilling` (interface) and `PlayBillingClient` (Billing Library 8.3.0 —
+Play's floor for updates from 31 Aug 2026 is v8; 9.x exists and its API is
+not verified here), `EntitlementRemote` (the `verifyPurchase` callable in
+`asia-south1` plus a read of `entitlements/{uid}`), and `PremiumClaim`, which
+is the only path from a purchase to the server: `claim` after the sheet,
+`claimUnacknowledged` on every `MainActivity.onResume` (one local Play query;
+network only for a purchase the app died before verifying), `restore` from the
+button. When the server says premium, `SyncWorker.syncNow` fires. Nothing
+acknowledges a purchase on the client — the function does, after verifying.
+`PremiumScreen` (route `premium`): one paid feature described as what it is,
+Play's own prices, yearly preselected, "Renews automatically until cancelled"
+under the button. Guests are sent to Login. The Settings backup card now opens
+it when signed out or `NOT_ENTITLED`, and backs up now otherwise.
+
+Verified: 9 JVM tests on `PremiumClaim` with Play and the server faked;
+removing the unacknowledged filter failed exactly the two tests on it. On
+Pixel_35 (debug build): app starts with the resume hook in place, Settings
+card reads "Tap to see plans." and opens Premium, the guest branch renders,
+and Play's `BILLING_UNAVAILABLE` (no Play account, app not on a track) lands
+as the snackbar and nothing else. **Not verified:** the signed-in branch on a
+device, the purchase sheet, `verifyPurchase` from the app, restore — all need
+the app on the internal testing track with a license tester, which needs the
+Play Console steps above. The Billing Library logs a caught
+`IllegalArgumentException: Service not registered` from its own
+auto-reconnect when Play is absent; library noise, not ours.
+
+Known and left: after Login the stack is `… Premium, Today` (Login pops itself
+and pushes Today), so the person is not returned to Premium after signing in.
+Same as the Settings → Login path today.
+
 **Next, in order of value:**
 
-1. **Play Billing client**:
-   Billing Library 7, `BILLING` permission, `queryProductDetails` →
-   `launchBillingFlow` → `verifyPurchase` → re-read the kitchen; and
-   `queryPurchasesAsync` on start so a reinstall re-binds. Then an internal
-   testing track build and a license-tester purchase, end to end.
+1. **Prove the purchase end to end.** Play Console steps above, then a
+   `bundleRelease` to the internal testing track, a license-tester purchase,
+   and the function log showing `verifyPurchase` bind and an RTDN
+   `SUBSCRIPTION_PURCHASED` refresh. Then run the connected suite.
 2. **Design, third layer** — receipt review and scanner not yet looked at;
    launcher icon and login logo still the old blue-green mark (asset work).
 3. Everything else is the numbered list the owner has: locations sync,
@@ -424,8 +456,9 @@ Loose ends found during the sweep, none of them urgent:
       to Firestore before then, so a deploy now protects nothing and is done
       twice. Deploy alongside the sync transport, with the full model covered.
 - [ ] **Play Billing.** Server side built, tested and deployed 15 Sep 2026
-      (`functions/`). Play Console configuration and the client side not
-      started. See "Pick up here".
+      (`functions/`); client built the same day (`data/billing/`,
+      `PremiumScreen`). Not yet proven against real Play — needs the Play
+      Console configuration and a testing-track build. See "Pick up here".
 - [ ] **Legal & compliance** — see `COMPLIANCE.md`. The listing still claims
       "no data collection" while consented analytics exists, and the legal
       templates still carry placeholder dates.

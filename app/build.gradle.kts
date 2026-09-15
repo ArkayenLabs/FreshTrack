@@ -176,6 +176,10 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.functions)
+
+    // Play Billing. The library merges com.android.vending.BILLING into the manifest.
+    implementation(libs.billing)
     implementation(libs.play.services.auth)
 
     // Network - Retrofit & OkHttp

@@ -118,6 +118,17 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         inAppUpdateManager?.checkForStalledUpdate()
+        // A purchase the app did not get to verify — it died between Play's
+        // sheet closing and the call going up — is still unacknowledged at
+        // Play and would be refunded in three days. Present it now. Signed
+        // out, or with nothing pending, this is at most one local Play query.
+        lifecycleScope.launch {
+            org.koin.java.KoinJavaComponent
+                .get<com.example.freshtrack.data.billing.PremiumClaim>(
+                    com.example.freshtrack.data.billing.PremiumClaim::class.java
+                )
+                .claimUnacknowledged()
+        }
     }
 
     override fun onDestroy() {

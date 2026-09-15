@@ -26,6 +26,7 @@
 | Sync | `data/sync/` — `OutboxPusher`, `RemoteChangeApplier`, `SyncRun`, `SyncWorker`, `WireFormat`; `data/remote/firestore/FirestoreRemoteStore`. Inert until `isPremium` is set — see `sync-design.md` |
 | Session | `data/session/UserSession.kt` — current uid and active pantry |
 | Billing (server) | `functions/` — Cloud Functions, the only writer of `isPremium`: `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`. Tests: `npm run test:functions` |
+| Billing (client) | `data/billing/` — `PlayBillingClient` (Billing Library 8), `EntitlementRemote`, `PremiumClaim`; `presentation/screen/premium/PremiumScreen.kt`. The client never acknowledges a purchase or decides it is premium |
 
 **DB version: 3** (`goodbefore_database`). The previous `freshtrack_database`
 and its 1→7 migration chain were deleted during the GoodBefore model migration,
@@ -124,7 +125,7 @@ emulators, rules deployed — and inert in production because nothing sets
 Free tier: full local inventory, barcode scan, notifications, CSV export, guest mode.
 (Receipt scanning is *planned*, not built — there is no ML Kit text-recognition
 dependency in the project. Do not describe it as shipped.)
-Premium (planned): Backup/Sync, AI recipes, family sharing, storage zones, extended history.
+Premium: Backup/Sync (built; Play product `premium`, base plans `monthly`/`annual`). Planned: AI recipes, family sharing, storage zones, extended history.
 USD base: $3.99/mo · $14.99/yr. Localised prices per market when Play Billing lands; no India-specific target while it is not a launch market.
 
 ---
