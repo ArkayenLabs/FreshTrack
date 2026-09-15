@@ -1,5 +1,12 @@
 {
   "projects": {
     "default": "freshtrack-3c379"
-  }
+  },
+  "targets": {},
+  "etags": {
+    "freshtrack-3c379": {
+      "extensionInstances": {}
+    }
+  },
+  "dataconnectEmulatorConfig": {}
 }

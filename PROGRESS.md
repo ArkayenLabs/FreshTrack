@@ -224,8 +224,8 @@ APK (only the debug build has been installed).
 tests, lint 0 errors / 127 warnings, 21 connected (2 e2e skipped without the
 emulators; 2/2 pass with `npm run test:sync-e2e:win`). Rules: 61 (`npm run
 test:rules`). Functions: 26 (`npm run test:functions`). Rules deployed to
-`freshtrack-3c379` on 12 Sep; the `entitlements` rule and the functions are
-**not deployed** — see below. Graph current (`graphify update .`).
+`freshtrack-3c379` on 12 Sep and again on 15 Sep with the `entitlements`
+rule; functions deployed 15 Sep. Graph current (`graphify update .`).
 
 **Use the graph first.** `graphify query "<question>"`, `graphify path`,
 `graphify explain` — do not read the source tree to find things.
@@ -238,7 +238,7 @@ design pass in two layers (Plus Jakarta Sans, one type scale, three radii,
 motion, flat tinted cards, urgency pills, tiles). Details are in the
 sections below and in the git log.
 
-**Done 15 Sep 2026: the Play Billing server side is built and tested, not
+**Done 15 Sep 2026: the Play Billing server side is built, tested and
 deployed.** `functions/` holds three 2nd-gen Cloud Functions in `asia-south1`
 — `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements` — the only
 writer of `kitchens/{id}.isPremium`, with the receipt in `entitlements/{uid}`
@@ -247,24 +247,38 @@ writer of `kitchens/{id}.isPremium`, with the receipt in `entitlements/{uid}`
 Firestore emulator with Play faked, 7 new rules tests; the token-ownership
 guard, the CANCELED-until-expiry rule and the entitlements read rule were each
 broken once and failed exactly their own test; all three functions load in the
-Functions emulator in `asia-south1`. Not verified: anything against real Play —
-that needs the deploy.
+Functions emulator in `asia-south1`.
 
-**Blocked on the owner: `freshtrack-3c379` is on Spark.** 2nd-gen functions
-and the outbound Play API call both need Blaze. Once upgraded, the deploy
-sequence is: enable `androidpublisher.googleapis.com`; `firebase deploy
---only functions,firestore:rules` (creates the `play-billing` topic); grant
-`google-play-developer-notifications@system.gserviceaccount.com` the
-Pub/Sub Publisher role on that topic; in Play Console set the RTDN topic to
-`projects/freshtrack-3c379/topics/play-billing` and invite
+**Deployed 15 Sep 2026** after the project moved to Blaze (billing account
+"Firebase Payment", shared with another app; usage is metered per project).
+Verified live: all three functions `ACTIVE` in `asia-south1`
+(`gcloud functions list --v2`); the live ruleset read back from the Rules API
+(published 17:34:59Z) contains `match /entitlements`; `verifyPurchase`
+answers 401 to an unauthenticated POST; the `play-billing` topic exists with
+`google-play-developer-notifications@system.gserviceaccount.com` as
+publisher; a test notification and a foreign-package notification published
+by hand reached `onPlayNotification` within 3 s and were logged as
+"received" and "ignored" respectively; the daily scheduler job is `ENABLED`.
+Deploys must be run by the owner from a terminal — the auto-mode classifier
+refuses `firebase deploy` and billing links. PowerShell needs the target
+list quoted: `--only "functions,firestore:rules"`. First deploy also needed
+`FUNCTIONS_DISCOVERY_TIMEOUT=120` (the 10 s default was too short for a
+cold `@googleapis/androidpublisher` require under OneDrive) and the
+Extensions API enabled.
+
+Not verified: anything against the real Play API. That needs the Play
+Console side, which is the owner's: create subscription `premium` with base
+plans `monthly` and `annual` (the product id is an allow-list in
+`functions/src/play.ts`); set the RTDN topic to
+`projects/freshtrack-3c379/topics/play-billing` and press "Send test
+notification" (it should appear in the function log); invite
 `91023389919-compute@developer.gserviceaccount.com` under Users and
-permissions with *View financial data* and *Manage orders and subscriptions*;
-create subscription `premium` with base plans `monthly` and `annual` (the
-product id is an allow-list in `functions/src/play.ts`).
+permissions with *View financial data* and *Manage orders and
+subscriptions*; add a license tester.
 
 **Next, in order of value:**
 
-1. **Deploy the billing functions** (above), then **Play Billing client**:
+1. **Play Billing client**:
    Billing Library 7, `BILLING` permission, `queryProductDetails` →
    `launchBillingFlow` → `verifyPurchase` → re-read the kitchen; and
    `queryPurchasesAsync` on start so a reinstall re-binds. Then an internal
@@ -409,8 +423,8 @@ Loose ends found during the sweep, none of them urgent:
       **Decided 12 Sep 2026: not until the transport exists.** Nothing writes
       to Firestore before then, so a deploy now protects nothing and is done
       twice. Deploy alongside the sync transport, with the full model covered.
-- [ ] **Play Billing.** Server side built and tested 15 Sep 2026
-      (`functions/`), not deployed — project is on Spark. Client side not
+- [ ] **Play Billing.** Server side built, tested and deployed 15 Sep 2026
+      (`functions/`). Play Console configuration and the client side not
       started. See "Pick up here".
 - [ ] **Legal & compliance** — see `COMPLIANCE.md`. The listing still claims
       "no data collection" while consented analytics exists, and the legal

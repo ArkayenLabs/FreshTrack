@@ -7,10 +7,11 @@ client and the schema it mirrored were deleted in the GoodBefore migration.
 This one describes the outbox that replaced it and the transport that has not
 been written yet.
 
-Status, 12 Sep 2026: **transport built and proven end to end against the
-Firestore emulator with the real rules; rules deployed; nothing sets
-`isPremium`, so it is inert in production.** Nothing consumes the
-outbox. The Settings card says so.
+Status, 15 Sep 2026: **transport built and proven end to end against the
+Firestore emulator with the real rules; rules deployed; the Cloud Functions
+that set `isPremium` are deployed (§8).** Still inert in production until
+Play Console is configured and the app has a billing client — nothing calls
+`verifyPurchase` yet. The Settings card says so.
 
 Rules tests: `npm run test:rules` (Firestore emulator, project `demo-freshtrack`,
 which can never reach production).
@@ -32,7 +33,7 @@ contradicts this section is a plan, not a description.
 | `RemoteStore` + `FirestoreRemoteStore` | `data/sync`, `data/remote/firestore` | Built for the §3 shape (12 Sep 2026): ensure kitchen, read entitlement, `push` one item + event batch, `eventExists`, erase account. `WireFormat` maps rows to fields, JVM-tested |
 | `RemoteError` classification | `data/sync/RemoteError.kt` | Built: `PermissionDenied` / `Transient` / `Permanent` |
 | Firestore rules for `users`, `kitchens`, `kitchens/items`, `kitchens/events` | `firestore.rules` | Written for the transport shape (§3), 54 tests, **not deployed**; live project still runs the old `pantries/products` ruleset from 5 Aug 2026, deny-by-default |
-| Entitlement | `kitchens/{id}.isPremium`, `entitlements/{uid}` | Rules refuse client writes. Set by Cloud Functions in `functions/` (15 Sep 2026): `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`; 26 emulator tests. **Not deployed** — project is on Spark |
+| Entitlement | `kitchens/{id}.isPremium`, `entitlements/{uid}` | Rules refuse client writes. Set by Cloud Functions in `functions/` (15 Sep 2026): `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`; 26 emulator tests. **Deployed 15 Sep 2026** to `asia-south1`; topic `play-billing` wired; Play Console side pending |
 | Push engine | `data/sync/OutboxPusher.kt` | Built, 20 JVM tests (12 Sep 2026): incremental drain, retry/stuck, entitlement gate, and the first backup with resumable ledger upload |
 | Pull engine | `data/sync/RemoteChangeApplier.kt` | Built, 11 JVM tests (12 Sep 2026): paged by cursor, own writes stamp `revision`, events append with IGNORE, cursor moves after commit |
 | `SyncRun`, `SyncWorker` | `data/sync/` | Built (12 Sep 2026): one run = ensure kitchen, push, pull, record outcome. Periodic 6h + one-shot when the app goes to the background, network-constrained. Settings card shows status, pending and stuck |
