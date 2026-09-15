@@ -1,0 +1,25 @@
+{
+  "name": "goodbefore-functions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The one trusted writer of the premium entitlement. Verifies Play Billing purchases and keeps kitchens/{id}.isPremium in step with Play.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test lib/*.test.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@googleapis/androidpublisher": "^24.0.0",
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^7.3.2",
+    "google-auth-library": "^9.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

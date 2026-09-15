@@ -90,6 +90,17 @@ service cloud.firestore {
       allow delete: if isSignedIn() && uid() == userId;
     }
 
+    // ─── Entitlements ───────────────────────────────────────────────────────
+    //
+    // The receipt behind a kitchen's `isPremium`: which purchase token, which
+    // plan, what Play last said and when it runs out. Written only by the
+    // Cloud Function that verified the purchase, so the app can show "renews
+    // on …" from a document it can read but never forge. No client write of
+    // any kind; the Admin SDK bypasses rules.
+    match /entitlements/{userId} {
+      allow get: if isSignedIn() && uid() == userId;
+    }
+
     // ─── Kitchens ───────────────────────────────────────────────────────────
     match /kitchens/{kitchenId} {
 

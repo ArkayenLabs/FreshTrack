@@ -390,6 +390,44 @@ describe('user documents and entitlements', () => {
   });
 });
 
+describe('entitlement receipts are readable by their owner and written by nobody', () => {
+  const RECEIPT = { purchaseToken: 'tok', productId: 'premium', isPremium: true, state: 'SUBSCRIPTION_STATE_ACTIVE', expiryTime: 1 };
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'entitlements', ALICE), RECEIPT);
+    });
+  });
+
+  it('can read your own entitlement', async () => {
+    await assertSucceeds(getDoc(doc(alice(), 'entitlements', ALICE)));
+  });
+
+  it('cannot read someone else entitlement', async () => {
+    await assertFails(getDoc(doc(bob(), 'entitlements', ALICE)));
+  });
+
+  it('cannot read any entitlement signed out', async () => {
+    await assertFails(getDoc(doc(anon(), 'entitlements', ALICE)));
+  });
+
+  it('cannot list entitlements', async () => {
+    await assertFails(getDocs(collection(alice(), 'entitlements')));
+  });
+
+  it('cannot create your own entitlement', async () => {
+    await assertFails(setDoc(doc(bob(), 'entitlements', BOB), RECEIPT));
+  });
+
+  it('cannot update your own entitlement', async () => {
+    await assertFails(updateDoc(doc(alice(), 'entitlements', ALICE), { expiryTime: 9999999999999 }));
+  });
+
+  it('cannot delete your own entitlement', async () => {
+    await assertFails(deleteDoc(doc(alice(), 'entitlements', ALICE)));
+  });
+});
+
 describe('the event ledger is append only', () => {
   const event = (over = {}) => ({
     itemId: 'eggs',

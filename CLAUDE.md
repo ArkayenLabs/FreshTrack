@@ -25,6 +25,7 @@
 | Auth | Firebase Auth (Email/Password + Google Sign-In) via `presentation/viewmodel/AuthViewModel.kt` |
 | Sync | `data/sync/` — `OutboxPusher`, `RemoteChangeApplier`, `SyncRun`, `SyncWorker`, `WireFormat`; `data/remote/firestore/FirestoreRemoteStore`. Inert until `isPremium` is set — see `sync-design.md` |
 | Session | `data/session/UserSession.kt` — current uid and active pantry |
+| Billing (server) | `functions/` — Cloud Functions, the only writer of `isPremium`: `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`. Tests: `npm run test:functions` |
 
 **DB version: 3** (`goodbefore_database`). The previous `freshtrack_database`
 and its 1→7 migration chain were deleted during the GoodBefore model migration,

@@ -32,7 +32,7 @@ contradicts this section is a plan, not a description.
 | `RemoteStore` + `FirestoreRemoteStore` | `data/sync`, `data/remote/firestore` | Built for the §3 shape (12 Sep 2026): ensure kitchen, read entitlement, `push` one item + event batch, `eventExists`, erase account. `WireFormat` maps rows to fields, JVM-tested |
 | `RemoteError` classification | `data/sync/RemoteError.kt` | Built: `PermissionDenied` / `Transient` / `Permanent` |
 | Firestore rules for `users`, `kitchens`, `kitchens/items`, `kitchens/events` | `firestore.rules` | Written for the transport shape (§3), 54 tests, **not deployed**; live project still runs the old `pantries/products` ruleset from 5 Aug 2026, deny-by-default |
-| Entitlement | `kitchens/{id}.isPremium` | Rules refuse client writes; **nothing sets it** |
+| Entitlement | `kitchens/{id}.isPremium`, `entitlements/{uid}` | Rules refuse client writes. Set by Cloud Functions in `functions/` (15 Sep 2026): `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`; 26 emulator tests. **Not deployed** — project is on Spark |
 | Push engine | `data/sync/OutboxPusher.kt` | Built, 20 JVM tests (12 Sep 2026): incremental drain, retry/stuck, entitlement gate, and the first backup with resumable ledger upload |
 | Pull engine | `data/sync/RemoteChangeApplier.kt` | Built, 11 JVM tests (12 Sep 2026): paged by cursor, own writes stamp `revision`, events append with IGNORE, cursor moves after commit |
 | `SyncRun`, `SyncWorker` | `data/sync/` | Built (12 Sep 2026): one run = ensure kitchen, push, pull, record outcome. Periodic 6h + one-shot when the app goes to the background, network-constrained. Settings card shows status, pending and stuck |
@@ -336,12 +336,42 @@ account, and that account claims the rows. Narrow, and recorded in
 kitchen for membership; checking the owner's profile would double the billed
 reads on every write.
 
-Nothing sets it. Play Billing verification needs a trusted server — a Cloud
-Function on the purchase notification, or a scheduled reconciliation against
-the Play Developer API — and this project has no Cloud Functions yet. Until it
-does, every paid path is inert by construction, and the transport must not be
-built on the assumption that it can be tested end to end against production:
-it is tested against the emulator with `isPremium` set by the test.
+The trusted server is `functions/` (15 Sep 2026): three 2nd-gen Cloud
+Functions in `asia-south1`, the Firestore region, and the only code anywhere
+that writes the flag.
+
+- **`verifyPurchase`** (callable, signed in). Input `{purchaseToken}`. Reads
+  the subscription from the Play Developer API (`subscriptionsv2.get`), never
+  from the caller; refuses a product this project does not sell; acknowledges
+  the purchase if Play is still waiting (an unacknowledged purchase refunds
+  after three days); binds the token to the uid; writes the flag. A token
+  already bound to a different uid is refused — one purchase is one account's.
+- **`onPlayNotification`** (Pub/Sub, topic `play-billing`). Real-time
+  developer notifications carry a token and a claim about what happened. The
+  claim is ignored; the subscription is re-read and the flag rewritten from
+  that. `linkedPurchaseToken` moves an entitlement across an upgrade. A token
+  no account has bound is logged and dropped — the app will present it through
+  `verifyPurchase` on its next `queryPurchases`. A message for another package
+  on the same project is refused.
+- **`reconcileEntitlements`** (daily). Any entitlement past its `expiryTime`
+  that still reads premium is re-checked. The belt for a missed notification.
+
+What Play's state means: `ACTIVE` and `IN_GRACE_PERIOD` are premium;
+`CANCELED` stays premium until `expiryTime`, which is Play's contract with the
+buyer; `ON_HOLD`, `PAUSED`, `EXPIRED`, `PENDING` and a forgotten token are not.
+
+Every write is one transaction over two documents: `kitchens/personal-{uid}`
+gets `isPremium`, and `entitlements/{uid}` gets the receipt — token, product,
+base plan, Play's state and expiry — readable by its owner and client-writable
+by nobody. If the personal kitchen does not exist yet (the user bought before
+ever syncing) it is created in the shape `ensureKitchenExists` would have
+used, because a bare `{isPremium}` document would pass that method's existence
+check and leave a kitchen with no members.
+
+Tests: `npm run test:functions` — 26 on the Firestore emulator with Play
+faked; each guard above was broken once and failed exactly its own test.
+The engine is still tested with `isPremium` set by the test, which stays
+right: the transport must never depend on billing to be testable.
 
 The client learns its entitlement by reading its kitchen document, caches the
 answer, and re-reads on app start and on `PermissionDenied`. A `false` means the

@@ -220,10 +220,12 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
-**State at the end of 12 Sep 2026 — `main` at `f63d2cc`, pushed, tree clean.**
-272 unit tests, lint 0 errors / 127 warnings, 21 connected (2 e2e skipped
-without the emulators; 2/2 pass with `npm run test:sync-e2e:win`). Rules
-deployed to `freshtrack-3c379`. Graph current (`graphify update .`).
+**State on 15 Sep 2026.** Android gates untouched since `f63d2cc`: 272 unit
+tests, lint 0 errors / 127 warnings, 21 connected (2 e2e skipped without the
+emulators; 2/2 pass with `npm run test:sync-e2e:win`). Rules: 61 (`npm run
+test:rules`). Functions: 26 (`npm run test:functions`). Rules deployed to
+`freshtrack-3c379` on 12 Sep; the `entitlements` rule and the functions are
+**not deployed** — see below. Graph current (`graphify update .`).
 
 **Use the graph first.** `graphify query "<question>"`, `graphify path`,
 `graphify explain` — do not read the source tree to find things.
@@ -236,10 +238,37 @@ design pass in two layers (Plus Jakarta Sans, one type scale, three radii,
 motion, flat tinted cards, urgency pills, tiles). Details are in the
 sections below and in the git log.
 
+**Done 15 Sep 2026: the Play Billing server side is built and tested, not
+deployed.** `functions/` holds three 2nd-gen Cloud Functions in `asia-south1`
+— `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements` — the only
+writer of `kitchens/{id}.isPremium`, with the receipt in `entitlements/{uid}`
+(new rule, owner-readable, client-writable by nobody). Design is
+`sync-design.md` §8. No Kotlin changed. Verified: 26 functions tests on the
+Firestore emulator with Play faked, 7 new rules tests; the token-ownership
+guard, the CANCELED-until-expiry rule and the entitlements read rule were each
+broken once and failed exactly their own test; all three functions load in the
+Functions emulator in `asia-south1`. Not verified: anything against real Play —
+that needs the deploy.
+
+**Blocked on the owner: `freshtrack-3c379` is on Spark.** 2nd-gen functions
+and the outbound Play API call both need Blaze. Once upgraded, the deploy
+sequence is: enable `androidpublisher.googleapis.com`; `firebase deploy
+--only functions,firestore:rules` (creates the `play-billing` topic); grant
+`google-play-developer-notifications@system.gserviceaccount.com` the
+Pub/Sub Publisher role on that topic; in Play Console set the RTDN topic to
+`projects/freshtrack-3c379/topics/play-billing` and invite
+`91023389919-compute@developer.gserviceaccount.com` under Users and
+permissions with *View financial data* and *Manage orders and subscriptions*;
+create subscription `premium` with base plans `monthly` and `annual` (the
+product id is an allow-list in `functions/src/play.ts`).
+
 **Next, in order of value:**
 
-1. **Play Billing server side** — the only thing between the sync transport
-   and a live feature. Nothing sets `isPremium`; every paid path is inert.
+1. **Deploy the billing functions** (above), then **Play Billing client**:
+   Billing Library 7, `BILLING` permission, `queryProductDetails` →
+   `launchBillingFlow` → `verifyPurchase` → re-read the kitchen; and
+   `queryPurchasesAsync` on start so a reinstall re-binds. Then an internal
+   testing track build and a license-tester purchase, end to end.
 2. **Design, third layer** — receipt review and scanner not yet looked at;
    launcher icon and login logo still the old blue-green mark (asset work).
 3. Everything else is the numbered list the owner has: locations sync,
@@ -380,8 +409,9 @@ Loose ends found during the sweep, none of them urgent:
       **Decided 12 Sep 2026: not until the transport exists.** Nothing writes
       to Firestore before then, so a deploy now protects nothing and is done
       twice. Deploy alongside the sync transport, with the full model covered.
-- [ ] **Play Billing.** Nothing grants an entitlement, so every paid path is
-      inert by construction.
+- [ ] **Play Billing.** Server side built and tested 15 Sep 2026
+      (`functions/`), not deployed — project is on Spark. Client side not
+      started. See "Pick up here".
 - [ ] **Legal & compliance** — see `COMPLIANCE.md`. The listing still claims
       "no data collection" while consented analytics exists, and the legal
       templates still carry placeholder dates.
