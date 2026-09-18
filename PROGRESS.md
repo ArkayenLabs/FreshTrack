@@ -359,9 +359,17 @@ Not automated: nothing runs instrumentation against the release variant. Until
 it does, **the gate before any Play upload is manual: install the release
 APK, open Add, scan a barcode.**
 
+**v1.1.1 (versionCode 6) built 18 Sep 2026** — `app-release.aab`, the two
+crash fixes, and Premium hidden behind `PREMIUM_ON_SALE = false` in
+`data/billing/PlayBilling.kt` (the Settings card is back to its pre-billing
+behaviour; the resume hook does not run; nothing touches Play Billing —
+confirmed on the phone: no `BillingClient` line in the log). Flip the flag
+when the internal-testing purchase has been proven. Upload is the owner's.
+
 **Next, in order of value:**
 
-1. **Ship v1.1.1 to Play** with the two crash fixes (prefs recovery, R8).
+1. **Upload v1.1.1 to Play production** (owner), then check Vitals for the
+   Add crash disappearing.
 2. **Prove the purchase end to end.** Play Console steps above, then a
    `bundleRelease` to the internal testing track, a license-tester purchase,
    and the function log showing `verifyPurchase` bind and an RTDN

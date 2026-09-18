@@ -101,6 +101,7 @@ fun SettingsScreen(
     val isSignedIn = FirebaseAuth.getInstance().currentUser != null
     val needsPremium = !isSignedIn ||
         lastRun == com.example.freshtrack.data.sync.SyncRun.Result.NOT_ENTITLED
+    val premiumOnSale = com.example.freshtrack.data.billing.PREMIUM_ON_SALE
 
     // OpenDocument rather than GetContent: it returns a persistable URI and lets
     // the user pick from any provider, including Drive.
@@ -348,10 +349,11 @@ fun SettingsScreen(
                         pending = pendingChanges,
                         stuck = stuckChanges
                     ),
+                    enabled = isSignedIn || premiumOnSale,
                     // Without premium the card is the way to it; with it, a tap
                     // backs up now.
                     onClick = {
-                        if (needsPremium) onNavigateToPremium()
+                        if (needsPremium && premiumOnSale) onNavigateToPremium()
                         else com.example.freshtrack.data.sync.SyncWorker.syncNow(context)
                     }
                 )
@@ -971,12 +973,13 @@ private fun describeSync(
     pending: Int,
     stuck: Int
 ): String {
+    val seePlans = if (com.example.freshtrack.data.billing.PREMIUM_ON_SALE) {
+        " " + stringResource(R.string.settings_sync_see_plans)
+    } else ""
     val status = when {
-        !isSignedIn -> stringResource(R.string.settings_sync_signed_out) +
-            " " + stringResource(R.string.settings_sync_see_plans)
+        !isSignedIn -> stringResource(R.string.settings_sync_signed_out) + seePlans
         lastRun == com.example.freshtrack.data.sync.SyncRun.Result.NOT_ENTITLED ->
-            stringResource(R.string.settings_sync_needs_premium) +
-                " " + stringResource(R.string.settings_sync_see_plans)
+            stringResource(R.string.settings_sync_needs_premium) + seePlans
         lastRun == com.example.freshtrack.data.sync.SyncRun.Result.DEFERRED && lastSuccessAt <= 0L ->
             stringResource(R.string.settings_sync_unreachable)
         lastSuccessAt <= 0L -> stringResource(R.string.settings_sync_never)

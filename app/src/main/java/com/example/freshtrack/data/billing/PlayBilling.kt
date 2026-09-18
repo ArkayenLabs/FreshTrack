@@ -11,6 +11,14 @@ import kotlinx.coroutines.flow.Flow
 const val PREMIUM_PRODUCT_ID = "premium"
 
 /**
+ * Whether Premium can be reached from the UI at all. Off until the Play
+ * product exists and a purchase has been proven end to end on the internal
+ * testing track; with it off the Settings card behaves as it did before the
+ * billing client existed and nothing talks to Play Billing.
+ */
+const val PREMIUM_ON_SALE = false
+
+/**
  * One way to pay for premium: a base plan of the [PREMIUM_PRODUCT_ID]
  * subscription, priced by Play in the user's own currency. The app never
  * formats a price itself.
