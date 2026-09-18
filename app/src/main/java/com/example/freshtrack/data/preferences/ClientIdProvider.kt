@@ -1,8 +1,6 @@
 package com.example.freshtrack.data.preferences
 
 import android.content.Context
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import java.util.UUID
 
 /**
@@ -17,13 +15,7 @@ import java.util.UUID
  */
 class ClientIdProvider(context: Context) {
 
-    private val prefs = EncryptedSharedPreferences.create(
-        context,
-        PREFS_NAME,
-        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs = encryptedPreferences(context, PREFS_NAME)
 
     val clientId: String
         get() = prefs.getString(KEY_CLIENT_ID, null) ?: UUID.randomUUID().toString().also {

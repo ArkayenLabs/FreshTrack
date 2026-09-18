@@ -2,8 +2,6 @@ package com.example.freshtrack.data.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 
 /**
  * Stores the user's decision on analytics and crash reporting.
@@ -18,17 +16,7 @@ import androidx.security.crypto.MasterKey
  */
 class ConsentPreferences(context: Context) {
 
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
-    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        PREFS_NAME,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs: SharedPreferences = encryptedPreferences(context, PREFS_NAME)
 
     /** Whether the analytics consent prompt has been answered at all. */
     fun hasDecided(): Boolean = prefs.contains(KEY_ANALYTICS_GRANTED)

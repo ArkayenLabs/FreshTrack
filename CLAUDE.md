@@ -135,7 +135,7 @@ USD base: $3.99/mo · $14.99/yr. Localised prices per market when Play Billing l
 - Kotlin + Jetpack Compose. No XML layouts.
 - All Room migrations must be additive — never drop columns used in DAOs.
 - Koin for DI. Do not use Hilt.
-- `EncryptedSharedPreferences` for all preference files.
+- `EncryptedSharedPreferences` for all preference files, opened only through `encryptedPreferences()` in `data/preferences/`, and every such file listed in both backup-rules XMLs. A file the keystore cannot open is deleted and recreated; a missed exclusion crash-looped the app after a reinstall (18 Sep 2026).
 - `ExportSchema = true` on `@Database`. Schema JSON auto-exported.
 - Build tool: Gradle with Kotlin DSL (`build.gradle.kts`).
 - Min SDK: check `app/build.gradle.kts`. Target: latest stable.

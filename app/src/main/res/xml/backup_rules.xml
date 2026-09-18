@@ -4,7 +4,9 @@
     Mirrors data_extraction_rules.xml — see that file for the reasoning.
 
     EncryptedSharedPreferences cannot survive a restore onto another device
-    because its master key stays in the source device's keystore.
+    because its master key stays in the source device's keystore. Every
+    EncryptedSharedPreferences file the app opens must be listed here — a
+    missed one crashed the app on launch after a reinstall on 16 Sep 2026.
 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="freshtrack_prefs.xml" />

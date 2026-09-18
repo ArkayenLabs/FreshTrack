@@ -2,7 +2,8 @@
 <!--
     Backup rules for Android 12 (API 31) and above.
 
-    freshtrack_prefs is an EncryptedSharedPreferences file. Its master key lives in
+    freshtrack_prefs, freshtrack_consent_prefs, freshtrack_sync_prefs and
+    goodbefore_client are EncryptedSharedPreferences files. Their master key lives in
     the device keystore and is never part of a backup, so restoring it onto a
     different device produces a file that cannot be decrypted. It must be excluded
     from both cloud backup and device transfer.
@@ -13,10 +14,16 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="freshtrack_prefs.xml" />
+        <exclude domain="sharedpref" path="freshtrack_consent_prefs.xml" />
+        <exclude domain="sharedpref" path="freshtrack_sync_prefs.xml" />
+        <exclude domain="sharedpref" path="goodbefore_client.xml" />
         <exclude domain="sharedpref" path="crash_loop_detector.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="freshtrack_prefs.xml" />
+        <exclude domain="sharedpref" path="freshtrack_consent_prefs.xml" />
+        <exclude domain="sharedpref" path="freshtrack_sync_prefs.xml" />
+        <exclude domain="sharedpref" path="goodbefore_client.xml" />
         <exclude domain="sharedpref" path="crash_loop_detector.xml" />
     </device-transfer>
 </data-extraction-rules>

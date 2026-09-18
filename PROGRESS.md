@@ -309,9 +309,43 @@ Known and left: after Login the stack is `… Premium, Today` (Login pops itself
 and pushes Today), so the person is not returned to Premium after signing in.
 Same as the Settings → Login path today.
 
+**Fixed 18 Sep 2026: crash loop on launch after a reinstall.** The owner's
+phone (iQOO Z7 Pro, Android 15) crashed three times on 16 Sep in
+`Application.onCreate` with `AEADBadTagException` from
+`ConsentPreferences.<init>`: a backup restore had put back an
+EncryptedSharedPreferences file whose keystore master key the uninstall had
+deleted. The backup rules excluded `freshtrack_prefs.xml` for exactly this
+reason and nothing else — three encrypted files added since
+(`freshtrack_consent_prefs`, `freshtrack_sync_prefs`, `goodbefore_client`)
+were never listed. Any user who reinstalled or changed phone would have hit
+it. Fix: all four files excluded from backup, and one shared opener,
+`encryptedPreferences()`, that deletes and recreates a file it cannot open
+(`GeneralSecurityException` *and* `IOException` — a corrupt key set surfaces
+as the latter, found by the test). Losing these files is by design
+survivable: consent reverts to off, flags re-derive, cursors re-pull, the
+outbox is in Room. Verified on the phone itself: 5 connected tests, one of
+which deletes a test-only master key from the keystore and shows the raw
+`create` throwing exactly what the crash did; removing the security catch
+failed exactly the recovery test. The fixed build launches on the phone
+after a `bmgr restore`. Not reproduced: the exact 16 Sep restore set — the
+one `bmgr` offers is older and has none of our files.
+
+**Found, not yet fixed: the release build crashes on Add item.** The same
+phone's crash buffer holds a 10 Sep crash from a minified build, retraced
+with that build's `mapping.txt`: `KoinModules` lambda 27 →
+`get<Retrofit>().create(OpenFoodFactsApi::class.java)` →
+`ClassCastException` (message stripped by R8), on creating
+`AddEditItemViewModel`. No ProGuard rule has changed since, and v1.1.0 went
+to Play on 12 Sep from the same rules, so the live build likely crashes
+when Add is opened. This is the "does the barcode lookup survive R8"
+question answered. Next step: `assembleRelease`, install on the emulator,
+open Add, retrace with the fresh mapping, then keep rules (Retrofit
+interface + Gson models) and a connected test on the release variant.
+
 **Next, in order of value:**
 
-1. **Prove the purchase end to end.** Play Console steps above, then a
+1. **The release/R8 crash above.** It is live.
+2. **Prove the purchase end to end.** Play Console steps above, then a
    `bundleRelease` to the internal testing track, a license-tester purchase,
    and the function log showing `verifyPurchase` bind and an RTDN
    `SUBSCRIPTION_PURCHASED` refresh. Then run the connected suite.
@@ -488,10 +522,8 @@ Not bugs to fix today, but things that are true and should not be forgotten.
   returns it. Found when the e2e test gave three items the same placeholder
   id and they overwrote one another. The comment is misleading; the tests
   pass because they never add two items. Worth a one-line fix.
-- **Release build now builds, but is still unexercised.** A signed minified
-  APK is produced, and the heap that prevented it is fixed. Only the debug
-  build has been installed, so nobody has confirmed the barcode lookup or
-  Room's generated code survive R8.
+- **The release build crashes on Add item** — see "Pick up here", 18 Sep
+  2026. The barcode lookup does *not* survive R8 as the rules stand.
 - **Store listing wording still says "no data collection".** Analytics is now
   off-by-default and opt-in, but the listing copy and Data Safety form still
   need updating to match, and the "no data collection" phrase should become

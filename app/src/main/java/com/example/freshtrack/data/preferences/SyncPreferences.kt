@@ -2,8 +2,6 @@ package com.example.freshtrack.data.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import com.example.freshtrack.data.sync.SyncRun
 import com.example.freshtrack.data.sync.SyncState
 
@@ -17,17 +15,7 @@ import com.example.freshtrack.data.sync.SyncState
  */
 class SyncPreferences(context: Context) : SyncState {
 
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
-    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        PREFS_NAME,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs: SharedPreferences = encryptedPreferences(context, PREFS_NAME)
 
     override fun isBootstrapped(kitchenId: String): Boolean =
         prefs.getBoolean(bootstrappedKey(kitchenId), false)

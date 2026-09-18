@@ -8,17 +8,7 @@ import android.content.SharedPreferences
  */
 class OnboardingPreferences(context: Context) {
 
-    private val masterKey = androidx.security.crypto.MasterKey.Builder(context)
-        .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
-        .build()
-
-    private val sharedPreferences: SharedPreferences = androidx.security.crypto.EncryptedSharedPreferences.create(
-        context,
-        PREFS_NAME,
-        masterKey,
-        androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val sharedPreferences: SharedPreferences = encryptedPreferences(context, PREFS_NAME)
 
     companion object {
         private const val PREFS_NAME = "freshtrack_prefs"
