@@ -220,13 +220,22 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
-**State at the end of 18 Sep 2026 — `main` at `1c8e577`, not pushed, tree
-clean.** 284 unit tests, lint 0 errors / 128 warnings, rules 61
-(`npm run test:rules`), functions 26 (`npm run test:functions`). Connected:
+**State at the end of 18 Sep 2026 — `main` at the docs commit after `1c8e577`,
+not pushed, tree clean.** 284 unit tests, lint 0 errors / 128 warnings, rules
+61 (`npm run test:rules`), functions 26 (`npm run test:functions`). Connected:
 `LoginScreenTest` 5/5 and `EncryptedPreferencesRecoveryTest` 5/5 on the
 owner's phone (iQOO Z7 Pro, Android 15); the full connected suite has **not**
 been re-run since 12 Sep. Rules and the three Play-native functions are
 deployed to `freshtrack-3c379` (Blaze since 15 Sep). Graph current.
+
+**Google Sign-In is unblocked, unverified.** All three SHA-1s are in Firebase
+(debug `8c27…`, upload `920d…`, Play app-signing `5225…`) and the new
+`app/google-services.json` (gitignored) carries all three Android OAuth
+clients. A release APK was built at the end of the day for the owner to
+sideload; **the first thing to do next session is ask whether Continue with
+Google opened the account picker on it.** If it did, Google works for Play
+users too. If not, the fingerprint in Firebase does not match the key that
+signed the APK — check with `keytool -printcert -jarfile app-release.apk`.
 
 **Decision, 18 Sep 2026: billing moves to RevenueCat on both platforms.** iOS
 (`C:\Users\balaj\Downloads\GoodBefore-ios`, docs 01–07) already chose
@@ -407,39 +416,47 @@ isolates the release failure to the missing fingerprints. 284 unit, lint
 
 **Next, in order:**
 
-1. **Owner: Firebase fingerprints** — upload key
-   `92:0D:A5:8A:35:B8:04:4D:88:B1:38:29:1B:F9:00:B0:37:42:38:CC` and Play's
-   app-signing SHA-1 (Play Console → Setup → App signing); new
-   `google-services.json` into `app/`. Then verify Google on the release
-   build on the phone.
-2. **v1.1.1 to production**: bump nothing (versionCode 6 is unused),
+1. **Confirm Google Sign-In on the sideloaded release APK** (owner reports;
+   see above). Then **v1.1.1 to production**: versionCode 6 is still unused,
    `bundleRelease`, manual gate (release APK: Add opens, scan a barcode,
-   Settings → Sign in → back), upload. Watch Vitals.
-3. **RevenueCat webhook function** (replaces the three Play-native ones).
-4. **RevenueCat Android SDK swap** (replaces `PlayBillingClient` and
-   `PremiumClaim`; keeps `PremiumScreen`).
-5. **RevenueCat + Play Console setup** — owner: RC project + Google Play app,
-   service-account JSON, product `premium` with `monthly`/`annual`, RTDN to
-   RC's topic, entitlement + offering, webhook URL + secret, license tester.
-6. **Internal testing track + license-tester purchase**, end to end.
-7. **Retire** `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`,
+   Settings → Sign in → back, Google picker opens), hand the `.aab` to the
+   owner to upload. Watch Vitals for the Add crash disappearing. Owner also
+   renames the store listing FreshTrack → GoodBefore.
+2. **RevenueCat webhook function** (replaces the three Play-native ones).
+   The owner has a RevenueCat account; nothing is configured there yet. Steps
+   1–6 of the setup are in the 18 Sep conversation and summarised at item 5
+   below. Build the function first (needs nothing from the owner), then the
+   SDK swap, then the console work.
+3. **RevenueCat Android SDK swap** (replaces `PlayBillingClient` and
+   `PremiumClaim`; keeps `PremiumScreen`, `EntitlementRemote.current`,
+   `PREMIUM_ON_SALE`). RC's SDK bundles its own Billing Library version.
+4. **RevenueCat + Play Console setup** — owner: RC project `GoodBefore` +
+   Google Play app `com.arkayenlabs.freshtrack`; a GCP service account
+   (Pub/Sub Admin) whose JSON is uploaded to RC and whose email is invited in
+   Play Console (View financial data, Manage orders and subscriptions);
+   product `premium` with base plans `monthly`/`annual`; RTDN topic → RC's
+   (not ours); entitlement `premium`, products imported, offering `default`
+   with `$rc_monthly`/`$rc_annual`; webhook URL + Authorization secret;
+   license tester. Public Google SDK key (`goog_…`) into the app.
+5. **Internal testing track + license-tester purchase**, end to end.
+6. **Retire** `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`,
    topic `play-billing`.
-8. **Connected suite** re-run in full.
-9. **iOS docs**: `/pantries` → `/kitchens`, `planAccess` → `isPremium`.
-10. **Data Safety + privacy policy**: RevenueCat, opt-in analytics.
-11. Design, third layer — receipt review, scanner, launcher icon, login logo.
-12. Locations sync (`Migration(3, 4)`, `entityKind` on outbox).
-13. Household (`docs/strategy.md` says it is the first thing after billing).
-14. Dead code: `AdvanceNoticeDaysDialog`.
-15. Unverified surfaces: widget, notification action, CSV picker, receipt
+7. **Connected suite** re-run in full.
+8. **iOS docs**: `/pantries` → `/kitchens`, `planAccess` → `isPremium`.
+9. **Data Safety + privacy policy**: RevenueCat, opt-in analytics.
+10. Design, third layer — receipt review, scanner, launcher icon, login logo.
+11. Locations sync (`Migration(3, 4)`, `entityKind` on outbox).
+12. Household (`docs/strategy.md` says it is the first thing after billing).
+13. Dead code: `AdvanceNoticeDaysDialog`.
+14. Unverified surfaces: widget, notification action, CSV picker, receipt
     camera, release-variant instrumentation.
-16. Store listing wording and statistic.
-17. Legal template dates; refund/subscription terms before billing ships.
-18. Notification permission timing.
-19. Login → return to where the person came from (Premium) after sign-in.
-20. Duplicate prevention on manual add.
-21. Cross-account claim edge case.
-22. APK size: unbundled ML Kit text recognition would cut ~40 MB of the
+15. Store listing wording and statistic.
+16. Legal template dates; refund/subscription terms before billing ships.
+17. Notification permission timing.
+18. Login → return to where the person came from (Premium) after sign-in.
+19. Duplicate prevention on manual add.
+20. Cross-account claim edge case.
+21. APK size: unbundled ML Kit text recognition would cut ~40 MB of the
     universal APK (Play already ships ~31 MB per device). Owner's call.
 
 **Habits that hold:** read the Gradle task line, not the exit code; count
