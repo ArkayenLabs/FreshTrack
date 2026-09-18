@@ -7,6 +7,7 @@ import com.example.freshtrack.domain.model.DateKind
 import com.example.freshtrack.domain.model.DateSource
 import com.example.freshtrack.domain.model.ExpiryDate
 import com.example.freshtrack.domain.model.Item
+import com.example.freshtrack.domain.model.ProductInfo
 import com.example.freshtrack.domain.repository.ProductLookupRepository
 import com.example.freshtrack.util.AppClock
 import io.mockk.coEvery
@@ -139,6 +140,40 @@ class AddEditItemViewModelScanTest {
         val guess = ExpiryDate.estimated(LocalDate.of(2027, 1, 1))
 
         assertEquals(false, saved.canBeReplacedBy(guess))
+    }
+
+    // The barcode half of the scanner. These went untested while the screen
+    // was wired to updateBarcode() instead of this, so the lookup never ran
+    // in the app at all — found 18 Sep 2026 while proving the release build.
+
+    @Test
+    fun `a scanned barcode looks the product up and fills an empty name`() {
+        coEvery { productLookupRepository.getProductByBarcode("5449000000996") } returns
+            Result.success(ProductInfo(name = "Coca-Cola", brand = null, imageUrl = "https://img", category = null))
+        val vm = viewModel()
+        vm.setBarcodeFromScanner("5449000000996")
+        assertEquals("5449000000996", vm.uiState.value.barcode)
+        assertEquals("Coca-Cola", vm.uiState.value.name)
+        assertEquals("https://img", vm.uiState.value.imageUri)
+    }
+
+    @Test
+    fun `a name the user already typed is not overwritten by the lookup`() {
+        coEvery { productLookupRepository.getProductByBarcode(any()) } returns
+            Result.success(ProductInfo(name = "Coca-Cola", brand = null, imageUrl = null, category = null))
+        val vm = viewModel()
+        vm.updateName("Cola from the corner shop")
+        vm.setBarcodeFromScanner("5449000000996")
+        assertEquals("Cola from the corner shop", vm.uiState.value.name)
+    }
+
+    @Test
+    fun `a failed lookup keeps the barcode and reports, rather than clearing the form`() {
+        coEvery { productLookupRepository.getProductByBarcode(any()) } returns Result.failure(RuntimeException("offline"))
+        val vm = viewModel()
+        vm.setBarcodeFromScanner("5449000000996")
+        assertEquals("5449000000996", vm.uiState.value.barcode)
+        assertEquals(AddEditError.LOOKUP_FAILED, vm.uiState.value.error)
     }
 
     @Test

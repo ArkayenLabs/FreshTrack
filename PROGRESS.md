@@ -330,21 +330,38 @@ failed exactly the recovery test. The fixed build launches on the phone
 after a `bmgr restore`. Not reproduced: the exact 16 Sep restore set — the
 one `bmgr` offers is older and has none of our files.
 
-**Found, not yet fixed: the release build crashes on Add item.** The same
-phone's crash buffer holds a 10 Sep crash from a minified build, retraced
-with that build's `mapping.txt`: `KoinModules` lambda 27 →
-`get<Retrofit>().create(OpenFoodFactsApi::class.java)` →
-`ClassCastException` (message stripped by R8), on creating
-`AddEditItemViewModel`. No ProGuard rule has changed since, and v1.1.0 went
-to Play on 12 Sep from the same rules, so the live build likely crashes
-when Add is opened. This is the "does the barcode lookup survive R8"
-question answered. Next step: `assembleRelease`, install on the emulator,
-open Add, retrace with the fresh mapping, then keep rules (Retrofit
-interface + Gson models) and a connected test on the release variant.
+**Fixed 18 Sep 2026: the release build crashed on Add item.** Reproduced on
+the owner's phone from a fresh `assembleRelease` and retraced with its own
+mapping: `KoinModules.kt:180`, `get<Retrofit>().create(OpenFoodFactsApi::class.java)`,
+a `ClassCastException` with no message — R8's signature for a cast it has
+proved impossible. The interface is only ever instantiated through a Proxy
+R8 cannot see, and with Koin the instance passes through the registry as
+`Any` rather than a typed field, so R8 full mode concluded no instance could
+exist: it removed the interface's only method, dropped `OpenFoodFactsResponse`
+entirely (the mapping had neither), and rewrote the cast into a bare throw.
+Retrofit's own `-if` rule was in the merged config and did not fire because
+the method it conditions on was already dead. Fix: `-keep interface
+…OpenFoodFactsApi { *; }` and `-keep class …data.remote.dto.** { *; }` in
+`proguard-rules.pro`. v1.1.0 on Play was built from the old rules and will
+crash on Add for anyone who taps it — **a release with this fix is urgent.**
+
+**Found on the way: the barcode lookup was never called.** `AddEditProductScreen`
+wired the scanner result to `updateBarcode` (fills the field) instead of
+`setBarcodeFromScanner` (fills the field and looks the product up). Nothing in
+the app invoked the lookup at all, on any build. One-line fix, plus three
+ViewModel tests on `setBarcodeFromScanner` that did not exist.
+
+Verified on the phone (release APK, minified): Add opens; the owner scanned
+`8901491100243` and the name filled in as "Rolled Oats" from OpenFoodFacts
+through Retrofit and Gson; crash buffer empty. Mapping now shows
+`getProductByBarcode` on the interface and both DTOs. 284 unit, lint 0/128.
+Not automated: nothing runs instrumentation against the release variant. Until
+it does, **the gate before any Play upload is manual: install the release
+APK, open Add, scan a barcode.**
 
 **Next, in order of value:**
 
-1. **The release/R8 crash above.** It is live.
+1. **Ship v1.1.1 to Play** with the two crash fixes (prefs recovery, R8).
 2. **Prove the purchase end to end.** Play Console steps above, then a
    `bundleRelease` to the internal testing track, a license-tester purchase,
    and the function log showing `verifyPurchase` bind and an RTDN
@@ -522,8 +539,9 @@ Not bugs to fix today, but things that are true and should not be forgotten.
   returns it. Found when the e2e test gave three items the same placeholder
   id and they overwrote one another. The comment is misleading; the tests
   pass because they never add two items. Worth a one-line fix.
-- **The release build crashes on Add item** — see "Pick up here", 18 Sep
-  2026. The barcode lookup does *not* survive R8 as the rules stand.
+- **No instrumentation runs against the release variant.** The R8 crash on
+  Add (fixed 18 Sep 2026) was invisible to every automated gate. Manual gate
+  before a Play upload: release APK, open Add, scan a barcode.
 - **Store listing wording still says "no data collection".** Analytics is now
   off-by-default and opt-in, but the listing copy and Data Safety form still
   need updating to match, and the "no data collection" phrase should become

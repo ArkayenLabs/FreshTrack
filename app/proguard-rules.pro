@@ -78,6 +78,18 @@
 -keep,allowobfuscation,allowshrinking interface retrofit2.Call
 -keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
 
+# The Retrofit service interface is only ever instantiated through a Proxy,
+# which R8 cannot see, and the instance passes through Koin's registry as Any
+# rather than a typed field. R8 full mode therefore concluded no instance
+# could exist, removed the interface's only method, dropped the response
+# models as dead, and rewrote the cast in KoinModules into a bare
+# `throw new ClassCastException()` — Add item crashed on every release build
+# until 18 Sep 2026. Retrofit's own -if rule did not fire because the method
+# it conditions on had already been removed. Keep the interface and its
+# members outright, and the Gson models with their field names.
+-keep interface com.example.freshtrack.data.remote.OpenFoodFactsApi { *; }
+-keep class com.example.freshtrack.data.remote.dto.** { *; }
+
 # Keep Android Parcelable
 -keepclassmembers class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator CREATOR;

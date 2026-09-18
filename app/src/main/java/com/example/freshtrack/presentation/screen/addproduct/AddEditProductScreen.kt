@@ -73,8 +73,10 @@ fun AddEditProductScreen(
         scannedExpiry?.let { viewModel.applyScannedExpiry(it) }
     }
 
+    // The scanner result also looks the product up; typing a barcode by hand
+    // does not, which is what updateBarcode is for.
     LaunchedEffect(scannedBarcode) {
-        scannedBarcode?.let { viewModel.updateBarcode(it) }
+        scannedBarcode?.let { viewModel.setBarcodeFromScanner(it) }
     }
 
     // Show error snackbar. The message is resolved in composition because the
