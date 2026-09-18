@@ -17,16 +17,16 @@
 | UI / Screens | `presentation/screen/` |
 | Navigation | `presentation/navigation/Navigation.kt` — single NavHost, guest mode routing |
 | ViewModels | `presentation/viewmodel/` |
-| Local DB | `data/local/GoodBeforeDatabase.kt` (Room v1, `goodbefore_database`), `data/local/entities/ItemEntity.kt` |
+| Local DB | `data/local/GoodBeforeDatabase.kt` (Room, `goodbefore_database`, version 3), `data/local/entities/ItemEntity.kt` |
 | Repositories | `data/repository/` |
 | DI | `di/KoinModules.kt` (Koin) |
-| Preferences | `data/preferences/OnboardingPreferences.kt` — includes guest mode flag |
+| Preferences | `data/preferences/` — every file is `EncryptedSharedPreferences` opened via `encryptedPreferences()`; `OnboardingPreferences` holds the guest flag |
 | Notifications | `data/notification/` — WorkManager + NotificationHelper |
 | Auth | Firebase Auth (Email/Password + Google Sign-In) via `presentation/viewmodel/AuthViewModel.kt` |
 | Sync | `data/sync/` — `OutboxPusher`, `RemoteChangeApplier`, `SyncRun`, `SyncWorker`, `WireFormat`; `data/remote/firestore/FirestoreRemoteStore`. Inert until `isPremium` is set — see `sync-design.md` |
-| Session | `data/session/UserSession.kt` — current uid and active pantry |
-| Billing (server) | `functions/` — Cloud Functions, the only writer of `isPremium`: `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`. Tests: `npm run test:functions` |
-| Billing (client) | `data/billing/` — `PlayBillingClient` (Billing Library 8), `EntitlementRemote`, `PremiumClaim`; `presentation/screen/premium/PremiumScreen.kt`. The client never acknowledges a purchase or decides it is premium |
+| Session | `data/session/UserSession.kt` — current uid and active kitchen |
+| Billing (server) | `functions/` — Cloud Functions, the only writer of `isPremium` and `entitlements/{uid}`. Today: `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements` (Play-native, deployed). **Decided 18 Sep 2026: replaced by one RevenueCat webhook function** so iOS and Android share one entitlement. Tests: `npm run test:functions` |
+| Billing (client) | `data/billing/` — `PlayBillingClient` (Billing Library 8), `EntitlementRemote`, `PremiumClaim`; `presentation/screen/premium/PremiumScreen.kt`. `PREMIUM_ON_SALE = false` hides all of it until a purchase is proven. The client never acknowledges a purchase or decides it is premium. To be swapped for the RevenueCat SDK; the screen stays |
 
 **DB version: 3** (`goodbefore_database`). The previous `freshtrack_database`
 and its 1→7 migration chain were deleted during the GoodBefore model migration,
@@ -121,19 +121,27 @@ Settings "Sign Out" clears guest flag AND Firebase session, returns to Login.
 **See `PROGRESS.md`** — it is the single source of truth for what is done, what is
 next, and what is knowingly incomplete. Do not reconstruct status from git log.
 
-Short version: Phase 1 done. Backup & Sync built, proven end to end on the
-emulators, rules deployed — and inert in production because nothing sets
-`isPremium` yet. A design pass is still owed.
+Short version: Backup & Sync built and proven on the emulators; rules and
+the Play-native billing functions deployed; billing is moving to RevenueCat
+(both platforms) and nothing is purchasable yet, so sync stays inert in
+production. Two crash fixes (R8 on Add, encrypted prefs after reinstall) and
+the sign-in rework are committed and waiting on a v1.1.1 upload. Product
+strategy is in `docs/strategy.md`.
 
 ---
 
 ## Pricing & Monetization
 
-Free tier: full local inventory, barcode scan, notifications, CSV export, guest mode.
-(Receipt scanning is *planned*, not built — there is no ML Kit text-recognition
-dependency in the project. Do not describe it as shipped.)
-Premium: Backup/Sync (built; Play product `premium`, base plans `monthly`/`annual`). Planned: AI recipes, family sharing, storage zones, extended history.
-USD base: $3.99/mo · $14.99/yr. Localised prices per market when Play Billing lands; no India-specific target while it is not a launch market.
+Free tier: full local inventory, barcode, receipt and printed-date scanning
+(all on-device via ML Kit), notifications, Today, history, progress, widget,
+CSV export, guest mode. No caps.
+Premium ("Plus" is the proposed name): Backup/Sync (built; product `premium`,
+base plans `monthly`/`annual`, not yet created in Play Console). Next by
+`docs/strategy.md`: household (one payer, up to six), Rescue plans, learned
+shelf life.
+USD base: $3.99/mo; `docs/strategy.md` proposes $19.99/yr with household
+included (earlier figure $14.99/yr). Localised by the stores; no India-specific
+target while it is not a launch market.
 
 ---
 
@@ -164,6 +172,10 @@ USD base: $3.99/mo · $14.99/yr. Localised prices per market when Play Billing l
 - Do not derive impact by counting rows; read the event ledger.
 - Do not let a client write `isPremium` or `plan`.
 - Do not add item-count caps to the free tier.
+- Do not put a trailing space in a string resource to separate it from the
+  next composable — the resource compiler strips it. Spacing goes in the layout
+  or inside one sentence with placeholders.
+- Do not swallow a sign-in failure; every auth failure reaches `AuthError`.
 
 ## graphify
 

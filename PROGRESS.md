@@ -220,14 +220,31 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
-**State on 15 Sep 2026.** 281 unit tests, lint 0 errors / 128 warnings
-(the new one is `GradleDependency` noting Billing Library 9.1.0 exists; 8.3.0
-is deliberate, see below), 21 connected — **not re-run since the billing
-client**; no androidTest references the two sync strings that changed, checked
-by grep, not by running. Rules: 61 (`npm run
-test:rules`). Functions: 26 (`npm run test:functions`). Rules deployed to
-`freshtrack-3c379` on 12 Sep and again on 15 Sep with the `entitlements`
-rule; functions deployed 15 Sep. Graph current (`graphify update .`).
+**State at the end of 18 Sep 2026 — `main` at `1c8e577`, not pushed, tree
+clean.** 284 unit tests, lint 0 errors / 128 warnings, rules 61
+(`npm run test:rules`), functions 26 (`npm run test:functions`). Connected:
+`LoginScreenTest` 5/5 and `EncryptedPreferencesRecoveryTest` 5/5 on the
+owner's phone (iQOO Z7 Pro, Android 15); the full connected suite has **not**
+been re-run since 12 Sep. Rules and the three Play-native functions are
+deployed to `freshtrack-3c379` (Blaze since 15 Sep). Graph current.
+
+**Decision, 18 Sep 2026: billing moves to RevenueCat on both platforms.** iOS
+(`C:\Users\balaj\Downloads\GoodBefore-ios`, docs 01–07) already chose
+RevenueCat over StoreKit 2, and one cross-store entitlement per Firebase uid
+is what RevenueCat is for. Consequences, none started yet: the Play-native
+client (`PlayBillingClient`, `PremiumClaim`) and functions (`verifyPurchase`,
+`onPlayNotification`, `reconcileEntitlements`, topic `play-billing`) get
+replaced by the RC SDK and one webhook function that writes the same two
+documents; `entitlements/{uid}`, the rules, `PremiumScreen` and the docs
+survive. The owner has a RevenueCat account. Play Console RTDN must point at
+RC's topic, not ours. The iOS docs still describe the old `/pantries` schema
+and need re-pointing at `/kitchens`.
+
+**Shipping state.** v1.1.0 on Play crashes on Add item (R8) and crash-loops
+after a reinstall (encrypted prefs) — both fixed here, both waiting on a
+v1.1.1 upload. The bundle built earlier today predates the sign-in rework;
+**rebuild before uploading**, after the Google fingerprints are in Firebase.
+`PREMIUM_ON_SALE = false` hides Premium until a purchase is proven.
 
 **Use the graph first.** `graphify query "<question>"`, `graphify path`,
 `graphify explain` — do not read the source tree to find things.
@@ -388,18 +405,42 @@ account picker opened on the debug build (fingerprint registered), which
 isolates the release failure to the missing fingerprints. 284 unit, lint
 0/128. **v1.1.1's bundle predates this — rebuild before uploading.**
 
-**Next, in order of value:**
+**Next, in order:**
 
-1. **Owner: add the upload-key and Play app-signing SHA-1s in Firebase**, then
-   rebuild v1.1.1 (`bundleRelease`) and upload to production.
-2. **Prove the purchase end to end.** Play Console steps above, then a
-   `bundleRelease` to the internal testing track, a license-tester purchase,
-   and the function log showing `verifyPurchase` bind and an RTDN
-   `SUBSCRIPTION_PURCHASED` refresh. Then run the connected suite.
-2. **Design, third layer** — receipt review and scanner not yet looked at;
-   launcher icon and login logo still the old blue-green mark (asset work).
-3. Everything else is the numbered list the owner has: locations sync,
-   household, dead code, unverified surfaces, store listing, legal dates.
+1. **Owner: Firebase fingerprints** — upload key
+   `92:0D:A5:8A:35:B8:04:4D:88:B1:38:29:1B:F9:00:B0:37:42:38:CC` and Play's
+   app-signing SHA-1 (Play Console → Setup → App signing); new
+   `google-services.json` into `app/`. Then verify Google on the release
+   build on the phone.
+2. **v1.1.1 to production**: bump nothing (versionCode 6 is unused),
+   `bundleRelease`, manual gate (release APK: Add opens, scan a barcode,
+   Settings → Sign in → back), upload. Watch Vitals.
+3. **RevenueCat webhook function** (replaces the three Play-native ones).
+4. **RevenueCat Android SDK swap** (replaces `PlayBillingClient` and
+   `PremiumClaim`; keeps `PremiumScreen`).
+5. **RevenueCat + Play Console setup** — owner: RC project + Google Play app,
+   service-account JSON, product `premium` with `monthly`/`annual`, RTDN to
+   RC's topic, entitlement + offering, webhook URL + secret, license tester.
+6. **Internal testing track + license-tester purchase**, end to end.
+7. **Retire** `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`,
+   topic `play-billing`.
+8. **Connected suite** re-run in full.
+9. **iOS docs**: `/pantries` → `/kitchens`, `planAccess` → `isPremium`.
+10. **Data Safety + privacy policy**: RevenueCat, opt-in analytics.
+11. Design, third layer — receipt review, scanner, launcher icon, login logo.
+12. Locations sync (`Migration(3, 4)`, `entityKind` on outbox).
+13. Household (`docs/strategy.md` says it is the first thing after billing).
+14. Dead code: `AdvanceNoticeDaysDialog`.
+15. Unverified surfaces: widget, notification action, CSV picker, receipt
+    camera, release-variant instrumentation.
+16. Store listing wording and statistic.
+17. Legal template dates; refund/subscription terms before billing ships.
+18. Notification permission timing.
+19. Login → return to where the person came from (Premium) after sign-in.
+20. Duplicate prevention on manual add.
+21. Cross-account claim edge case.
+22. APK size: unbundled ML Kit text recognition would cut ~40 MB of the
+    universal APK (Play already ships ~31 MB per device). Owner's call.
 
 **Habits that hold:** read the Gradle task line, not the exit code; count
 tests from the XML; weaken a rule or a guard and watch exactly its tests

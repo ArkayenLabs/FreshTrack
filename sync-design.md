@@ -333,6 +333,14 @@ account, and that account claims the rows. Narrow, and recorded in
 
 ## 8. Entitlement
 
+> **Decision, 18 Sep 2026: RevenueCat on both platforms.** The three
+> Play-native functions below are deployed and tested, and will be replaced
+> by one webhook function that RevenueCat calls with the merged Play and App
+> Store state for a uid. Everything RevenueCat's webhook writes into —
+> `kitchens/{id}.isPremium`, `entitlements/{uid}`, the rules, the kitchen
+> creation — is unchanged. See `PROGRESS.md` "Pick up here".
+
+
 `isPremium` lives on the kitchen document because the rules already fetch the
 kitchen for membership; checking the owner's profile would double the billed
 reads on every write.
