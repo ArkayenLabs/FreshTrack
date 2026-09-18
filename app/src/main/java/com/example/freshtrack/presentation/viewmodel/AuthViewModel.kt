@@ -54,6 +54,11 @@ class AuthViewModel(
         }
     }
 
+    /** Google's own sheet failed before we had a token; nothing was attempted against Firebase. */
+    fun reportGoogleSignInFailure() {
+        _uiState.update { it.copy(isLoading = false, error = AuthError.GOOGLE_UNAVAILABLE) }
+    }
+
     fun signInWithGoogle(idToken: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -128,6 +133,8 @@ class AuthViewModel(
  * addresses are registered, so both arrive here as INVALID_CREDENTIALS.
  */
 enum class AuthError {
+    /** Google could not hand back an account: Play Services, network, or a fingerprint Firebase does not know. */
+    GOOGLE_UNAVAILABLE,
     WEAK_PASSWORD,
     INVALID_CREDENTIALS,
     EMAIL_IN_USE,

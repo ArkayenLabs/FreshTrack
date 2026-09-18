@@ -25,7 +25,6 @@
     <string name="crash_reset_message">GoodBefore encountered repeated issues and has been reset. Your data has been cleared to restore functionality.</string>
 
     <string name="terms_title">GoodBefore Terms of Service</string>
-    <string name="register_subtitle">Join GoodBefore today</string>
 
     <!--
       Shared labels. These name the same idea in more than one screen, so they
@@ -349,21 +348,24 @@
     <string name="details_maximum_is">Maximum is %1$d</string>
 
     <!-- Sign in and sign up. -->
-    <string name="auth_welcome_back">Welcome back</string>
-    <string name="auth_sign_in_subtitle">Sign in to continue</string>
+    <string name="auth_sign_in_title">Sign in</string>
+    <string name="auth_sign_in_subtitle">Back up your kitchen and keep it in step across your devices.</string>
     <string name="auth_email">Email</string>
     <string name="auth_password">Password</string>
     <string name="auth_confirm_password">Confirm password</string>
     <string name="auth_forgot_password">Forgot password?</string>
-    <string name="auth_or">OR</string>
+    <string name="auth_or">or</string>
     <string name="auth_continue_google">Continue with Google</string>
-    <string name="auth_no_account">Don\'t have an account? </string>
-    <string name="auth_sign_up">Sign up</string>
-    <string name="auth_continue_without_account">Continue without account</string>
+    <string name="auth_no_account">New here?</string>
+    <string name="auth_sign_up">Create account</string>
+    <string name="auth_continue_without_account">Continue without an account</string>
     <string name="auth_create_account">Create account</string>
     <string name="auth_passwords_mismatch">Passwords do not match</string>
-    <string name="auth_agree_to">I agree to the </string>
-    <string name="auth_have_account">Already have an account? </string>
+    <!-- Both placeholders become tappable links. The spaces live in this string, not in the layout, so a translator controls them. -->
+    <string name="auth_agree_terms">I agree to the %1$s and the %2$s.</string>
+    <string name="auth_terms_link">Terms of Service</string>
+    <string name="auth_privacy_link">Privacy Policy</string>
+    <string name="auth_have_account">Already have an account?</string>
     <string name="auth_reset_title">Reset password</string>
     <string name="auth_reset_body">Enter your email to receive a password reset link.</string>
     <string name="auth_reset_sent">If an account exists for that email, a reset link is on its way.</string>
@@ -381,6 +383,7 @@
     <string name="auth_error_no_network">No internet connection. Check your network and try again.</string>
     <string name="auth_error_too_many_attempts">Too many attempts. Please try again in a few minutes.</string>
     <string name="auth_error_generic">Something went wrong. Please try again.</string>
+    <string name="auth_error_google">Google sign-in is not available right now. You can use email instead.</string>
 
     <!-- Onboarding. -->
     <string name="onboarding_track_title">Track your food</string>

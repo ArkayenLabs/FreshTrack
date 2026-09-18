@@ -12,6 +12,7 @@ import com.example.freshtrack.presentation.viewmodel.AuthError
  */
 @StringRes
 internal fun messageFor(error: AuthError): Int = when (error) {
+    AuthError.GOOGLE_UNAVAILABLE -> R.string.auth_error_google
     AuthError.WEAK_PASSWORD -> R.string.auth_error_weak_password
     AuthError.INVALID_CREDENTIALS -> R.string.auth_error_invalid_credentials
     AuthError.EMAIL_IN_USE -> R.string.auth_error_email_in_use

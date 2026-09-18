@@ -96,14 +96,21 @@ existing rows survive and still mean the same thing.
 SplashScreen
   ├── Firebase user logged in → Dashboard
   ├── Guest mode (OnboardingPreferences.isGuestMode()) → Dashboard
-  ├── Onboarding not done → OnboardingScreen → (Get Started or Skip) → guest → Dashboard
+  ├── Onboarding not done → OnboardingScreen → (Get Started or Skip) → Login
+  │       Login offers Google, email, "Create account" and "Continue without an account" on one screen
   └── else → Dashboard (as guest)
 ```
 
-**Deferred auth:** Login is never forced at startup. A new user lands on the
-Dashboard as a guest. Login is reached only on intent — the Settings "Using as
-Guest → Sign In" banner, or tapping a cloud feature. On sign-in, guest data
-claims into the account.
+**Deferred auth:** Login is never forced. After onboarding it is offered once,
+with "Continue without an account" on the same screen; otherwise it is reached
+on intent — the Settings "Using as Guest → Sign In" banner (a plain push, so
+back returns to Settings), or tapping a cloud feature. On sign-in, guest data
+claims into the account and Today becomes the root of the back stack.
+
+**Google Sign-In needs every signing fingerprint in Firebase**: debug, upload,
+and Play's app-signing key. Only debug was registered until 18 Sep 2026, so
+release builds failed with DEVELOPER_ERROR — silently, until the auth screens
+started reporting it.
 
 Settings "Sign Out" clears guest flag AND Firebase session, returns to Login.
 

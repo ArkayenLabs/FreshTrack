@@ -366,10 +366,32 @@ behaviour; the resume hook does not run; nothing touches Play Billing —
 confirmed on the phone: no `BillingClient` line in the log). Flip the flag
 when the internal-testing purchase has been proven. Upload is the owner's.
 
+**Fixed 18 Sep 2026, later: the sign-in flow the owner walked through on
+the phone.** Five things, all confirmed in code first: (1) "New here?Sign up"
+and "Already have an account?Sign in" ran together because the space was a
+*trailing* space in `strings.xml`, which the resource compiler strips — every
+earlier "fix" in the string was undone at build time; the gap is now a
+`Spacer` in the layout and the terms line is one string with two link spans.
+(2) Google Sign-In: Firebase had only the debug keystore's SHA-1, so any
+release build got DEVELOPER_ERROR, which the screen caught and ignored. The
+error is now reported (`AuthError.GOOGLE_UNAVAILABLE`); the upload key and
+Play's app-signing key still have to be added in Firebase — owner's step.
+(3) Back from Sign in exited the app: the Settings banner reused `onSignOut`,
+which clears the stack; it has its own `onSignIn` now, a plain push.
+(4) Onboarding went straight into the app; it now lands on Sign in, which has
+"Continue without an account" on the same screen. (5) Both auth screens fit
+one screen without scrolling: no logo block, Google first, then email.
+Verified on the phone: `LoginScreenTest` 5/5 including a new
+`assertIsDisplayed` on every exit; walked onboarding → Sign in → Create
+account → back → guest → Settings → Sign in → back to Settings; the Google
+account picker opened on the debug build (fingerprint registered), which
+isolates the release failure to the missing fingerprints. 284 unit, lint
+0/128. **v1.1.1's bundle predates this — rebuild before uploading.**
+
 **Next, in order of value:**
 
-1. **Upload v1.1.1 to Play production** (owner), then check Vitals for the
-   Add crash disappearing.
+1. **Owner: add the upload-key and Play app-signing SHA-1s in Firebase**, then
+   rebuild v1.1.1 (`bundleRelease`) and upload to production.
 2. **Prove the purchase end to end.** Play Console steps above, then a
    `bundleRelease` to the internal testing track, a license-tester purchase,
    and the function log showing `verifyPurchase` bind and an RTDN

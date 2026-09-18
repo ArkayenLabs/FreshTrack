@@ -3,7 +3,11 @@ package com.example.freshtrack.presentation.screen.auth
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.espresso.Espresso
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.example.freshtrack.R
@@ -38,9 +42,11 @@ class LoginScreenTest {
         composeTestRule.setContent {
             LoginScreen(
                 viewModel = viewModel,
+                onNavigateBack = null,
                 onNavigateToRegister = {},
                 onNavigateToForgotPassword = {},
-                onLoginSuccess = {}
+                onLoginSuccess = {},
+                onContinueAsGuest = {}
             )
         }
     }
@@ -55,11 +61,10 @@ class LoginScreenTest {
     fun loginScreen_rendersCorrectly() {
         setContent(idleViewModel())
 
-        composeTestRule.onNodeWithText(text(R.string.auth_welcome_back)).assertExists()
         composeTestRule.onNodeWithText(text(R.string.auth_sign_in_subtitle)).assertExists()
         composeTestRule.onNodeWithText(text(R.string.auth_email)).assertExists()
         composeTestRule.onNodeWithText(text(R.string.auth_password)).assertExists()
-        composeTestRule.onNodeWithText(text(R.string.settings_sign_in)).assertExists()
+        composeTestRule.onNodeWithTag(SIGN_IN_BUTTON_TAG).assertExists()
         composeTestRule.onNodeWithText(text(R.string.auth_continue_google)).assertExists()
         composeTestRule.onNodeWithText(text(R.string.auth_sign_up)).assertExists()
     }
@@ -75,12 +80,24 @@ class LoginScreenTest {
     }
 
     @Test
+    fun loginScreen_everyWayOutIsOnScreenWithoutScrolling() {
+        // The two exits used to sit below the fold, so a new user saw a
+        // sign-in form and no way past it. assertIsDisplayed checks the
+        // node is inside the viewport, not merely in the tree.
+        setContent(idleViewModel())
+
+        composeTestRule.onNodeWithText(text(R.string.auth_continue_google)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(text(R.string.auth_sign_up)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(text(R.string.auth_continue_without_account)).assertIsDisplayed()
+    }
+
+    @Test
     fun loginScreen_buttonDisabledWhenFieldsEmpty() {
         val viewModel = idleViewModel()
         setContent(viewModel)
 
-        composeTestRule.onNodeWithText(text(R.string.settings_sign_in)).assertIsNotEnabled()
-        composeTestRule.onNodeWithText(text(R.string.settings_sign_in)).performClick()
+        composeTestRule.onNodeWithTag(SIGN_IN_BUTTON_TAG).assertIsNotEnabled()
+        composeTestRule.onNodeWithTag(SIGN_IN_BUTTON_TAG).performClick()
 
         verify(exactly = 0) { viewModel.signInWithEmail(any(), any()) }
     }
@@ -92,7 +109,10 @@ class LoginScreenTest {
 
         composeTestRule.onNodeWithText(text(R.string.auth_email)).performTextInput("test@test.com")
         composeTestRule.onNodeWithText(text(R.string.auth_password)).performTextInput("password")
-        composeTestRule.onNodeWithText(text(R.string.settings_sign_in)).performClick()
+        // The keyboard is up and the column pads for it, so the button may
+        // sit below the visible area until scrolled to — as for a person.
+        Espresso.closeSoftKeyboard()
+        composeTestRule.onNodeWithTag(SIGN_IN_BUTTON_TAG).performScrollTo().performClick()
 
         verify(exactly = 1) { viewModel.signInWithEmail("test@test.com", "password") }
     }

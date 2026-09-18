@@ -186,30 +186,34 @@ fun FreshTrackNavGraph(
 
         // ─── Onboarding ───────────────────────────────────────────────────────────
         composable(Screen.Onboarding.route) {
-            OnboardingScreen(
-                // Both finishing and skipping the intro drop the user into the
-                // app as a guest. Neither forces a login; that only happens later
-                // when they choose a cloud feature.
-                onComplete = {
-                    onboardingPreferences.setOnboardingCompleted()
-                    onboardingPreferences.setGuestMode(true)
-                    navController.navigate(Screen.Today.route) {
-                        popUpTo(Screen.Onboarding.route) { inclusive = true }
-                    }
-                },
-                onSkip = {
-                    onboardingPreferences.setOnboardingCompleted()
-                    onboardingPreferences.setGuestMode(true)
-                    navController.navigate(Screen.Today.route) {
-                        popUpTo(Screen.Onboarding.route) { inclusive = true }
-                    }
+            // Finishing or skipping the intro offers sign-in once, with
+            // "continue without an account" right there. Nothing forces it;
+            // the choice is just made visible instead of buried in Settings.
+            val toSignIn = {
+                onboardingPreferences.setOnboardingCompleted()
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(Screen.Onboarding.route) { inclusive = true }
                 }
-            )
+            }
+            OnboardingScreen(onComplete = toSignIn, onSkip = toSignIn)
         }
 
         // ─── Login ────────────────────────────────────────────────────────────────
         composable(Screen.Login.route) {
+            // Whichever way the person leaves — signed in or not — Today
+            // becomes the root again. Reached from Settings the stack is
+            // Today, Settings, Login; reached after onboarding it is just
+            // Login. Clearing to the graph root handles both without a
+            // second copy of Today underneath.
+            val today: () -> Unit = {
+                navController.navigate(Screen.Today.route) {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                }
+            }
             LoginScreen(
+                onNavigateBack = if (navController.previousBackStackEntry != null) {
+                    { navController.navigateUp() }
+                } else null,
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
                 },
@@ -219,15 +223,11 @@ fun FreshTrackNavGraph(
                 onLoginSuccess = {
                     claimLocalData()
                     onboardingPreferences.setGuestMode(false)
-                    navController.navigate(Screen.Today.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
+                    today()
                 },
                 onContinueAsGuest = {
                     onboardingPreferences.setGuestMode(true)
-                    navController.navigate(Screen.Today.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
+                    today()
                 }
             )
         }
@@ -252,7 +252,7 @@ fun FreshTrackNavGraph(
                     claimLocalData()
                     onboardingPreferences.setGuestMode(false)
                     navController.navigate(Screen.Today.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                        popUpTo(navController.graph.id) { inclusive = true }
                     }
                 }
             )
@@ -367,6 +367,8 @@ fun FreshTrackNavGraph(
                 onNavigateToLicenses = { navController.navigate(Screen.OpenSourceLicenses.route) },
                 onNavigateToHistory = { navController.navigate(Screen.History.route) },
                 onNavigateToPremium = { navController.navigate(Screen.Premium.route) },
+                // A plain push: back from the sign-in screen returns here.
+                onSignIn = { navController.navigate(Screen.Login.route) },
                 onSignOut = {
                     // Clear guest mode flag so they land on Login, not Today
                     onboardingPreferences.setGuestMode(false)

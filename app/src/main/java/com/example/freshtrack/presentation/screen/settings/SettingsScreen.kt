@@ -46,6 +46,7 @@ fun SettingsScreen(
     onNavigateToLicenses: () -> Unit,
     onNavigateToHistory: () -> Unit = {},
     onNavigateToPremium: () -> Unit = {},
+    onSignIn: () -> Unit = {},
     onSignOut: () -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel(),
     authViewModel: AuthViewModel = koinViewModel()
@@ -274,7 +275,7 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
-                        TextButton(onClick = onSignOut, shape = MaterialTheme.shapes.small) {
+                        TextButton(onClick = onSignIn, shape = MaterialTheme.shapes.small) {
                             Text(stringResource(R.string.settings_sign_in), color = MaterialTheme.colorScheme.primary)
                         }
                     }
