@@ -1,6 +1,6 @@
 # FreshTrack — Project Context for AI
 
-> Read this before touching any code. **Current status and what is left is in `PROGRESS.md`** — start there. Strategic context is in `summary.md`; sync design in `sync-design.md`.
+> Read this before touching any code. **Current status and what is left is in `PROGRESS.md`** — start there. Product strategy is in `docs/strategy.md` (`summary.md` is history); sync design in `sync-design.md`.
 
 ---
 

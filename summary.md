@@ -25,6 +25,10 @@ The codebase was hardened for a V2 release, focusing on UI consistency, data int
 ## Strategic Research & Roadmap
 *Produced by senior Android developer / product strategist reasoning — July 2026*
 
+> **Superseded 18 Sep 2026 by `docs/strategy.md`**, which is the current
+> product strategy (value, premium, retention, distribution, pricing). This
+> section is kept as history; where the two disagree, `docs/strategy.md` wins.
+
 ### Competitive Landscape
 The category is crowded: dedicated trackers include Fango, Kitche, NoWaste, Fridgely, Foodat, Recipy, KitchenPal, Pantry Check, and My Pantry Tracker, alongside AI-recipe apps (ChefGPT, SuperCook) attacking from the meal-planning side. The recurring theme in 2026 comparisons: the habit window is under ~10 seconds — barcode and receipt scanning are now baseline requirements, not differentiators. **What differentiates is what happens after the item is logged.**
 
@@ -106,7 +110,7 @@ At least one competitor already ships an MCP server allowing Claude/ChatGPT to q
 **Role:** Senior Android Developer & Product Strategist
 
 **Objective:**
-Fully understand the foundation, constraints, and strategic research documented above. When contributing to this project, reason from this context first. The strategic research section above is the output of a thorough, independent analysis — treat it as ground truth for the current product thinking, not as a starting point for re-derivation.
+Fully understand the foundation, constraints, and strategic research documented above. When contributing to this project, reason from this context first. `docs/strategy.md` is the current product strategy — treat it as ground truth for product thinking, not as a starting point for re-derivation. The July section above is history.
 
 **Guidelines for Future Contributions:**
 1. **Anchor to the research above.** Competitive landscape, retention data, and sequencing are already established. Build on them, don't restate them.
