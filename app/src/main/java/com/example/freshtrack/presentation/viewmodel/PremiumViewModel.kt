@@ -5,11 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshtrack.data.billing.Entitlement
 import com.example.freshtrack.data.billing.EntitlementRemote
-import com.example.freshtrack.data.billing.PlayBilling
-import com.example.freshtrack.data.billing.PremiumClaim
 import com.example.freshtrack.data.billing.PremiumPlan
-import com.example.freshtrack.data.billing.PurchaseUpdate
+import com.example.freshtrack.data.billing.PremiumStore
+import com.example.freshtrack.data.billing.PurchaseOutcome
 import com.example.freshtrack.data.session.KitchenSession
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -31,11 +31,20 @@ data class PremiumUiState(
 
 enum class PremiumMessage { PLANS_UNAVAILABLE, PURCHASE_FAILED, VERIFIED, VERIFY_FAILED, NOTHING_TO_RESTORE }
 
+/**
+ * The store sells; the server, told by RevenueCat's webhook, writes the
+ * entitlement; this reads it back. After a purchase or restore the store
+ * already knows, but the kitchen flag lags by however long the webhook
+ * takes, so [confirm] polls the server for a few seconds before saying
+ * "Premium is on" and starting the backup that was waiting on it.
+ */
 class PremiumViewModel(
-    private val billing: PlayBilling,
+    private val store: PremiumStore,
     private val remote: EntitlementRemote,
-    private val claim: PremiumClaim,
-    private val session: KitchenSession
+    private val session: KitchenSession,
+    private val onEntitled: () -> Unit,
+    private val confirmAttempts: Int = 8,
+    private val confirmIntervalMillis: Long = 1_500
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PremiumUiState(isSignedIn = session.isSignedIn()))
@@ -43,20 +52,19 @@ class PremiumViewModel(
 
     init {
         load()
-        viewModelScope.launch { billing.purchaseUpdates.collect(::onPurchaseUpdate) }
     }
 
     fun load() {
         viewModelScope.launch {
             val signedIn = session.isSignedIn()
             _uiState.update { it.copy(isLoading = true, isSignedIn = signedIn) }
-            // A guest is asked to sign in before seeing plans, so Play is
+            // A guest is asked to sign in before seeing plans, so the store is
             // not asked on their behalf.
             if (!signedIn) {
                 _uiState.update { it.copy(isLoading = false) }
                 return@launch
             }
-            val plans = billing.premiumPlans()
+            val plans = store.premiumPlans()
             val entitlement = remote.current(session.currentUserId())
             _uiState.update { state ->
                 state.copy(
@@ -80,29 +88,30 @@ class PremiumViewModel(
 
     fun subscribe(activity: Activity) {
         val plan = _uiState.value.selectedPlan ?: return
-        billing.subscribe(activity, plan)
-            .onSuccess { _uiState.update { it.copy(isBusy = true) } }
-            .onFailure { _uiState.update { it.copy(message = PremiumMessage.PURCHASE_FAILED) } }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true) }
+            store.subscribe(activity, plan)
+                .onSuccess { outcome ->
+                    when (outcome) {
+                        PurchaseOutcome.Purchased -> confirm()
+                        // The store reports again when the payment clears and
+                        // the webhook lands then; nothing to wait for here.
+                        PurchaseOutcome.Pending, PurchaseOutcome.Cancelled -> _uiState.update { it.copy(isBusy = false) }
+                    }
+                }
+                .onFailure { _uiState.update { it.copy(isBusy = false, message = PremiumMessage.PURCHASE_FAILED) } }
+        }
     }
 
     fun restore() {
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true) }
-            claim.restore()
-                .onSuccess { entitlement ->
-                    _uiState.update {
-                        it.copy(
-                            isBusy = false,
-                            entitlement = entitlement ?: it.entitlement,
-                            message = when {
-                                entitlement == null -> PremiumMessage.NOTHING_TO_RESTORE
-                                entitlement.isPremium -> PremiumMessage.VERIFIED
-                                else -> null
-                            }
-                        )
-                    }
+            store.restore()
+                .onSuccess { active ->
+                    if (active) confirm()
+                    else _uiState.update { it.copy(isBusy = false, message = PremiumMessage.NOTHING_TO_RESTORE) }
                 }
-                .onFailure { _uiState.update { it.copy(isBusy = false, message = PremiumMessage.VERIFY_FAILED) } }
+                .onFailure { _uiState.update { it.copy(isBusy = false, message = PremiumMessage.PURCHASE_FAILED) } }
         }
     }
 
@@ -110,30 +119,17 @@ class PremiumViewModel(
         _uiState.update { it.copy(message = null) }
     }
 
-    private suspend fun onPurchaseUpdate(update: PurchaseUpdate) {
-        when (update) {
-            is PurchaseUpdate.Purchased -> {
-                if (update.purchases.none { it.isPremium }) {
-                    // Nothing completed yet — a pending payment. Play reports
-                    // again when it clears, and resume picks it up.
-                    _uiState.update { it.copy(isBusy = false) }
-                    return
-                }
-                claim.claim(update.purchases)
-                    .onSuccess { entitlement ->
-                        _uiState.update {
-                            it.copy(
-                                isBusy = false,
-                                entitlement = entitlement,
-                                message = if (entitlement.isPremium) PremiumMessage.VERIFIED else null
-                            )
-                        }
-                    }
-                    .onFailure { _uiState.update { it.copy(isBusy = false, message = PremiumMessage.VERIFY_FAILED) } }
+    /** Wait for the server's copy to say premium; the backup starts the moment it does. */
+    private suspend fun confirm() {
+        repeat(confirmAttempts) { attempt ->
+            val entitlement = remote.current(session.currentUserId()).getOrNull()
+            if (entitlement?.isPremium == true) {
+                _uiState.update { it.copy(isBusy = false, entitlement = entitlement, message = PremiumMessage.VERIFIED) }
+                onEntitled()
+                return
             }
-            PurchaseUpdate.Cancelled -> _uiState.update { it.copy(isBusy = false) }
-            PurchaseUpdate.AlreadyOwned -> restore()
-            is PurchaseUpdate.Failed -> _uiState.update { it.copy(isBusy = false, message = PremiumMessage.PURCHASE_FAILED) }
+            if (attempt < confirmAttempts - 1) delay(confirmIntervalMillis)
         }
+        _uiState.update { it.copy(isBusy = false, message = PremiumMessage.VERIFY_FAILED) }
     }
 }

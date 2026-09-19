@@ -8,7 +8,7 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-freshtrack \"node --test firestore-tests/rules.test.mjs\"",
     "test:sync-e2e": "firebase emulators:exec --only firestore,auth --project demo-freshtrack \"./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.freshtrack.data.sync.SyncEndToEndTest\"",
     "test:sync-e2e:win": "firebase emulators:exec --only firestore,auth --project demo-freshtrack \".\\gradlew.bat :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.freshtrack.data.sync.SyncEndToEndTest\"",
-    "test:functions": "npm --prefix functions run build && firebase emulators:exec --only firestore --project demo-freshtrack \"node --test functions/lib/*.test.js\""
+    "test:functions": "npm --prefix functions run build && firebase emulators:exec --only firestore --project demo-freshtrack \"node --test --test-concurrency=1 functions/lib/*.test.js\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

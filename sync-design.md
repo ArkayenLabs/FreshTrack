@@ -333,12 +333,27 @@ account, and that account claims the rows. Narrow, and recorded in
 
 ## 8. Entitlement
 
-> **Decision, 18 Sep 2026: RevenueCat on both platforms.** The three
-> Play-native functions below are deployed and tested, and will be replaced
-> by one webhook function that RevenueCat calls with the merged Play and App
-> Store state for a uid. Everything RevenueCat's webhook writes into —
-> `kitchens/{id}.isPremium`, `entitlements/{uid}`, the rules, the kitchen
-> creation — is unchanged. See `PROGRESS.md` "Pick up here".
+> **Decision, 18 Sep 2026: RevenueCat on both platforms.** Built 19 Sep:
+> `revenueCatWebhook` (`functions/src/revenuecat.ts`, `onRequest`, secrets
+> `REVENUECAT_WEBHOOK_AUTH` and `REVENUECAT_API_KEY`). RevenueCat posts an
+> event; the handler checks the Authorization header in constant time, takes
+> only *whose* record moved from the body (`app_user_id`, or both sides of a
+> `TRANSFER`; anonymous ids dropped; `TEST` is a 200 and nothing), reads the
+> customer back with `GET /v1/subscribers/{uid}` and rewrites the same two
+> documents through `writeEntitlement`. A RevenueCat or Firestore failure is
+> a 500 so RevenueCat retries (five times over ~2.5 h). Access lasts until
+> the later of `expires_date` and either grace-period date unless refunded;
+> the receipt's `state` is `ACTIVE`, `CANCELLED`, `GRACE`, `PAUSED`,
+> `REFUNDED`, `EXPIRED` or `NONE`, with `store` and `source: "revenuecat"`
+> and no `purchaseToken`, which is how the Play reconciler knows to leave it
+> alone. A free user with no kitchen and no receipt is not written at all.
+> The three Play-native functions below stay deployed until a purchase is
+> proven through RevenueCat, then go. On the client, `PremiumClaim` and
+> `PlayBillingClient` are gone: `RevenueCatStore` sells, and
+> `PremiumViewModel.confirm` polls `entitlements/{uid}` for a few seconds
+> after a purchase or restore before saying "Premium is on" and starting the
+> backup. 19 emulator tests in `revenuecat.test.ts`, 10 JVM tests in
+> `PremiumViewModelTest`.
 
 
 `isPremium` lives on the kitchen document because the rules already fetch the

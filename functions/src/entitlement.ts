@@ -76,35 +76,35 @@ const gone = (previous: Partial<Decision>): Decision => ({
 
 /**
  * Kitchen flag and entitlement receipt, in one transaction, so a reader can
- * never see one without the other. Creates the personal kitchen if the user
+ * never see one without the other. The receipt is the decision plus whatever
+ * identifies the purchase to its source — a Play token here, a RevenueCat
+ * `source` marker in `revenuecat.ts`. Creates the personal kitchen if the user
  * has never synced, in the same shape `FirestoreRemoteStore.ensureKitchenExists`
  * would — a bare `{isPremium}` document would satisfy that method's existence
  * check and leave a kitchen with no members that the rules deny outright.
  */
-function writeEntitlement(
+export function writeEntitlement(
   tx: Transaction,
   db: Firestore,
   uid: string,
-  purchaseToken: string,
-  decision: Decision,
+  receipt: Decision & Record<string, unknown>,
   kitchenExists: boolean,
   now: number
 ): void {
   const kitchenRef = db.collection(KITCHENS).doc(personalKitchenId(uid));
   if (kitchenExists) {
-    tx.update(kitchenRef, { isPremium: decision.isPremium });
+    tx.update(kitchenRef, { isPremium: receipt.isPremium });
   } else {
     tx.set(kitchenRef, {
       name: DEFAULT_KITCHEN_NAME,
       ownerUid: uid,
       memberUids: [uid],
       createdAt: now,
-      isPremium: decision.isPremium,
+      isPremium: receipt.isPremium,
     });
   }
   tx.set(db.collection(ENTITLEMENTS).doc(uid), {
-    ...decision,
-    purchaseToken,
+    ...receipt,
     updatedAt: FieldValue.serverTimestamp(),
   });
 }
@@ -145,7 +145,7 @@ export async function bindPurchase(
     const bound = await findByToken(db, purchaseToken, tx);
     if (bound !== null && bound.id !== uid) throw new EntitlementError("token-bound-elsewhere");
     const kitchen = await tx.get(db.collection(KITCHENS).doc(personalKitchenId(uid)));
-    writeEntitlement(tx, db, uid, purchaseToken, decision, kitchen.exists, now);
+    writeEntitlement(tx, db, uid, { ...decision, purchaseToken }, kitchen.exists, now);
   });
   return decision;
 }
@@ -188,7 +188,7 @@ export async function refreshByToken(
   const decision = sub ? decide(sub, now) : gone(bound.data() as Partial<Decision>);
   await db.runTransaction(async (tx) => {
     const kitchen = await tx.get(db.collection(KITCHENS).doc(personalKitchenId(uid)));
-    writeEntitlement(tx, db, uid, purchaseToken, decision, kitchen.exists, now);
+    writeEntitlement(tx, db, uid, { ...decision, purchaseToken }, kitchen.exists, now);
   });
   return { outcome: "updated", uid, decision };
 }
@@ -209,7 +209,9 @@ export async function reconcile(
   let revoked = 0;
   for (const doc of snap.docs) {
     const ent = doc.data() as EntitlementDoc;
-    if (!ent.isPremium) continue;
+    // A receipt RevenueCat wrote has no Play token to re-check; RevenueCat
+    // owns its own expiry.
+    if (!ent.isPremium || !ent.purchaseToken) continue;
     checked++;
     const result = await refreshByToken(db, play, ent.purchaseToken, now);
     if (result.outcome === "updated" && !result.decision.isPremium) revoked++;

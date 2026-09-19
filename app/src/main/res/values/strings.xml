@@ -509,6 +509,6 @@
     <string name="premium_purchase_failed">The purchase did not go through.</string>
     <string name="premium_verified">Premium is on. Backing up now.</string>
     <string name="premium_nothing_to_restore">No Premium purchase found for this Google account.</string>
-    <string name="premium_verify_failed">Could not confirm the purchase with the server. It will be retried when you next open the app.</string>
+    <string name="premium_verify_failed">The purchase went through but the server has not confirmed it yet. Premium switches on by itself shortly.</string>
     <string name="settings_sync_see_plans">Tap to see plans.</string>
 </resources>

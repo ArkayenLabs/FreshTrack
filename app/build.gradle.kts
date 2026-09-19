@@ -28,6 +28,11 @@ android {
         versionCode = 6
         versionName = "1.1.1"
 
+        // RevenueCat's public Google SDK key (`goog_…`), safe to ship. Empty
+        // until the owner creates the RevenueCat app; the store then refuses
+        // every call, and Premium is hidden anyway.
+        buildConfigField("String", "REVENUECAT_GOOGLE_KEY", "\"${project.findProperty("REVENUECAT_GOOGLE_KEY") ?: ""}\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -176,10 +181,10 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-    implementation(libs.firebase.functions)
 
-    // Play Billing. The library merges com.android.vending.BILLING into the manifest.
-    implementation(libs.billing)
+    // RevenueCat, which carries Play Billing underneath and merges
+    // com.android.vending.BILLING into the manifest.
+    implementation(libs.revenuecat)
     implementation(libs.play.services.auth)
 
     // Network - Retrofit & OkHttp

@@ -55,24 +55,18 @@ val repositoryModule = module {
         get<com.example.freshtrack.data.preferences.SyncPreferences>()
     }
 
-    // Play Billing. One BillingClient for the process; the entitlement it
-    // produces is verified by the Cloud Function in asia-south1, never here.
-    single<com.example.freshtrack.data.billing.PlayBilling> {
-        com.example.freshtrack.data.billing.PlayBillingClient(androidContext())
-    }
-    single { com.google.firebase.functions.FirebaseFunctions.getInstance("asia-south1") }
-    single<com.example.freshtrack.data.billing.EntitlementRemote> {
-        com.example.freshtrack.data.billing.FirebaseEntitlementRemote(functions = get(), firestore = get())
-    }
-    single {
-        com.example.freshtrack.data.billing.PremiumClaim(
-            billing = get(),
-            remote = get(),
-            session = get(),
-            // The backup was waiting on exactly this; start it now rather
-            // than at the next background moment.
-            onEntitled = { com.example.freshtrack.data.sync.SyncWorker.syncNow(androidContext()) }
+    // The store, over RevenueCat. Configured at start so the SDK syncs any
+    // purchase the app died before finishing; the entitlement it produces is
+    // written by the webhook function in asia-south1, never here.
+    single<com.example.freshtrack.data.billing.PremiumStore>(createdAtStart = true) {
+        com.example.freshtrack.data.billing.RevenueCatStore(
+            context = androidContext(),
+            apiKey = com.example.freshtrack.BuildConfig.REVENUECAT_GOOGLE_KEY,
+            auth = get()
         )
+    }
+    single<com.example.freshtrack.data.billing.EntitlementRemote> {
+        com.example.freshtrack.data.billing.FirebaseEntitlementRemote(firestore = get())
     }
     single {
         com.example.freshtrack.data.sync.OutboxPusher(
@@ -250,10 +244,12 @@ val viewModelModule = module {
 
     viewModel<com.example.freshtrack.presentation.viewmodel.PremiumViewModel> {
         com.example.freshtrack.presentation.viewmodel.PremiumViewModel(
-            billing = get(),
+            store = get(),
             remote = get(),
-            claim = get(),
-            session = get()
+            session = get(),
+            // The backup was waiting on exactly this; start it now rather
+            // than at the next background moment.
+            onEntitled = { com.example.freshtrack.data.sync.SyncWorker.syncNow(androidContext()) }
         )
     }
 

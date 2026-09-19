@@ -1,60 +1,49 @@
 package com.example.freshtrack.data.billing
 
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.tasks.await
 
 /**
  * What the server says about this account's premium. Mirrors the
- * `entitlements/{uid}` document the Cloud Function writes; the client can
- * read it and never write it.
+ * `entitlements/{uid}` document the webhook function writes from
+ * RevenueCat's record; the client can read it and never write it.
  */
 data class Entitlement(
     val isPremium: Boolean,
-    /** Play's `subscriptionState`, for example `SUBSCRIPTION_STATE_CANCELED`. */
+    /** `ACTIVE`, `CANCELLED`, `GRACE`, `PAUSED`, `REFUNDED`, `EXPIRED` or `NONE`. */
     val state: String,
+    /** `monthly` or `annual` on Play; null for an App Store purchase. */
     val basePlanId: String?,
-    /** Epoch millis when the paid period ends, if Play said. */
+    /** Epoch millis when the paid period ends, if the store said. */
     val expiryTime: Long?
 ) {
-    val isCancelled: Boolean get() = state == "SUBSCRIPTION_STATE_CANCELED"
+    /** Still premium, but will not renew: Settings says "ends on" rather than "renews on". */
+    val isCancelled: Boolean get() = state == "CANCELLED"
 }
 
 /**
- * The server side of a purchase. [verify] is the only way a purchase turns
- * into an entitlement: the token goes up, the server asks Play, and the
- * answer comes back. The app never decides for itself that it is premium.
+ * The server's record of a purchase. The app never decides for itself that
+ * it is premium: RevenueCat tells the server, the server writes this, and
+ * the app reads it.
  */
 interface EntitlementRemote {
-    suspend fun verify(purchaseToken: String): Result<Entitlement>
-
     /** The entitlement on record, or null if this account has never bought. */
     suspend fun current(uid: String): Result<Entitlement?>
 }
 
 class FirebaseEntitlementRemote(
-    private val functions: FirebaseFunctions,
     private val firestore: FirebaseFirestore
 ) : EntitlementRemote {
 
-    override suspend fun verify(purchaseToken: String): Result<Entitlement> = runCatching {
-        val data = functions.getHttpsCallable("verifyPurchase")
-            .call(mapOf("purchaseToken" to purchaseToken))
-            .await()
-            .data as? Map<*, *>
-            ?: error("verifyPurchase returned no data")
-        data.toEntitlement()
-    }
-
     override suspend fun current(uid: String): Result<Entitlement?> = runCatching {
         firestore.collection("entitlements").document(uid).get().await()
-            .data?.toEntitlement()
+            .data?.let { data ->
+                Entitlement(
+                    isPremium = data["isPremium"] == true,
+                    state = data["state"] as? String ?: "",
+                    basePlanId = data["basePlanId"] as? String,
+                    expiryTime = (data["expiryTime"] as? Number)?.toLong()
+                )
+            }
     }
-
-    private fun Map<*, *>.toEntitlement() = Entitlement(
-        isPremium = this["isPremium"] == true,
-        state = this["state"] as? String ?: "",
-        basePlanId = this["basePlanId"] as? String,
-        expiryTime = (this["expiryTime"] as? Number)?.toLong()
-    )
 }

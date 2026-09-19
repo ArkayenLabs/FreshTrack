@@ -220,6 +220,52 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
+**State at 19 Sep 2026 — `main` after `7a1ef9b`, RevenueCat work in the
+tree, not yet committed.** 285 unit tests, lint 0 errors / 127 warnings,
+rules 61, functions 45 (`npm run test:functions`; the two emulator test
+files now run one at a time — `--test-concurrency=1` — because both wipe the
+same project between tests). Google Sign-In verified on the release build by
+the owner on 19 Sep. **v1.1.1 (versionCode 6) is built and handed over:**
+`app/build/outputs/bundle/release/app-release.aab`, 58.4 MB, signed with the
+upload key `92:0D…`, versionCode 6 read from the bundle's manifest,
+`OpenFoodFactsApi` and the DTOs unobfuscated in `mapping.txt`, Crashlytics
+mapping uploaded. Owner uploads it and attaches `mapping.txt`. Built from
+the clean tree at `7a1ef9b`, before any RevenueCat change.
+
+**Done 19 Sep 2026: RevenueCat, items 2 and 3 of the list below.**
+- `functions/src/revenuecat.ts` + `revenueCatWebhook` in `index.ts`:
+  `onRequest`, secrets `REVENUECAT_WEBHOOK_AUTH` (the Authorization value
+  typed into the RevenueCat webhook form) and `REVENUECAT_API_KEY` (a v1
+  *secret* key). The event body only says whose record moved; the customer
+  is read back from `GET /v1/subscribers/{uid}` and the kitchen flag and
+  receipt rewritten from that, through the same `writeEntitlement` as the
+  Play path. Design in `sync-design.md` §8. 19 tests; the refund guard and
+  the no-kitchen guard were each broken once and failed exactly their own
+  test. The three Play-native functions are untouched and still deployed;
+  the Play reconciler skips a receipt with no `purchaseToken`.
+- Client: `PlayBilling`, `PlayBillingClient`, `PremiumClaim` and their test
+  deleted; `PremiumStore` + `RevenueCatStore` (SDK 10.22.1, Play Billing
+  inside it; `libs.billing` and `firebase-functions` removed) added.
+  Configured at Koin start with the Firebase uid as app user id and kept in
+  step by an auth listener. `EntitlementRemote.verify` is gone; `current`
+  stays. `PremiumViewModel` now polls `entitlements/{uid}` for up to ~12 s
+  after a purchase or restore, then says "Premium is on" and fires
+  `SyncWorker.syncNow`; the `MainActivity.onResume` claim hook is gone (the
+  SDK finishes an interrupted purchase itself). `PremiumScreen` unchanged
+  but for one string. `REVENUECAT_GOOGLE_KEY` is an empty Gradle property →
+  `BuildConfig`; empty means the store is not configured and every call
+  fails, which `PREMIUM_ON_SALE = false` hides. 10 JVM tests.
+- **Deployed and verified 19 Sep 2026, 06:50Z:** `revenueCatWebhook` is
+  `ACTIVE` in `asia-south1` with both secrets bound (version 1 of each);
+  an unauthenticated POST answers 401 and a GET 405; RevenueCat's "Send
+  test event" reached the function and was logged as "RevenueCat test event
+  received" with `{"updated":[]}` returned. The first attempt was refused
+  as "bad Authorization" because the header typed into RevenueCat and the
+  secret differed; both are now the same `Bearer <hex>` line. HMAC signing
+  is off. RevenueCat project `GoodBefore` exists with both native apps.
+  **Not verified:** a real purchase — needs the rest of the console work
+  (item 4). A release APK with the SDK in it built clean through R8.
+
 **State at the end of 18 Sep 2026 — `main` at the docs commit after `1c8e577`,
 not pushed, tree clean.** 284 unit tests, lint 0 errors / 128 warnings, rules
 61 (`npm run test:rules`), functions 26 (`npm run test:functions`). Connected:
@@ -416,29 +462,32 @@ isolates the release failure to the missing fingerprints. 284 unit, lint
 
 **Next, in order:**
 
-1. **Confirm Google Sign-In on the sideloaded release APK** (owner reports;
-   see above). Then **v1.1.1 to production**: versionCode 6 is still unused,
-   `bundleRelease`, manual gate (release APK: Add opens, scan a barcode,
-   Settings → Sign in → back, Google picker opens), hand the `.aab` to the
-   owner to upload. Watch Vitals for the Add crash disappearing. Owner also
-   renames the store listing FreshTrack → GoodBefore.
-2. **RevenueCat webhook function** (replaces the three Play-native ones).
-   The owner has a RevenueCat account; nothing is configured there yet. Steps
-   1–6 of the setup are in the 18 Sep conversation and summarised at item 5
-   below. Build the function first (needs nothing from the owner), then the
-   SDK swap, then the console work.
-3. **RevenueCat Android SDK swap** (replaces `PlayBillingClient` and
-   `PremiumClaim`; keeps `PremiumScreen`, `EntitlementRemote.current`,
-   `PREMIUM_ON_SALE`). RC's SDK bundles its own Billing Library version.
+1. ~~**Confirm Google Sign-In on the sideloaded release APK.**~~ Verified by
+   the owner, 19 Sep. ~~**v1.1.1 bundle.**~~ Built and handed over, 19 Sep
+   (see above). **Owner: upload the `.aab` with `mapping.txt`**, watch Vitals
+   for the Add crash disappearing, rename the store listing FreshTrack →
+   GoodBefore.
+2. ~~**RevenueCat webhook function.**~~ Built, tested, deployed and proven
+   with RevenueCat's test event, 19 Sep. Secrets set; webhook registered in
+   RevenueCat at
+   `https://asia-south1-freshtrack-3c379.cloudfunctions.net/revenueCatWebhook`,
+   both environments, all apps, all events. Changing a secret needs a
+   redeploy (`firebase deploy --only "functions:revenueCatWebhook"`) to pick
+   up the new version.
+3. ~~**RevenueCat Android SDK swap.**~~ Done, 19 Sep.
 4. **RevenueCat + Play Console setup** — owner: RC project `GoodBefore` +
    Google Play app `com.arkayenlabs.freshtrack`; a GCP service account
    (Pub/Sub Admin) whose JSON is uploaded to RC and whose email is invited in
    Play Console (View financial data, Manage orders and subscriptions);
    product `premium` with base plans `monthly`/`annual`; RTDN topic → RC's
    (not ours); entitlement `premium`, products imported, offering `default`
-   with `$rc_monthly`/`$rc_annual`; webhook URL + Authorization secret;
-   license tester. Public Google SDK key (`goog_…`) into the app.
-5. **Internal testing track + license-tester purchase**, end to end.
+   with `$rc_monthly`/`$rc_annual`; license tester. Public Google SDK key
+   (`goog_…`) into `gradle.properties` as `REVENUECAT_GOOGLE_KEY`. (The
+   webhook and its secrets are done — item 2.)
+5. **Internal testing track + license-tester purchase**, end to end: flip
+   `PREMIUM_ON_SALE`, bump versionCode, buy with the tester account, watch
+   `entitlements/{uid}` appear with `source: "revenuecat"` and the Settings
+   card turn into "Back up now".
 6. **Retire** `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`,
    topic `play-billing`.
 7. **Connected suite** re-run in full.
@@ -594,10 +643,10 @@ Loose ends found during the sweep, none of them urgent:
       **Decided 12 Sep 2026: not until the transport exists.** Nothing writes
       to Firestore before then, so a deploy now protects nothing and is done
       twice. Deploy alongside the sync transport, with the full model covered.
-- [ ] **Play Billing.** Server side built, tested and deployed 15 Sep 2026
-      (`functions/`); client built the same day (`data/billing/`,
-      `PremiumScreen`). Not yet proven against real Play — needs the Play
-      Console configuration and a testing-track build. See "Pick up here".
+- [ ] **Billing.** Play-native server and client built 15 Sep 2026;
+      replaced 19 Sep by the RevenueCat webhook function and SDK (see "Pick
+      up here"). Not yet proven against real RevenueCat or Play — needs the
+      console work and a testing-track build.
 - [ ] **Legal & compliance** — see `COMPLIANCE.md`. The listing still claims
       "no data collection" while consented analytics exists, and the legal
       templates still carry placeholder dates.
