@@ -135,6 +135,11 @@ SplashScreen
 
 **Deferred auth:** Login is never forced. After onboarding it is offered once,
 with "Continue without an account" on the same screen; otherwise it is reached
+on intent. **While `PREMIUM_ON_SALE` is false none of this shows** (19 Sep
+2026): onboarding lands on Today as a guest, the Settings sign-in banner is
+hidden and the backup card only says where the data is, because an account
+unlocks nothing until Plus is on sale and asking for one would be asking for
+nothing. Flip the flag and every entry point returns. Otherwise it is reached
 on intent — the Settings "Using as Guest → Sign In" banner (a plain push, so
 back returns to Settings), or tapping a cloud feature. On sign-in, guest data
 claims into the account and Today becomes the root of the back stack.

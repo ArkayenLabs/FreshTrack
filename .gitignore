@@ -75,3 +75,4 @@ ui-debug.log
 *.keystore
 *.jks
 keystore.properties
+playstore-listing-ss/

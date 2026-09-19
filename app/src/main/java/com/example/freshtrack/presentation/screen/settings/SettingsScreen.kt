@@ -234,8 +234,9 @@ fun SettingsScreen(
                         }
                     }
                 }
-            } else {
-                // Guest mode — nudge to sign in for cloud features
+            } else if (premiumOnSale) {
+                // Guest mode: the way to an account, shown only while an
+                // account unlocks something. Same gate as the paywall.
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -983,6 +984,10 @@ private fun describeSync(
         " " + stringResource(R.string.settings_sync_see_plans)
     } else ""
     val status = when {
+        // Nothing to sign in for while Premium is off sale: say where the
+        // data is and no more.
+        !com.example.freshtrack.data.billing.PREMIUM_ON_SALE && lastSuccessAt <= 0L ->
+            stringResource(R.string.settings_sync_local_only)
         !isSignedIn -> stringResource(R.string.settings_sync_signed_out) + seePlans
         lastRun == com.example.freshtrack.data.sync.SyncRun.Result.NOT_ENTITLED ->
             stringResource(R.string.settings_sync_needs_premium) + seePlans

@@ -220,10 +220,22 @@ fun FreshTrackNavGraph(
             // Finishing or skipping the intro offers sign-in once, with
             // "continue without an account" right there. Nothing forces it;
             // the choice is just made visible instead of buried in Settings.
+            //
+            // Until Premium is on sale an account buys nothing, so the offer
+            // is not made: onboarding lands on Today as a guest and the
+            // sign-in screen returns, with its promise true, when the flag
+            // flips. Same gate as the paywall.
             val toSignIn = {
                 onboardingPreferences.setOnboardingCompleted()
-                navController.navigate(Screen.Login.route) {
-                    popUpTo(Screen.Onboarding.route) { inclusive = true }
+                if (com.example.freshtrack.data.billing.PREMIUM_ON_SALE) {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                } else {
+                    onboardingPreferences.setGuestMode(true)
+                    navController.navigate(Screen.Today.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             }
             OnboardingScreen(onComplete = toSignIn, onSkip = toSignIn)
