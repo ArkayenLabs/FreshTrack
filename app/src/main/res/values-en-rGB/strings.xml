@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    British English. Only the strings whose wording differs from the US base
+    in values/: spelling (licence, organise), the word for the date (expiry,
+    not expiration), the verb for throwing food away (bin, not toss), and the
+    date-label coach, which follows the Food Standards Agency: best before is
+    about quality; use by is about safety and gets no reassurance.
+-->
+<resources>
+    <string name="add_expiry_hint">Select expiry date</string>
+    <string name="add_expiry_label">Expiry date</string>
+    <string name="add_section_expiry">Expiry and quantity</string>
+    <string name="error_expiry_required">Expiry date is required</string>
+    <string name="history_expiry">Expiry: %1$s</string>
+    <string name="kitchen_sort_expiry">Expiry date (nearest first)</string>
+    <string name="licenses_title">Open source licences</string>
+    <string name="licenses_view_full">View full licence</string>
+    <string name="onboarding_alerts_title">Expiry alerts</string>
+    <string name="onboarding_organise_body">Organise by category, scan barcodes and manage quantities. Expiry tracking without the effort.</string>
+    <string name="onboarding_organise_title">Stay organised</string>
+    <string name="premium_terms">Renews automatically until cancelled in Google Play.</string>
+    <string name="reminders_benefit_alerts">Expiry reminders</string>
+    <string name="reminders_body_denied">To receive expiry alerts, please enable notifications in app settings.</string>
+    <string name="settings_licenses">Open source licences</string>
+    <string name="today_action_bin">Bin</string>
+    <string name="today_binned_item">Binned %1$s</string>
+    <string name="today_coach_best_before">Best before is about quality, not safety. Look, smell and taste before you bin it.</string>
+</resources>

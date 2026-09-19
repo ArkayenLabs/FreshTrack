@@ -520,6 +520,39 @@ account picker opened on the debug build (fingerprint registered), which
 isolates the release failure to the missing fingerprints. 284 unit, lint
 0/128. **v1.1.1's bundle predates this — rebuild before uploading.**
 
+**Done 19 Sep 2026, evening: v1.2 items 1–5 of the assessment, plus en-GB.**
+- `UsageMetrics` (interface, `FirebaseUsageMetrics`, `NoOp`): `add_completed{method}`,
+  `first_item`, `third_item`, `item_resolved{outcome,overdue}`,
+  `resolution_undone`, `premium_intent{source}`, `paywall_shown`,
+  `purchase_confirmed{plan}`, `review_prompted`. Fired from
+  `ItemRepositoryImpl.add/resolve/undo` (receipt adds counted as receipt via
+  `commitReceipt`), `PremiumViewModel` and the Settings backup card. The four
+  old `AnalyticsHelper` events and their three call sites are gone. New DAO
+  query `countActiveItems`. Test: the whole sequence for a manual, barcode
+  and receipt add, a use, an undo and a bin.
+- Analytics consent is asked once on Today after the first item is used
+  (`AnalyticsConsentDialog`); either answer counts as decided. Before this
+  nobody was ever asked: the toggle only existed in Settings.
+- `ReviewPrompter` over Play In-App Review (`review-ktx:2.0.2`), gated
+  locally (3 days / 3 resolved / 60 days), triggered after a Today "Use"
+  that was not undone, and never in the same moment as the consent ask.
+  `OnboardingPreferences` gained `firstOpenedAt` and `lastReviewPromptAt`.
+- Today: "Add a couple more things…" replaces the all-clear body while the
+  kitchen has fewer than three items. Date-label coach line under an
+  overdue best-before/sell-by row. **Freeze** as a labelled action on the
+  row (Later and Bin become icon buttons so four fit); `TodayViewModel.freeze`
+  calls the repository's existing `freeze()` (which nothing had called) with
+  today + 3 months and the kitchen's freezer location; snackbar says the
+  date is a guide; Product details shows "Frozen, best by" with a note.
+- Locale: base `values/` is now US English (expiration, license, organize,
+  toss/tossed) with `tools:locale="en"`; `values-en-rGB` holds the 18 UK
+  overrides. Verified on the emulator with a per-app locale of en-GB.
+- Verified on the emulator: Freeze moves Spinach to 19 Dec and off Today;
+  the coach line on an overdue best-before item (clock moved to 21 Sep);
+  the consent dialog after Use; en-GB wording. 289 unit tests, lint 0/133.
+- Not done from the assessment's v1.2 list: item 6, the `PREMIUM_ON_SALE`
+  flip and 30-day trial, which waits on the owner's console work.
+
 **Research, 19 Sep 2026.** The owner ran `docs/research-brief.md` through
 an external research AI; the verbatim result is `docs/research-2026-09-19.md`
 and what we make of it is `docs/research-assessment.md`, which now holds the
@@ -563,12 +596,9 @@ product items after them are re-sequenced per the assessment.
    card turn into "Back up now".
 6. **Retire** `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`,
    topic `play-billing`.
-6a. **v1.2, per `docs/research-assessment.md`:** eight-metric events with
-   the analytics opt-in asked after the first rescue; Play In-App Review
-   after a rescue, locally gated; the three-item line on Today; the US/UK
-   date-label coach on overdue best-before items; Freeze as a Today action
-   using `DateKind.FROZEN`; then `PREMIUM_ON_SALE` with a 30-day trial on
-   first Premium intent once item 5 is proven.
+6a. ~~**v1.2 items 1–5**~~ done 19 Sep (see above). Remaining: `PREMIUM_ON_SALE`
+   with a 30-day trial on first Premium intent once item 5 is proven; a
+   v1.2 bundle (versionCode 7) after that.
 7. **Connected suite** re-run in full.
 8. **iOS docs**: `/pantries` → `/kitchens`, `planAccess` → `isPremium`.
 9. **Data Safety + privacy policy**: RevenueCat, opt-in analytics.

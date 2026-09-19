@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
     <!--
       The brand lives here and nowhere else. It was previously hardcoded in a
       dozen screens, notifications and export filenames, which is why the name
@@ -90,7 +90,7 @@
     <string name="today_action_use">Use</string>
     <string name="today_action_use_one">Use one</string>
     <string name="today_action_later">Later</string>
-    <string name="today_action_bin">Bin</string>
+    <string name="today_action_bin">Toss</string>
 
     <string name="today_quantity">×%1$d</string>
 
@@ -116,14 +116,20 @@
       guess reads as one on every surface rather than only on Today.
     -->
     <string name="date_estimated_short_suffix">" · est."</string>
+    <string name="details_frozen_label">Frozen, best by</string>
+    <string name="details_frozen_note">Set when you froze it: a guide to quality, not a safety limit. Edit the item to change it.</string>
     <string name="details_date_estimated_note">An estimate from how long this kind of food usually keeps, not a date printed on it. Edit the item to set the real one.</string>
 
     <string name="today_used_item">Used %1$s</string>
-    <string name="today_binned_item">Binned %1$s</string>
+    <string name="today_binned_item">Tossed %1$s</string>
+    <string name="today_frozen_item">Froze %1$s. Best by %2$s as a guide; edit the date any time.</string>
+    <string name="today_action_freeze">Freeze</string>
+    <string name="today_coach_best_before">Best-before and sell-by dates are about quality, not safety. Check it before you toss it.</string>
+    <string name="today_few_items_body">Add a couple more things and Today can start telling you what to use first.</string>
 
     <!-- Add and edit. Errors are named by what went wrong, not by their text. -->
     <string name="error_name_required">Item name is required</string>
-    <string name="error_expiry_required">Expiry date is required</string>
+    <string name="error_expiry_required">Expiration date is required</string>
     <string name="error_quantity_invalid">Please enter a valid quantity (1-999)</string>
     <string name="error_quantity_too_large">Maximum quantity is 999</string>
     <string name="error_lookup_failed">Product not found or lookup failed</string>
@@ -198,8 +204,8 @@
     <!-- Reminder permission. -->
     <string name="reminders_title">Stay notified</string>
     <string name="reminders_body_first">Get timely alerts before your food expires.</string>
-    <string name="reminders_body_denied">To receive expiry alerts, please enable notifications in app settings.</string>
-    <string name="reminders_benefit_alerts">Expiry reminders</string>
+    <string name="reminders_body_denied">To receive expiration alerts, please enable notifications in app settings.</string>
+    <string name="reminders_benefit_alerts">Expiration reminders</string>
     <string name="reminders_benefit_waste">Reduce food waste</string>
     <string name="reminders_benefit_summary">Weekly summaries</string>
     <string name="reminders_allow">Allow notifications</string>
@@ -216,7 +222,7 @@
     <string name="kitchen_filter_all">All products</string>
     <string name="kitchen_filter_expiring">Expiring soon</string>
     <string name="kitchen_filter_expired">Expired</string>
-    <string name="kitchen_sort_expiry">Expiry date (nearest first)</string>
+    <string name="kitchen_sort_expiry">Expiration date (nearest first)</string>
     <string name="kitchen_sort_name">Name (A-Z)</string>
     <string name="kitchen_sort_added">Recently added</string>
     <string name="kitchen_add_product">Add product</string>
@@ -303,6 +309,10 @@
         <item quantity="other">%1$d changes could not be backed up.</item>
     </plurals>
     <string name="settings_section_privacy">Privacy</string>
+    <string name="consent_title">Help improve GoodBefore?</string>
+    <string name="consent_body">Share anonymous usage events, such as \"an item was added\" or \"something was used\". Never what the food is, what it cost or when it expires. Off unless you say yes. You can change this any time in Settings.</string>
+    <string name="consent_yes">Share usage data</string>
+    <string name="consent_no">No thanks</string>
     <string name="settings_analytics">Share anonymous usage data</string>
     <string name="settings_analytics_body">Off by default. Helps improve the app. You can change this anytime.</string>
     <string name="settings_section_about">About</string>
@@ -318,7 +328,7 @@
     <string name="settings_sign_out_confirm">Are you sure you want to sign out?</string>
     <string name="settings_delete_account">Delete account</string>
     <string name="settings_footer">Made for a sustainable future</string>
-    <string name="settings_licenses">Open source licences</string>
+    <string name="settings_licenses">Open source licenses</string>
     <string name="settings_display_name">Display name</string>
     <string name="settings_delete_title">Delete account?</string>
     <string name="settings_delete_intro">This permanently deletes:</string>
@@ -347,7 +357,7 @@
     <string name="add_barcode_hint">Optional</string>
     <string name="add_scan">Scan</string>
     <string name="add_section_category">Category</string>
-    <string name="add_section_expiry">Expiry and quantity</string>
+    <string name="add_section_expiry">Expiration and quantity</string>
     <string name="add_scan_date">Scan the printed date</string>
     <string name="add_scanned_note">Read from the packet and confirmed by you.</string>
     <string name="add_quantity_label">Quantity</string>
@@ -356,8 +366,8 @@
     <string name="add_section_notes">Additional details (optional)</string>
     <string name="add_notes_label">Notes</string>
     <string name="add_notes_hint">Add any additional information\u2026</string>
-    <string name="add_expiry_label">Expiry date</string>
-    <string name="add_expiry_hint">Select expiry date</string>
+    <string name="add_expiry_label">Expiration date</string>
+    <string name="add_expiry_hint">Select expiration date</string>
     <string name="add_pick_date">Pick date</string>
     <string name="action_confirm">Confirm</string>
 
@@ -427,19 +437,19 @@
     <!-- Onboarding. -->
     <string name="onboarding_track_title">Track your food</string>
     <string name="onboarding_track_body">Keep track of all your groceries and food items in one place. Know exactly what you have and when it expires.</string>
-    <string name="onboarding_alerts_title">Expiry alerts</string>
+    <string name="onboarding_alerts_title">Expiration alerts</string>
     <string name="onboarding_alerts_body">Get timely notifications before your food expires. Stay informed and save money by using items on time.</string>
-    <string name="onboarding_organise_title">Stay organised</string>
-    <string name="onboarding_organise_body">Organise by category, scan barcodes and manage quantities. Expiry tracking without the effort.</string>
+    <string name="onboarding_organise_title">Stay organized</string>
+    <string name="onboarding_organise_body">Organize by category, scan barcodes and manage quantities. Expiration tracking without the effort.</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_get_started">Get started</string>
 
     <!-- Licences. Library and licence names are proper nouns and stay as they are. -->
-    <string name="licenses_title">Open source licences</string>
+    <string name="licenses_title">Open source licenses</string>
     <string name="licenses_heading">Built with open source</string>
     <string name="licenses_thanks">Thank you to all open source contributors.</string>
-    <string name="licenses_view_full">View full licence</string>
+    <string name="licenses_view_full">View full license</string>
 
     <!-- Notifications and widget. -->
     <string name="notification_mark_used">Mark as used</string>
@@ -455,7 +465,7 @@
     <string name="settings_import_duplicates">Already in your list: %1$d</string>
     <string name="settings_import_failed_rows">Rows that could not be read: %1$d</string>
     <string name="details_available">Available: %1$d</string>
-    <string name="history_expiry">Expiry: %1$s</string>
+    <string name="history_expiry">Expiration: %1$s</string>
     <string name="crash_reset_title">App reset</string>
     <string name="action_ok">OK</string>
     <string name="weekly_summary_body">You used %1$d items and wasted %2$d so far.</string>
@@ -538,7 +548,7 @@
     <string name="premium_per_year">%1$s a year</string>
     <string name="premium_subscribe">Subscribe</string>
     <string name="premium_restore">Restore purchase</string>
-    <string name="premium_terms">Renews automatically until cancelled in Google Play.</string>
+    <string name="premium_terms">Renews automatically until canceled in Google Play.</string>
     <string name="premium_active">You have Premium.</string>
     <string name="premium_renews">Renews on %1$s.</string>
     <string name="premium_ends">Ends on %1$s.</string>

@@ -123,9 +123,12 @@ val repositoryModule = module {
             clock = com.example.freshtrack.util.AppClock.System,
             ids = com.example.freshtrack.util.IdGenerator.Uuid,
             clientId = get<com.example.freshtrack.data.preferences.ClientIdProvider>().clientId,
-            serialise = com.example.freshtrack.data.sync.OutboxPayload::serialise
+            serialise = com.example.freshtrack.data.sync.OutboxPayload::serialise,
+            metrics = get()
         )
     }
+    single<com.example.freshtrack.util.UsageMetrics> { com.example.freshtrack.util.FirebaseUsageMetrics() }
+    single { com.example.freshtrack.util.ReviewPrompter(preferences = get(), itemRepository = get(), metrics = get()) }
 
     single<LocationRepository> { LocationRepositoryImpl(locationDao = get(), session = get()) }
 
@@ -201,7 +204,7 @@ val preferencesModule = module {
 val viewModelModule = module {
 
     viewModel<TodayViewModel> {
-        TodayViewModel(itemRepository = get())
+        TodayViewModel(itemRepository = get(), locationRepository = get())
     }
 
     viewModel<ItemListViewModel> {
@@ -249,7 +252,8 @@ val viewModelModule = module {
             session = get(),
             // The backup was waiting on exactly this; start it now rather
             // than at the next background moment.
-            onEntitled = { com.example.freshtrack.data.sync.SyncWorker.syncNow(androidContext()) }
+            onEntitled = { com.example.freshtrack.data.sync.SyncWorker.syncNow(androidContext()) },
+            metrics = get()
         )
     }
 

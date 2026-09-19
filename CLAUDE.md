@@ -90,9 +90,28 @@ existing rows survive and still mean the same thing.
   `Modifier.pressable`.
 - **English only for now, but structured for more later.** User-facing text
   belongs in `res/values/strings.xml`, not hardcoded in Kotlin, so adding a
-  locale is a translation job rather than a refactor. `values/` is en; en-GB
-  spelling differences get `values-en-rGB` when they arise. Do not add other
-  languages yet.
+  locale is a translation job rather than a refactor. `values/` is **US
+  English** (declared with `tools:locale="en"`): "expiration", "license",
+  "organize", "toss". `values-en-rGB` (19 Sep 2026) overrides only what
+  differs: "expiry", "licence", "organise", "bin", and the date-label coach
+  in FSA terms. Keep the two in step: a new base string with a US-only word
+  gets its en-GB line the same day. Do not add other languages yet.
+- **Usage metrics are the eight in `UsageMetrics`, fired from the
+  repository's write path and the two Premium screens.** Never from a
+  screen for adds or resolutions: that is how a path gets missed or counted
+  twice. No names, prices, dates or barcodes in any event. Collection is
+  opt-in, asked once after the first item is used, never at launch.
+- **The store review is asked after a real rescue only** (`ReviewPrompter`:
+  ≥3 days installed, ≥3 resolved, ≥60 days since last ask), on top of Play's
+  own quota. No pre-screen dialog.
+- **Freeze is a Today action, not a resolution.** It moves the item to the
+  freezer with a `FROZEN_UNTIL` date three months out, user-sourced and
+  labelled a guide to quality. The printed date stays in the ledger. No
+  per-food safety table: one window, editable.
+- **The date-label coach appears only on an overdue best-before or sell-by
+  item, never on a use-by.** US wording follows FDA/USDA (dates are about
+  quality); UK wording follows the FSA (use-by is safety, so it gets no
+  reassurance).
 - **Never hardcode a date order.** `03/04` is March in the US and April in the
   UK. Use `DateOrdering.forLocale`.
 - **Two tiers only: Guest (free) and Premium.** Login is NOT a middle tier — it is the gateway to premium. Guest is the full free offline app with no account; a user signs in only when they buy premium or tap a cloud feature, and their guest data claims into the new account. Do not build "free logged-in" perks — that tier does not exist by design.

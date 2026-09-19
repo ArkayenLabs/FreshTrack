@@ -195,6 +195,9 @@ class FakeItemDao : ItemDao {
         touch()
     }
 
+    override suspend fun countActiveItems(kitchenId: String): Int =
+        visible(kitchenId).count { it.state == ItemState.ACTIVE }
+
     override suspend fun countLocalItems(localKitchenId: String): Int =
         rows.values.count { it.kitchenId == localKitchenId && !it.isDeleted }
 

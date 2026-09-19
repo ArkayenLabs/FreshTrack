@@ -103,6 +103,7 @@ fun SettingsScreen(
     val needsPremium = !isSignedIn ||
         lastRun == com.example.freshtrack.data.sync.SyncRun.Result.NOT_ENTITLED
     val premiumOnSale = com.example.freshtrack.data.billing.PREMIUM_ON_SALE
+    val metrics: com.example.freshtrack.util.UsageMetrics = org.koin.compose.koinInject()
 
     // OpenDocument rather than GetContent: it returns a persistable URI and lets
     // the user pick from any provider, including Drive.
@@ -356,8 +357,10 @@ fun SettingsScreen(
                     // and does not pretend to be a button.
                     enabled = (isSignedIn && !needsPremium) || premiumOnSale,
                     onClick = {
-                        if (needsPremium && premiumOnSale) onNavigateToPremium()
-                        else com.example.freshtrack.data.sync.SyncWorker.syncNow(context)
+                        if (needsPremium && premiumOnSale) {
+                            metrics.premiumIntent("settings_backup")
+                            onNavigateToPremium()
+                        } else com.example.freshtrack.data.sync.SyncWorker.syncNow(context)
                     }
                 )
             }

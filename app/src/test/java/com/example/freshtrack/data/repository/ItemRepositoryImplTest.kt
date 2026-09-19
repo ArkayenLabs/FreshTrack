@@ -12,6 +12,7 @@ import com.example.freshtrack.domain.model.ExpiryDate
 import com.example.freshtrack.domain.model.Item
 import com.example.freshtrack.util.AppClock
 import com.example.freshtrack.util.IdGenerator
+import com.example.freshtrack.util.UsageMetrics
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -72,22 +73,41 @@ class ItemRepositoryImplTest {
         }
     }
 
+    /** Writes one line per call, so a test can assert the whole sequence at once. */
+    private class RecordingMetrics : UsageMetrics {
+        val log = mutableListOf<String>()
+        override fun itemAdded(method: UsageMetrics.AddMethod, activeCountAfter: Int) {
+            log += "add ${method.name.lowercase()} $activeCountAfter"
+        }
+        override fun itemResolved(outcome: UsageMetrics.Outcome, wasOverdue: Boolean) {
+            log += "resolved ${outcome.name.lowercase()} overdue=$wasOverdue"
+        }
+        override fun resolutionUndone() { log += "undone" }
+        override fun premiumIntent(source: String) { log += "intent $source" }
+        override fun paywallShown() { log += "paywall" }
+        override fun purchaseConfirmed(plan: String?) { log += "purchase $plan" }
+        override fun reviewPrompted() { log += "review" }
+    }
+
+    private fun repository(metrics: UsageMetrics = UsageMetrics.NoOp) = ItemRepositoryImpl(
+        itemDao = itemDao,
+        eventDao = eventDao,
+        outboxDao = outboxDao,
+        session = session,
+        transactions = transactions,
+        clock = clock,
+        ids = ids,
+        clientId = "test-client",
+        serialise = { it.id },
+        metrics = metrics
+    )
+
     @Before
     fun setUp() {
         itemDao = FakeItemDao()
         eventDao = FakeItemEventDao()
         outboxDao = FakeOutboxDao()
-        repository = ItemRepositoryImpl(
-            itemDao = itemDao,
-            eventDao = eventDao,
-            outboxDao = outboxDao,
-            session = session,
-            transactions = transactions,
-            clock = clock,
-            ids = ids,
-            clientId = "test-client",
-            serialise = { it.id }
-        )
+        repository = repository()
     }
 
     private fun sampleItem(
@@ -113,6 +133,27 @@ class ItemRepositoryImplTest {
         assertEquals(ItemEventType.ITEM_CREATED, eventDao.events.single().type)
         assertEquals(1, outboxDao.operations.size)
         assertEquals(OutboxOperationType.CREATE, outboxDao.operations.single().operationType)
+    }
+
+    @Test
+    fun `usage metrics count adds by method and the first and third item, resolutions and undo`() = runTest {
+        val recorded = RecordingMetrics()
+        val repo = repository(metrics = recorded)
+
+        val first = repo.add(sampleItem(name = "Milk"))
+        repo.add(sampleItem(name = "Bread").copy(barcode = "5000"))
+        repo.commitReceipt(listOf(sampleItem(name = "Eggs")), emptyMap())
+        repo.use(first)
+        repo.undoLastResolution(first)
+        repo.discard(first)
+
+        assertEquals(
+            listOf(
+                "add manual 1", "add barcode 2", "add receipt 3",
+                "resolved used overdue=false", "undone", "resolved binned overdue=false"
+            ),
+            recorded.log
+        )
     }
 
     @Test

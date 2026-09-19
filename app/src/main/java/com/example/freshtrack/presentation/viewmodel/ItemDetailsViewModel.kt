@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshtrack.data.repository.ItemRepository
 import com.example.freshtrack.domain.model.Item
-import com.example.freshtrack.util.AnalyticsHelper
 import com.example.freshtrack.util.AppClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,7 +46,6 @@ class ItemDetailsViewModel(
         val item = _uiState.value.item ?: return
         viewModelScope.launch {
             itemRepository.use(item.id, amount)
-            AnalyticsHelper.logItemConsumed(item.category, item.isExpired(clock.today()))
             if (amount >= item.quantity) onResolved()
         }
     }
@@ -56,7 +54,6 @@ class ItemDetailsViewModel(
         val item = _uiState.value.item ?: return
         viewModelScope.launch {
             itemRepository.discard(item.id, amount)
-            AnalyticsHelper.logItemDiscarded(item.category)
             if (amount >= item.quantity) onResolved()
         }
     }

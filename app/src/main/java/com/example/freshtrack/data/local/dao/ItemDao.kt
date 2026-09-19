@@ -239,6 +239,10 @@ interface ItemDao {
     @Query("SELECT COUNT(*) FROM items WHERE kitchenId = :localKitchenId AND isDeleted = 0")
     suspend fun countLocalItems(localKitchenId: String): Int
 
+    /** How much food is being tracked right now; the activation milestones are read off this. */
+    @Query("SELECT COUNT(*) FROM items WHERE kitchenId = :kitchenId AND isDeleted = 0 AND state = 'ACTIVE'")
+    suspend fun countActiveItems(kitchenId: String): Int
+
     /**
      * Hard delete, used only when an account is being erased. Tombstones are
      * pointless there: no account remains for the deletion to reach.

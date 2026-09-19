@@ -155,6 +155,8 @@ dependencies {
     // In-App Updates
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
+    // In-app review: the store's own rating sheet, asked after a real rescue.
+    implementation("com.google.android.play:review-ktx:2.0.2")
 
     // Testing - Using version catalog
     testImplementation(libs.junit)

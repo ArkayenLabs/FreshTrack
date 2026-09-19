@@ -3,6 +3,10 @@ package com.example.freshtrack.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshtrack.data.repository.ItemRepository
+import java.time.LocalDate
+import kotlinx.coroutines.flow.flowOf
+import com.example.freshtrack.data.local.entities.LocationType
+import com.example.freshtrack.data.repository.LocationRepository
 import com.example.freshtrack.domain.model.Item
 import com.example.freshtrack.domain.rescue.RescueList
 import com.example.freshtrack.domain.rescue.RescueRanking
@@ -28,8 +32,45 @@ import java.util.concurrent.TimeUnit
  */
 class TodayViewModel(
     private val itemRepository: ItemRepository,
-    private val clock: AppClock = AppClock.System
+    private val clock: AppClock = AppClock.System,
+    private val locationRepository: LocationRepository? = null
 ) : ViewModel() {
+
+    /** The kitchen's freezer, if it has one; null hides the Freeze action. */
+    val freezerLocationId: StateFlow<String?> = (locationRepository?.observeLocations() ?: flowOf(emptyList()))
+        .map { locations -> locations.firstOrNull { it.type == LocationType.FREEZER }?.id }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null
+        )
+
+    /** Something just went in the freezer; the screen says so once. */
+    private val _frozenNotice = MutableStateFlow<FrozenNotice?>(null)
+    val frozenNotice: StateFlow<FrozenNotice?> = _frozenNotice.asStateFlow()
+
+    data class FrozenNotice(val itemName: String, val until: LocalDate)
+
+    /**
+     * Freezing is the escape route a warning on its own does not give.
+     * The item moves to the freezer and gets a new date a fixed distance
+     * out, marked as frozen-until so it reads as a guide to quality, never
+     * a safety claim; the printed date is kept in the ledger, not
+     * overwritten in the person's memory of the item.
+     */
+    fun freeze(itemId: String, itemName: String) {
+        val freezer = freezerLocationId.value ?: return
+        viewModelScope.launch {
+            val until = clock.today().plusMonths(FREEZER_MONTHS)
+            itemRepository.freeze(itemId, until, freezer)
+            _undoPrompt.value = null
+            _frozenNotice.value = FrozenNotice(itemName, until)
+        }
+    }
+
+    fun dismissFrozenNotice() {
+        _frozenNotice.value = null
+    }
 
     // Shared so that the two things derived from it are one database query
     // rather than two identical ones.
@@ -147,5 +188,7 @@ class TodayViewModel(
 
     companion object {
         const val COMING_UP_COUNT = 3
+        /** One window for everything: a guide to quality that the person can edit, not a per-food safety rule. */
+        const val FREEZER_MONTHS = 3L
     }
 }

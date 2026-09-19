@@ -27,6 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.CheckCircle
+import java.util.Locale
+import java.time.format.DateTimeFormatter
+import com.example.freshtrack.domain.model.DateKind
+import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
@@ -46,7 +50,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.freshtrack.R
+import com.example.freshtrack.data.preferences.ConsentPreferences
 import com.example.freshtrack.data.preferences.OnboardingPreferences
+import com.example.freshtrack.util.AnalyticsHelper
+import com.example.freshtrack.util.ReviewPrompter
+import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import com.example.freshtrack.presentation.component.NotificationPermissionHandler
 import com.example.freshtrack.presentation.component.WaysToAdd
 import com.example.freshtrack.domain.model.Item
@@ -82,11 +91,16 @@ fun TodayScreen(
     onNavigateToReceipt: () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     onboardingPreferences: OnboardingPreferences = koinInject(),
+    consentPreferences: ConsentPreferences = koinInject(),
+    reviewPrompter: ReviewPrompter = koinInject(),
     viewModel: TodayViewModel = koinViewModel()
 ) {
+    val activity = LocalActivity.current
     val rescue by viewModel.rescue.collectAsState()
     val hasAnyItem by viewModel.hasAnyItem.collectAsState()
     val comingUp by viewModel.comingUp.collectAsState()
+    val freezerLocationId by viewModel.freezerLocationId.collectAsState()
+    val frozenNotice by viewModel.frozenNotice.collectAsState()
     val undoPrompt by viewModel.undoPrompt.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     // Read here rather than inside the effect: stringResource is a
@@ -119,6 +133,30 @@ fun TodayScreen(
         NotificationPermissionHandler()
     }
 
+    // The analytics question is put once, after the first thing is used,
+    // never at first launch: by then the person has seen what the app does
+    // and the request has a subject. Either answer counts as decided.
+    var askAboutAnalytics by rememberSaveable { mutableStateOf(false) }
+    if (askAboutAnalytics) {
+        AnalyticsConsentDialog(
+            onDecide = { granted ->
+                consentPreferences.setAnalyticsConsent(granted)
+                AnalyticsHelper.applyConsent(granted)
+                askAboutAnalytics = false
+            }
+        )
+    }
+
+    val frozenTemplate = stringResource(R.string.today_frozen_item)
+    LaunchedEffect(frozenNotice) {
+        val notice = frozenNotice ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(
+            message = frozenTemplate.format(notice.itemName, formatShortDate(notice.until)),
+            duration = SnackbarDuration.Short
+        )
+        viewModel.dismissFrozenNotice()
+    }
+
     // Shown as a snackbar rather than an inline control: undo is a correction,
     // not a step in the flow, and it should disappear once the moment passes.
     LaunchedEffect(undoPrompt) {
@@ -129,6 +167,15 @@ fun TodayScreen(
             duration = SnackbarDuration.Short
         )
         if (result == SnackbarResult.ActionPerformed) viewModel.undo() else viewModel.dismissUndo()
+        // After a real rescue, one question at most: the analytics ask if it
+        // has never been put, otherwise the store's rating sheet if the
+        // local gate allows it. Never both in one moment.
+        if (prompt.resolvedAs == TodayViewModel.ResolvedAs.USED && result != SnackbarResult.ActionPerformed) {
+            when {
+                !consentPreferences.hasDecided() -> askAboutAnalytics = true
+                activity != null && reviewPrompter.shouldAsk() -> reviewPrompter.ask(activity)
+            }
+        }
     }
 
     Scaffold(
@@ -214,7 +261,11 @@ fun TodayScreen(
                     onOpen = { onNavigateToItemDetails(entry.item.id) },
                     onUse = { viewModel.use(entry.item.id, entry.item.name) },
                     onDiscard = { viewModel.discard(entry.item.id, entry.item.name) },
-                    onSnooze = { viewModel.snoozeUntilTomorrow(entry.item.id) }
+                    onSnooze = { viewModel.snoozeUntilTomorrow(entry.item.id) },
+                    // Only where there is a freezer to go to and it is not already there.
+                    onFreeze = freezerLocationId
+                        ?.takeIf { it != entry.item.locationId }
+                        ?.let { { viewModel.freeze(entry.item.id, entry.item.name) } }
                 )
             }
 
@@ -269,6 +320,7 @@ private fun RescueRow(
     onUse: () -> Unit,
     onDiscard: () -> Unit,
     onSnooze: () -> Unit,
+    onFreeze: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val accent = accentFor(entry.primaryReason)
@@ -284,9 +336,12 @@ private fun RescueRow(
         tonalElevation = 1.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.Top) {
+                // Sits with the name, not the centre of a block that may
+                // have grown a third line.
                 Box(
                     modifier = Modifier
+                        .padding(top = 8.dp)
                         .size(10.dp)
                         .clip(CircleShape)
                         .background(accent)
@@ -302,6 +357,17 @@ private fun RescueRow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    // A date past is not the same as food gone. Said once,
+                    // on the item it applies to, and only for a date kind
+                    // that is about quality: never on a use-by.
+                    coachLine(entry)?.let { line ->
+                        Text(
+                            text = line,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 }
                 if (entry.item.quantity > 1) {
                     Text(
@@ -331,15 +397,22 @@ private fun RescueRow(
                         )
                     )
                 }
-                TextButton(onClick = onSnooze) {
-                    Icon(Icons.Outlined.Schedule, null, Modifier.size(18.dp))
-                    androidx.compose.foundation.layout.Spacer(Modifier.size(6.dp))
-                    Text(stringResource(R.string.today_action_later))
+                // Freeze is the escape route, so it gets a word; Later and
+                // Bin keep one tap each but shrink to icons so four actions
+                // fit a narrow phone.
+                if (onFreeze != null) {
+                    TextButton(onClick = onFreeze) {
+                        Icon(Icons.Outlined.AcUnit, null, Modifier.size(18.dp))
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(6.dp))
+                        Text(stringResource(R.string.today_action_freeze))
+                    }
                 }
-                TextButton(onClick = onDiscard) {
-                    Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(18.dp))
-                    androidx.compose.foundation.layout.Spacer(Modifier.size(6.dp))
-                    Text(stringResource(R.string.today_action_bin))
+                androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                IconButton(onClick = onSnooze) {
+                    Icon(Icons.Outlined.Schedule, stringResource(R.string.today_action_later))
+                }
+                IconButton(onClick = onDiscard) {
+                    Icon(Icons.Outlined.DeleteOutline, stringResource(R.string.today_action_bin))
                 }
             }
         }
@@ -384,6 +457,24 @@ private fun describe(entry: RescueEntry): String {
 
     return timing + qualifier
 }
+
+/**
+ * The one sentence worth saying about a date that has passed, and only
+ * when it is true: a best-before (or sell-by) date is about quality. A
+ * use-by is treated as what it says, so nothing is added to it. The
+ * wording differs by market; `values-en-rGB` carries the UK one.
+ */
+@Composable
+private fun coachLine(entry: RescueEntry): String? {
+    if (entry.primaryReason !is RescueReason.Overdue) return null
+    return when (entry.item.expiry.kind) {
+        DateKind.BEST_BEFORE, DateKind.SELL_BY -> stringResource(R.string.today_coach_best_before)
+        else -> null
+    }
+}
+
+private fun formatShortDate(date: LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))
 
 @Composable
 private fun accentFor(reason: RescueReason.Primary): Color {
@@ -465,7 +556,11 @@ private fun NothingToRescue(
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(stringResource(R.string.today_empty_title), style = MaterialTheme.typography.headlineSmall)
                     Text(
-                        stringResource(R.string.today_empty_body),
+                        // With one or two items Today has little to say; one
+                        // quiet line says why, once, with no counter.
+                        stringResource(
+                            if (comingUp.total < 3) R.string.today_few_items_body else R.string.today_empty_body
+                        ),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -520,4 +615,34 @@ private fun ComingUpRow(item: Item, today: LocalDate, onClick: () -> Unit) {
             )
         }
     }
+}
+
+/**
+ * One plain question, with what is and is not collected in the same
+ * breath. No pre-screen, no "maybe later": a dismissal is a no, and the
+ * toggle in Settings is the way back.
+ */
+@Composable
+private fun AnalyticsConsentDialog(onDecide: (Boolean) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onDecide(false) },
+        title = { Text(stringResource(R.string.consent_title)) },
+        text = {
+            Text(
+                stringResource(R.string.consent_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onDecide(true) }, shape = MaterialTheme.shapes.medium) {
+                Text(stringResource(R.string.consent_yes))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDecide(false) }, shape = MaterialTheme.shapes.medium) {
+                Text(stringResource(R.string.consent_no))
+            }
+        }
+    )
 }

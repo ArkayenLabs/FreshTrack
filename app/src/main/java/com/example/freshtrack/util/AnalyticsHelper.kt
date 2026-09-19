@@ -35,34 +35,10 @@ object AnalyticsHelper {
     }
 
     /**
-     * Records that a scan happened, without the barcode value. The raw barcode
-     * is deliberately not sent: it is more than an anonymous usage metric needs,
-     * and logging exact scan values sits poorly with a privacy-first app.
+     * The one way an event leaves the app. Names and parameters are decided
+     * in [UsageMetrics]; nothing identifying is ever passed here.
      */
-    fun logItemScanned() {
-        firebaseAnalytics?.logEvent("item_scanned", null)
-    }
-
-    fun logItemAdded(category: String, hasBarcode: Boolean) {
-        val bundle = Bundle().apply {
-            putString("category", category)
-            putBoolean("has_barcode", hasBarcode)
-        }
-        firebaseAnalytics?.logEvent("item_added", bundle)
-    }
-
-    fun logItemConsumed(category: String, isExpired: Boolean) {
-        val bundle = Bundle().apply {
-            putString("category", category)
-            putBoolean("was_expired", isExpired)
-        }
-        firebaseAnalytics?.logEvent("item_consumed", bundle)
-    }
-
-    fun logItemDiscarded(category: String) {
-        val bundle = Bundle().apply {
-            putString("category", category)
-        }
-        firebaseAnalytics?.logEvent("item_discarded", bundle)
+    fun log(name: String, params: Bundle? = null) {
+        firebaseAnalytics?.logEvent(name, params)
     }
 }

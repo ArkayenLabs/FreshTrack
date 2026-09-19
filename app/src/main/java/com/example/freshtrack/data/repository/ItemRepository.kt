@@ -21,6 +21,7 @@ import com.example.freshtrack.domain.model.toDomain
 import com.example.freshtrack.domain.model.toEntity
 import com.example.freshtrack.util.AppClock
 import com.example.freshtrack.util.IdGenerator
+import com.example.freshtrack.util.UsageMetrics
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -118,7 +119,8 @@ class ItemRepositoryImpl(
     private val clock: AppClock,
     private val ids: IdGenerator,
     private val clientId: String,
-    private val serialise: (ItemEntity) -> String
+    private val serialise: (ItemEntity) -> String,
+    private val metrics: UsageMetrics = UsageMetrics.NoOp
 ) : ItemRepository {
 
     /** Resolved per call, so a sign-in or sign-out takes effect immediately. */
@@ -228,8 +230,21 @@ class ItemRepositoryImpl(
             operationType = OutboxOperationType.CREATE,
             at = now
         ) { itemDao.insert(row) }
+        // Counted here, on the one path every add takes, so no screen can
+        // add without being counted and none is counted twice.
+        metrics.itemAdded(
+            method = when {
+                addingFromReceipt -> UsageMetrics.AddMethod.RECEIPT
+                !row.barcode.isNullOrBlank() -> UsageMetrics.AddMethod.BARCODE
+                else -> UsageMetrics.AddMethod.MANUAL
+            },
+            activeCountAfter = itemDao.countActiveItems(kitchen())
+        )
         return row.id
     }
+
+    /** True while [commitReceipt] is adding its rows, so they are counted as receipt adds. */
+    private var addingFromReceipt = false
 
     override suspend fun update(item: Item) {
         val existing = itemDao.getItemByIdOnce(kitchen(), item.id) ?: return
@@ -306,6 +321,12 @@ class ItemRepositoryImpl(
         }
 
         record(row, eventType, taken, OutboxOperationType.UPDATE, now) { itemDao.update(row) }
+        if (resolvesItem) {
+            metrics.itemResolved(
+                outcome = if (resolvedState == ItemState.USED) UsageMetrics.Outcome.USED else UsageMetrics.Outcome.BINNED,
+                wasOverdue = existing.expiryDate.isBefore(clock.today())
+            )
+        }
     }
 
     override suspend fun freeze(
@@ -419,6 +440,7 @@ class ItemRepositoryImpl(
             reversesEventId = resolution.id,
             reversesEventType = resolution.type
         ) { itemDao.update(row) }
+        metrics.resolutionUndone()
 
         return true
     }
@@ -470,7 +492,12 @@ class ItemRepositoryImpl(
                     itemDao.update(row)
                 }
             }
-            newItems.forEach { add(it) }
+            addingFromReceipt = true
+            try {
+                newItems.forEach { add(it) }
+            } finally {
+                addingFromReceipt = false
+            }
         }
     }
 

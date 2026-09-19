@@ -138,11 +138,22 @@ fun ProductDetailsScreen(
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                             // Expiry Date
+                            val frozen = product.expiry.kind == com.example.freshtrack.domain.model.DateKind.FROZEN_UNTIL
                             InfoRow(
-                                icon = Icons.Outlined.CalendarToday,
-                                label = stringResource(R.string.add_expiry_label),
+                                icon = if (frozen) Icons.Outlined.AcUnit else Icons.Outlined.CalendarToday,
+                                label = stringResource(if (frozen) R.string.details_frozen_label else R.string.add_expiry_label),
                                 value = formatDate(product.expiry.value)
                             )
+                            // A frozen date is a guide to quality that the
+                            // person set by freezing, not a printed date.
+                            if (frozen) {
+                                Text(
+                                    text = stringResource(R.string.details_frozen_note),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 32.dp, top = 4.dp)
+                                )
+                            }
                             // A guess says so, here and on the card and on
                             // Today. This is the one screen with room to say
                             // what the guess was based on and how to replace it.

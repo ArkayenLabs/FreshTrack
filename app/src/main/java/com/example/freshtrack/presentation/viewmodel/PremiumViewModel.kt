@@ -9,6 +9,7 @@ import com.example.freshtrack.data.billing.PremiumPlan
 import com.example.freshtrack.data.billing.PremiumStore
 import com.example.freshtrack.data.billing.PurchaseOutcome
 import com.example.freshtrack.data.session.KitchenSession
+import com.example.freshtrack.util.UsageMetrics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +44,7 @@ class PremiumViewModel(
     private val remote: EntitlementRemote,
     private val session: KitchenSession,
     private val onEntitled: () -> Unit,
+    private val metrics: UsageMetrics = UsageMetrics.NoOp,
     private val confirmAttempts: Int = 8,
     private val confirmIntervalMillis: Long = 1_500
 ) : ViewModel() {
@@ -66,6 +68,7 @@ class PremiumViewModel(
             }
             val plans = store.premiumPlans()
             val entitlement = remote.current(session.currentUserId())
+            if (plans.isSuccess && entitlement.getOrNull()?.isPremium != true) metrics.paywallShown()
             _uiState.update { state ->
                 state.copy(
                     isLoading = false,
@@ -125,6 +128,7 @@ class PremiumViewModel(
             val entitlement = remote.current(session.currentUserId()).getOrNull()
             if (entitlement?.isPremium == true) {
                 _uiState.update { it.copy(isBusy = false, entitlement = entitlement, message = PremiumMessage.VERIFIED) }
+                metrics.purchaseConfirmed(entitlement.basePlanId)
                 onEntitled()
                 return
             }

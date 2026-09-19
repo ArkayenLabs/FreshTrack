@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.freshtrack.data.repository.ItemRepository
-import com.example.freshtrack.util.AnalyticsHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,7 +38,6 @@ class NotificationActionReceiver : BroadcastReceiver(), KoinComponent {
                         // notification. Appending the event is idempotent, so a
                         // double tap records one use.
                         itemRepository.use(productId, amount = Int.MAX_VALUE)
-                        AnalyticsHelper.logItemConsumed("notification", false)
                         if (notificationId != -1) {
                             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE)
                                 as NotificationManager

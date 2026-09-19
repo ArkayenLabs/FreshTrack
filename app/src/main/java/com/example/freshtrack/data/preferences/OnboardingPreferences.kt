@@ -15,6 +15,22 @@ class OnboardingPreferences(context: Context) {
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
         private const val KEY_GUEST_MODE = "guest_mode"
         private const val KEY_ASKED_ABOUT_REMINDERS = "asked_about_reminders"
+        private const val KEY_FIRST_OPENED_AT = "first_opened_at"
+        private const val KEY_LAST_REVIEW_PROMPT_AT = "last_review_prompt_at"
+    }
+
+    /** Stamped once, on the first launch that asks; the review gate counts days from here. */
+    fun firstOpenedAt(nowMillis: Long): Long {
+        val stored = sharedPreferences.getLong(KEY_FIRST_OPENED_AT, 0L)
+        if (stored > 0L) return stored
+        sharedPreferences.edit().putLong(KEY_FIRST_OPENED_AT, nowMillis).apply()
+        return nowMillis
+    }
+
+    fun lastReviewPromptAt(): Long = sharedPreferences.getLong(KEY_LAST_REVIEW_PROMPT_AT, 0L)
+
+    fun setLastReviewPromptAt(nowMillis: Long) {
+        sharedPreferences.edit().putLong(KEY_LAST_REVIEW_PROMPT_AT, nowMillis).apply()
     }
 
     /**
