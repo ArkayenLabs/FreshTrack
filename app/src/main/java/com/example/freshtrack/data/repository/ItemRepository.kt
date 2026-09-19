@@ -208,6 +208,10 @@ class ItemRepositoryImpl(
     override suspend fun add(item: Item): String {
         val now = clock.nowMillis()
         val row = item.toEntity().copy(
+            // The id is minted here, never taken from the caller. The Add
+            // screen passes an empty one, and an empty id is a valid primary
+            // key: every item then overwrote the last (19 Sep 2026).
+            id = ids.newId(),
             // Stamped here rather than at the call site, so no screen can create
             // a row that belongs to nobody.
             kitchenId = kitchen(),

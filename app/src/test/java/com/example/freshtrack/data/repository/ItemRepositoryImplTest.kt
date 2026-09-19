@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -112,6 +113,20 @@ class ItemRepositoryImplTest {
         assertEquals(ItemEventType.ITEM_CREATED, eventDao.events.single().type)
         assertEquals(1, outboxDao.operations.size)
         assertEquals(OutboxOperationType.CREATE, outboxDao.operations.single().operationType)
+    }
+
+    @Test
+    fun `every added item gets its own id, whatever the caller passed`() = runTest {
+        // The Add screen passes an empty id for a new item. An empty string
+        // is a valid primary key, so without minting here every item
+        // replaced the one before it.
+        val first = repository.add(sampleItem().copy(id = "", name = "Milk"))
+        val second = repository.add(sampleItem().copy(id = "", name = "Bread"))
+
+        assertNotEquals(first, second)
+        assertTrue(first.isNotBlank())
+        assertEquals(2, itemDao.rows.size)
+        assertEquals(setOf("Milk", "Bread"), itemDao.rows.values.map { it.name }.toSet())
     }
 
     @Test
