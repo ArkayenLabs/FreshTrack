@@ -9,25 +9,43 @@ import java.time.LocalDate
  *
  * A widget is glanceable: it earns its place by answering "is anything about to
  * go off?" without being opened. So it shows the few most urgent items rather
- * than a scrollable inventory.
+ * than a scrollable inventory — and when nothing is urgent it says what is
+ * coming up next, because a kitchen with food in it is not empty and should
+ * not look it.
  */
 object WidgetContent {
+
+    /** How loudly a row should read. Only the first two get colour. */
+    enum class Urgency { OVERDUE, TODAY, SOON, LATER }
 
     data class Item(
         val id: String,
         val name: String,
         val timing: String,
-        val isOverdue: Boolean
-    )
+        val urgency: Urgency
+    ) {
+        val isOverdue: Boolean get() = urgency == Urgency.OVERDUE
+    }
 
     data class State(
         val headline: String,
         val items: List<Item>,
         /** True when there is genuinely nothing to act on, not merely no data. */
-        val isAllClear: Boolean
-    )
+        val isAllClear: Boolean,
+        /** How much food is being tracked at all; zero is the first-run case. */
+        val total: Int = 0,
+        /** The soonest thing past the horizon, so the all-clear state has something to say. */
+        val nextUp: Item? = null,
+        /** How many are close to their date, counting past what is listed. */
+        val urgentCount: Int = 0,
+        /** Past the horizon, soonest first: what a widget with room to spare shows after the urgent rows. */
+        val upcoming: List<Item> = emptyList()
+    ) {
+        val isEmptyKitchen: Boolean get() = total == 0
+    }
 
-    const val MAX_ITEMS = 4
+    /** The tallest widget shows this many; smaller sizes take fewer from the front. */
+    const val MAX_ITEMS = 5
 
     /** Items expiring within this many days are worth surfacing. */
     const val HORIZON_DAYS = 7L
@@ -37,11 +55,20 @@ object WidgetContent {
             .filter { it.daysUntilExpiry(today) <= HORIZON_DAYS }
             .sortedBy { it.daysUntilExpiry(today) }
 
+        val upcoming = products
+            .filter { it.daysUntilExpiry(today) > HORIZON_DAYS }
+            .sortedBy { it.daysUntilExpiry(today) }
+            .take(MAX_ITEMS)
+            .map { toItem(it, today) }
+
         if (relevant.isEmpty()) {
             return State(
                 headline = "Nothing expiring soon",
                 items = emptyList(),
-                isAllClear = true
+                isAllClear = true,
+                total = products.size,
+                nextUp = upcoming.firstOrNull(),
+                upcoming = upcoming
             )
         }
 
@@ -59,15 +86,26 @@ object WidgetContent {
 
         return State(
             headline = headline,
-            items = relevant.take(MAX_ITEMS).map { product ->
-                Item(
-                    id = product.id,
-                    name = product.name,
-                    timing = timingLabel(product, today),
-                    isOverdue = product.daysUntilExpiry(today) < 0
-                )
-            },
-            isAllClear = false
+            items = relevant.take(MAX_ITEMS).map { toItem(it, today) },
+            isAllClear = false,
+            total = products.size,
+            urgentCount = relevant.size,
+            upcoming = upcoming
+        )
+    }
+
+    private fun toItem(product: InventoryItem, today: LocalDate): Item {
+        val days = product.daysUntilExpiry(today)
+        return Item(
+            id = product.id,
+            name = product.name,
+            timing = timingLabel(product, today),
+            urgency = when {
+                days < 0 -> Urgency.OVERDUE
+                days == 0L -> Urgency.TODAY
+                days <= 3 -> Urgency.SOON
+                else -> Urgency.LATER
+            }
         )
     }
 

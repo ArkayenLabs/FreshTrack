@@ -24,6 +24,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import android.content.Intent
+import com.example.freshtrack.presentation.navigation.LaunchTarget
 import com.example.freshtrack.presentation.navigation.FreshTrackNavGraph
 import com.example.freshtrack.presentation.theme.FreshTrackTheme
 import com.example.freshtrack.util.InAppUpdateManager
@@ -32,12 +34,36 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 
 class MainActivity : ComponentActivity() {
+
+    /**
+     * Where a launch wants to land, when it wants somewhere other than
+     * Today: a widget row opens its item, the widget's plus opens Add, a
+     * notification opens what is expiring. Read from the intent on create
+     * and again on a new intent (the activity is singleTop), consumed by the
+     * nav graph once it has acted on it.
+     */
+    private var launchTarget by mutableStateOf<LaunchTarget?>(null)
+
+    private fun launchTargetOf(intent: Intent?): LaunchTarget? {
+        intent?.getStringExtra(EXTRA_OPEN_ITEM)?.let { return LaunchTarget.OpenItem(it) }
+        return when (intent?.getStringExtra(EXTRA_NAVIGATE_TO)) {
+            "add" -> LaunchTarget.AddItem
+            "expiring" -> LaunchTarget.Expiring
+            else -> null
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        launchTargetOf(intent)?.let { launchTarget = it }
+    }
     
     private var inAppUpdateManager: InAppUpdateManager? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        launchTarget = launchTargetOf(intent)
 
         val app = application as FreshTrackApplication
         val wasReset = app.crashLoopDetector.wasAppReset()
@@ -108,7 +134,11 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.background
                     ) {
                         val navController = rememberNavController()
-                        FreshTrackNavGraph(navController = navController)
+                        FreshTrackNavGraph(
+                            navController = navController,
+                            launchTarget = launchTarget,
+                            onLaunchTargetConsumed = { launchTarget = null }
+                        )
                     }
                 }
             }
@@ -133,5 +163,10 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             com.example.freshtrack.widget.WidgetRefresher.refresh(this@MainActivity)
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_ITEM = "open_item"
+        const val EXTRA_NAVIGATE_TO = "navigate_to"
     }
 }

@@ -3,6 +3,7 @@ package com.example.freshtrack.presentation.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -103,17 +104,46 @@ class ScannerState {
     }
 }
 
+/** Somewhere a launch wants to land other than Today. See MainActivity.launchTarget. */
+sealed interface LaunchTarget {
+    data class OpenItem(val itemId: String) : LaunchTarget
+    data object AddItem : LaunchTarget
+    data object Expiring : LaunchTarget
+}
+
 /**
  * Main navigation graph for FreshTrack
  */
 @Composable
 fun FreshTrackNavGraph(
     navController: NavHostController,
+    launchTarget: LaunchTarget? = null,
+    onLaunchTargetConsumed: () -> Unit = {},
     onboardingPreferences: OnboardingPreferences = koinInject(),
     itemRepository: com.example.freshtrack.data.repository.ItemRepository = koinInject()
 ) {
     val scannerState = remember { ScannerState() }
     val appScope = rememberCoroutineScope()
+
+    // A widget or notification asked for somewhere specific. Once the app is
+    // past the splash, go there on top of Today so back lands somewhere
+    // sensible. The splash handler below does the same for a cold start.
+    fun goTo(target: LaunchTarget) {
+        when (target) {
+            is LaunchTarget.OpenItem -> navController.navigate(Screen.ProductDetails.createRoute(target.itemId))
+            LaunchTarget.AddItem -> {
+                scannerState.clear()
+                navController.navigate(Screen.AddProduct.route)
+            }
+            LaunchTarget.Expiring -> navController.navigate(Screen.ProductList.createRoute("expiring"))
+        }
+        onLaunchTargetConsumed()
+    }
+    LaunchedEffect(launchTarget) {
+        val target = launchTarget ?: return@LaunchedEffect
+        val route = navController.currentBackStackEntry?.destination?.route
+        if (route != null && route != Screen.Splash.route) goTo(target)
+    }
 
     // Anything added as a guest is adopted by the account on sign-in, so weeks
     // of tracking are not stranded the moment someone finally signs up.
@@ -180,6 +210,7 @@ fun FreshTrackNavGraph(
                     navController.navigate(nextDestination) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
+                    if (nextDestination == Screen.Today.route) launchTarget?.let { goTo(it) }
                 }
             )
         }
@@ -279,6 +310,12 @@ fun FreshTrackNavGraph(
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
+                onNavigateToScanner = {
+                    scannerState.clear()
+                    navController.navigate(Screen.AddProduct.route)
+                    navController.navigate(Screen.Scanner.createRoute(ScanMode.BARCODE))
+                },
+                onNavigateToReceipt = { navController.navigate(Screen.Receipt.route) },
                 bottomBar = bottomBarFor(TopLevelDestination.TODAY)
             )
         }
@@ -304,6 +341,13 @@ fun FreshTrackNavGraph(
                     navController.navigate(Screen.ProductDetails.createRoute(productId))
                 },
                 onNavigateToReceipt = { navController.navigate(Screen.Receipt.route) },
+                // Straight to the camera, with the Add screen underneath it
+                // so the barcode has somewhere to land.
+                onNavigateToScanner = {
+                    scannerState.clear()
+                    navController.navigate(Screen.AddProduct.route)
+                    navController.navigate(Screen.Scanner.createRoute(ScanMode.BARCODE))
+                },
                 initialFilter = filter,
                 bottomBar = bottomBarFor(TopLevelDestination.KITCHEN)
             )
@@ -404,6 +448,12 @@ fun FreshTrackNavGraph(
         // ─── Progress ─────────────────────────────────────────────────────────────
         composable(Screen.Impact.route) {
             ImpactScreen(
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToToday = { navigateToTab(TopLevelDestination.TODAY) },
+                onNavigateToAddItem = {
+                    scannerState.clear()
+                    navController.navigate(Screen.AddProduct.route)
+                },
                 bottomBar = bottomBarFor(TopLevelDestination.PROGRESS)
             )
         }

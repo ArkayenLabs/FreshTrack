@@ -1,5 +1,13 @@
 package com.example.freshtrack.presentation.screen.productlist
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +30,8 @@ import com.example.freshtrack.R
 import com.example.freshtrack.domain.model.ProductFilter
 import com.example.freshtrack.domain.model.ProductSort
 import com.example.freshtrack.presentation.component.*
+import com.example.freshtrack.presentation.theme.Arrive
+import com.example.freshtrack.presentation.theme.Motion
 import com.example.freshtrack.presentation.viewmodel.ItemListViewModel
 import java.time.LocalDate
 import org.koin.androidx.compose.koinViewModel
@@ -32,6 +42,7 @@ fun ProductListScreen(
     onNavigateToAddProduct: () -> Unit,
     onNavigateToProductDetails: (String) -> Unit,
     onNavigateToReceipt: () -> Unit = {},
+    onNavigateToScanner: () -> Unit = {},
     initialFilter: String? = null,
     bottomBar: @Composable () -> Unit = {},
     viewModel: ItemListViewModel = koinViewModel()
@@ -60,6 +71,9 @@ fun ProductListScreen(
                     )
                 },
                 actions = {
+                    // An empty kitchen has nothing to filter or sort, and the
+                    // ways in are laid out in the body instead.
+                    if (!uiState.hasAnyItem) return@TopAppBar
                     // A whole shop at once, which is the other way food arrives.
                     IconButton(onClick = onNavigateToReceipt) {
                         Icon(
@@ -162,12 +176,21 @@ fun ProductListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNavigateToAddProduct,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            // One way to add at a time: while the kitchen is empty the body
+            // offers the three ways in, and a second button on top of them
+            // would only compete with it.
+            AnimatedVisibility(
+                visible = uiState.hasAnyItem,
+                enter = scaleIn(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                exit = scaleOut(tween(Motion.EXIT_MS)) + fadeOut(tween(Motion.EXIT_MS))
             ) {
-                Icon(Icons.Default.Add, stringResource(R.string.kitchen_add_product))
+                FloatingActionButton(
+                    onClick = onNavigateToAddProduct,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ) {
+                    Icon(Icons.Default.Add, stringResource(R.string.kitchen_add_product))
+                }
             }
         }
     ) { padding ->
@@ -176,7 +199,7 @@ fun ProductListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (uiState.categories.isNotEmpty()) {
+            if (uiState.categories.isNotEmpty() && uiState.hasAnyItem) {
 
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -212,16 +235,21 @@ fun ProductListScreen(
                 ) {
                     LoadingState(stringResource(R.string.kitchen_loading))
                 }
+            } else if (!uiState.hasAnyItem) {
+                EmptyKitchen(
+                    onScanBarcode = onNavigateToScanner,
+                    onScanReceipt = onNavigateToReceipt,
+                    onTypeIn = onNavigateToAddProduct
+                )
             } else if (uiState.items.isEmpty()) {
-                // Enhanced Empty State
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    EnhancedEmptyState(
-                        onAddProduct = onNavigateToAddProduct
-                    )
-                }
+                NothingMatches(
+                    filter = uiState.filter,
+                    category = uiState.selectedCategory,
+                    onShowEverything = {
+                        viewModel.setFilter(ProductFilter.ALL)
+                        viewModel.selectCategory(null)
+                    }
+                )
             } else {
                 // Product List
                 LazyColumn(
@@ -366,70 +394,71 @@ fun EnhancedCategoryChip(
     )
 }
 
+/**
+ * A first-run screen, not a placeholder: what the app is for in one line,
+ * then the three ways food gets in, each going straight into its flow.
+ * Laid out from the top like content rather than floated in the middle,
+ * because a screen that is mostly gap reads as broken.
+ */
 @Composable
-fun EnhancedEmptyState(
-    onAddProduct: () -> Unit
+private fun EmptyKitchen(
+    onScanBarcode: () -> Unit,
+    onScanReceipt: () -> Unit,
+    onTypeIn: () -> Unit
 ) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Empty state icon with dark/subtle appearance
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .clip(MaterialTheme.shapes.large)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Inventory2,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
+        Arrive(index = 0) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = stringResource(R.string.kitchen_empty_title),
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = stringResource(R.string.kitchen_empty_body),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
+        WaysToAdd(
+            onScanBarcode = onScanBarcode,
+            onScanReceipt = onScanReceipt,
+            onTypeIn = onTypeIn,
+            firstIndex = 1
+        )
+    }
+}
 
+/** The kitchen has food; this filter just has none of it. Say which, and offer the way back. */
+@Composable
+private fun NothingMatches(
+    filter: ProductFilter,
+    category: String?,
+    onShowEverything: () -> Unit
+) {
+    val body = when {
+        filter == ProductFilter.EXPIRING_SOON -> stringResource(R.string.kitchen_filter_empty_expiring)
+        filter == ProductFilter.EXPIRED -> stringResource(R.string.kitchen_filter_empty_expired)
+        category != null -> stringResource(R.string.kitchen_filter_empty_category, category)
+        else -> stringResource(R.string.kitchen_filter_empty_expiring)
+    }
+    Arrive {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.kitchen_empty_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Text(
-                text = stringResource(R.string.kitchen_empty_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Button(
-            onClick = onAddProduct,
             modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .height(56.dp),
-            shape = MaterialTheme.shapes.medium,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                stringResource(R.string.kitchen_add_product),
-                style = MaterialTheme.typography.titleMedium
-            )
+            Text(stringResource(R.string.kitchen_filter_empty_title), style = MaterialTheme.typography.titleLarge)
+            Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onShowEverything, modifier = Modifier.padding(top = 4.dp)) {
+                Text(stringResource(R.string.kitchen_show_everything))
+            }
         }
     }
 }

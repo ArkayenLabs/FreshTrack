@@ -350,9 +350,11 @@ fun SettingsScreen(
                         pending = pendingChanges,
                         stuck = stuckChanges
                     ),
-                    enabled = isSignedIn || premiumOnSale,
                     // Without premium the card is the way to it; with it, a tap
-                    // backs up now.
+                    // backs up now. While Premium is not on sale there is
+                    // nowhere for the tap to go, so the card says its piece
+                    // and does not pretend to be a button.
+                    enabled = (isSignedIn && !needsPremium) || premiumOnSale,
                     onClick = {
                         if (needsPremium && premiumOnSale) onNavigateToPremium()
                         else com.example.freshtrack.data.sync.SyncWorker.syncNow(context)

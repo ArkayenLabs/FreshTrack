@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -699,7 +702,8 @@ private fun UnreadableLinesCard(lines: List<String>) {
 /** The commit, and the reason it is unavailable when it is. */
 @Composable
 private fun CommitBar(state: ReceiptReviewUiState, onCommit: () -> Unit) {
-    Surface(tonalElevation = 3.dp) {
+    // Pads for the system navigation itself; the bottomBar slot does not.
+    Surface(modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars), tonalElevation = 3.dp) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)

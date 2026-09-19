@@ -31,18 +31,38 @@ class WidgetContentTest {
     )
 
     @Test
-    fun `an empty kitchen reads as all clear`() {
+    fun `an empty kitchen reads as all clear, and knows it is empty`() {
         val state = WidgetContent.build(emptyList(), today)
         assertTrue(state.isAllClear)
+        assertTrue(state.isEmptyKitchen)
         assertTrue(state.items.isEmpty())
+        assertEquals(null, state.nextUp)
     }
 
     @Test
-    fun `items beyond the horizon are all clear, not listed`() {
+    fun `items beyond the horizon are all clear, not listed, but the soonest is named as next up`() {
         // Something expiring in a month should not make the widget look busy.
-        val state = WidgetContent.build(listOf(product("Rice", 30), product("Dal", 60)), today)
+        val state = WidgetContent.build(listOf(product("Dal", 60), product("Rice", 30)), today)
         assertTrue(state.isAllClear)
+        assertFalse(state.isEmptyKitchen)
         assertEquals("Nothing expiring soon", state.headline)
+        assertEquals(2, state.total)
+        assertEquals("Rice", state.nextUp?.name)
+        assertEquals("30d", state.nextUp?.timing)
+    }
+
+    @Test
+    fun `urgency grades a row by how close it is`() {
+        val state = WidgetContent.build(
+            listOf(product("Old", -2), product("Now", 0), product("Soon", 2), product("Later", 6)),
+            today
+        )
+        val byName = state.items.associate { it.name to it.urgency }
+        assertEquals(WidgetContent.Urgency.OVERDUE, byName["Old"])
+        assertEquals(WidgetContent.Urgency.TODAY, byName["Now"])
+        assertEquals(WidgetContent.Urgency.SOON, byName["Soon"])
+        assertEquals(WidgetContent.Urgency.LATER, byName["Later"])
+        assertEquals(4, state.urgentCount)
     }
 
     @Test

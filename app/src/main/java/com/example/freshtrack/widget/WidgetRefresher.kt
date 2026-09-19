@@ -16,5 +16,6 @@ import androidx.glance.appwidget.updateAll
 object WidgetRefresher {
     suspend fun refresh(context: Context) {
         runCatching { FreshTrackWidget().updateAll(context) }
+            .onFailure { android.util.Log.w("WidgetRefresher", "Widget refresh failed", it) }
     }
 }

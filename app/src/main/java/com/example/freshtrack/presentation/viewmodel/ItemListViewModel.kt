@@ -57,15 +57,20 @@ class ItemListViewModel(
                         category?.let { cat -> items.filter { it.category == cat } } ?: items
                 }
 
-                when (sort) {
+                val sorted = when (sort) {
                     ProductSort.EXPIRY_DATE_ASC -> filtered.sortedBy { it.expiry.value }
                     ProductSort.EXPIRY_DATE_DESC -> filtered.sortedByDescending { it.expiry.value }
                     ProductSort.NAME_ASC -> filtered.sortedBy { it.name }
                     ProductSort.NAME_DESC -> filtered.sortedByDescending { it.name }
                     ProductSort.ADDED_DATE_DESC -> filtered.sortedByDescending { it.addedAt }
                 }
-            }.collect { items ->
-                _uiState.update { it.copy(items = items, isLoading = false) }
+                // Whether the kitchen has anything at all, filter or no
+                // filter, decided in the same pass as the list so the two can
+                // never disagree for a frame: an empty kitchen and a filter
+                // that matched nothing are different screens.
+                sorted to items.isNotEmpty()
+            }.collect { (items, hasAny) ->
+                _uiState.update { it.copy(items = items, hasAnyItem = hasAny, isLoading = false) }
             }
         }
     }
@@ -80,6 +85,7 @@ class ItemListViewModel(
 
     fun setFilter(filter: ProductFilter) {
         _currentFilter.value = filter
+        _uiState.update { it.copy(filter = filter) }
     }
 
     fun setSort(sort: ProductSort) {
@@ -112,5 +118,7 @@ data class ItemListUiState(
     val categories: List<Category> = emptyList(),
     val selectedCategory: String? = null,
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val hasAnyItem: Boolean = false,
+    val filter: ProductFilter = ProductFilter.ALL
 )

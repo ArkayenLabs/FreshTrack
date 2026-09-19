@@ -220,7 +220,67 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
-**State at 19 Sep 2026 — `main` after `7a1ef9b`, RevenueCat work in the
+**State at the end of 19 Sep 2026 — see the two entries below; the v1.1.1
+bundle handed over in the morning is superseded.**
+
+**Found and fixed 19 Sep 2026, afternoon: every manually added item
+overwrote the one before it.** The pre-migration `AddEditProductViewModel`
+minted a UUID for a new item; the GoodBefore migration (`1220253`) replaced
+it with `AddEditItemViewModel`, which passes `itemId = ""`, and the
+repository never minted one. An empty string is a valid primary key, so
+`insert` replaced the previous row every time; the event ledger showed six
+`ITEM_CREATED` with `itemId = ''`. Found on the emulator while checking the
+new empty states (items kept vanishing). The receipt path was unaffected
+(`commitReceipt` mints ids). Fix: `ItemRepositoryImpl.add` mints the id and
+ignores the caller's; test `every added item gets its own id, whatever the
+caller passed` fails without it. **This was in v1.1.0 (masked by the R8
+crash on Add) and in the v1.1.1 bundle built this morning — that bundle
+must not be uploaded; rebuilt at the end of the day, same versionCode 6.**
+
+**Done 19 Sep 2026, afternoon: empty states, one Add path, insets, widget.**
+- `WaysToAdd` (component): the three ways food gets in — scan a barcode,
+  photograph a receipt, type it in — as rows that go straight into each
+  flow (the barcode row pushes Add then Scanner, so the code has somewhere
+  to land). Used by Today's first run (the landing tab is where first run
+  actually happens) and by the empty Kitchen. While the kitchen is empty
+  there is no FAB and no chips/filter/sort.
+- Today: first-run screen when the kitchen is empty; when nothing is due,
+  "Nothing needs using" plus the next three items coming up (tappable) and
+  a count of the kitchen. `TodayViewModel.comingUp`.
+- Kitchen: `hasAnyItem` and `filter` on the state; "Nothing here / Nothing
+  in Dairy & Eggs right now / Show everything" for a filter that matched
+  nothing, decided in the same pass as the list.
+- Progress: settings gear; empty state shows the three figures at zero and
+  "How it counts" (used, wasted restarts the streak, nothing edited away)
+  with one action (Open Today, or Add food first); figures count up.
+- All three distinguish *not loaded* (`null` → blank) from *empty*, after
+  the first-run screen was seen flashing over real content on a cold open.
+- Motion: `Arrive(index)` — fade + settle with a 45 ms stagger — in
+  `Motion.kt`; FABs scale in/out.
+- **The "Add button half behind the navigation bar" report was the Add
+  screen's save button, not the FAB**: a plain `Surface` in the `bottomBar`
+  slot pads nothing for the system bar. Fixed there and in the receipt
+  review's `CommitBar` with `windowInsetsPadding(navigationBars)`. Verified
+  on the emulator with three-button navigation.
+- Settings: the backup card is not tappable while Premium is not on sale
+  and the account is not entitled, instead of a silent tap.
+- Widget rebuilt against Google's widget quality tiers: header (app icon,
+  name, Add with a 40dp target), `SizeMode.Exact` so the row count comes
+  from the real height, urgency dot per row, rows deep-link to the item,
+  "Coming up" fills spare rows, 2x2 shows a count, all-clear shows what is
+  next, empty kitchen says so; app palette light/dark, system corner
+  radius, resizable from 2x2, picker preview cut from a real render;
+  refresh failures logged. Deep links: `MainActivity` (`singleTop`) reads
+  `open_item` / `navigate_to` into a `LaunchTarget` the nav graph acts on
+  after the splash (also on `onNewIntent`). Verified: row → details, plus →
+  Add, 4x2 and 2x2 renders, refresh on leaving the app.
+- 288 unit tests, lint 0 errors / 128 warnings.
+
+**Not done from that conversation:** the paywall stays our own
+`PremiumScreen` (not RevenueCat's hosted one); Backup & Sync only becomes
+tappable at item 5.
+
+**State at 19 Sep 2026, morning — `main` after `7a1ef9b`, RevenueCat work in the
 tree, not yet committed.** 285 unit tests, lint 0 errors / 127 warnings,
 rules 61, functions 45 (`npm run test:functions`; the two emulator test
 files now run one at a time — `--test-concurrency=1` — because both wipe the
@@ -463,10 +523,11 @@ isolates the release failure to the missing fingerprints. 284 unit, lint
 **Next, in order:**
 
 1. ~~**Confirm Google Sign-In on the sideloaded release APK.**~~ Verified by
-   the owner, 19 Sep. ~~**v1.1.1 bundle.**~~ Built and handed over, 19 Sep
-   (see above). **Owner: upload the `.aab` with `mapping.txt`**, watch Vitals
-   for the Add crash disappearing, rename the store listing FreshTrack →
-   GoodBefore.
+   the owner, 19 Sep. **v1.1.1 bundle**: the morning build carried the
+   item-overwrite bug and was withdrawn; rebuilt at the end of the day with
+   the fix and the design pass, same versionCode 6. **Owner: upload the
+   evening `.aab` with its `mapping.txt`**, watch Vitals for the Add crash
+   disappearing, rename the store listing FreshTrack → GoodBefore.
 2. ~~**RevenueCat webhook function.**~~ Built, tested, deployed and proven
    with RevenueCat's test event, 19 Sep. Secrets set; webhook registered in
    RevenueCat at
@@ -740,6 +801,12 @@ Not bugs to fix today, but things that are true and should not be forgotten.
 ---
 
 ## Corrections made along the way
+
+- **19 Sep 2026 — every manual add overwrote the last.** The repository
+  trusted the caller's item id; the Add screen's was `""`. Shipped in v1.1.0
+  behind the R8 crash and nearly shipped in v1.1.1. The repository now mints
+  the id. Lesson recorded in `CLAUDE.md`: a device check that adds *one*
+  item proves nothing about ids.
 
 Kept because the reasoning matters more than the outcome.
 

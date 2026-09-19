@@ -6,6 +6,7 @@ import com.example.freshtrack.data.repository.ItemRepository
 import com.example.freshtrack.domain.model.ImpactStats
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -17,10 +18,20 @@ class ImpactViewModel(
     itemRepository: ItemRepository
 ) : ViewModel() {
 
-    val stats: StateFlow<ImpactStats> = itemRepository.observeImpact()
+    /** Null until the ledger has been read, so the "nothing yet" screen never flashes over real history. */
+    val stats: StateFlow<ImpactStats?> = itemRepository.observeImpact()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = ImpactStats()
+            initialValue = null
+        )
+
+    /** Before anything is counted, the one useful action depends on whether there is food to use. */
+    val hasAnyItem: StateFlow<Boolean> = itemRepository.observeActiveItems()
+        .map { it.isNotEmpty() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = true
         )
 }

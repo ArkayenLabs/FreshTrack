@@ -3,6 +3,7 @@ package com.example.freshtrack.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.freshtrack.data.repository.ItemRepository
+import com.example.freshtrack.domain.model.Item
 import com.example.freshtrack.domain.rescue.RescueList
 import com.example.freshtrack.domain.rescue.RescueRanking
 import com.example.freshtrack.util.AppClock
@@ -54,13 +55,40 @@ class TodayViewModel(
      * to its date. Asking about reminders is only meaningful once the person has
      * food being tracked, and that is true well before anything is urgent.
      */
-    val hasAnyItem: StateFlow<Boolean> = activeItems
+    val hasAnyItem: StateFlow<Boolean?> = activeItems
         .map { it.isNotEmpty() }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = false
+            // Null until Room answers: "empty" is a screen of its own, and it
+            // must not flash before the real answer arrives.
+            initialValue = null
         )
+
+    /**
+     * What the all-clear screen shows instead of a tick: the kitchen's size
+     * and the few things that will come up first. Everything past the rescue
+     * horizon, soonest first, so the screen says "here is what is next"
+     * rather than "nothing".
+     */
+    val comingUp: StateFlow<ComingUp> = activeItems
+        .map { items ->
+            val today = clock.today()
+            ComingUp(
+                total = items.size,
+                next = items
+                    .filter { it.daysUntilExpiry(today) > RescueRanking.HORIZON_DAYS }
+                    .sortedBy { it.expiry.value }
+                    .take(COMING_UP_COUNT)
+            )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ComingUp(0, emptyList())
+        )
+
+    data class ComingUp(val total: Int, val next: List<Item>)
 
     private val _undoPrompt = MutableStateFlow<UndoPrompt?>(null)
 
@@ -115,5 +143,9 @@ class TodayViewModel(
             itemRepository.snooze(itemId, clock.nowMillis() + TimeUnit.DAYS.toMillis(1))
             _undoPrompt.value = null
         }
+    }
+
+    companion object {
+        const val COMING_UP_COUNT = 3
     }
 }

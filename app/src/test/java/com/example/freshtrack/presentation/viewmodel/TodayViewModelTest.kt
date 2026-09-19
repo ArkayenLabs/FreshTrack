@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -82,8 +83,14 @@ class TodayViewModelTest {
     }
 
     @Test
+    fun `before Room answers the question is open rather than empty`() = runTest {
+        val vm = TodayViewModel(itemRepository, clock)
+        assertEquals(null, vm.hasAnyItem.value)
+    }
+
+    @Test
     fun `an empty kitchen has nothing to be reminded about`() = runTest {
-        assertFalse(started().hasAnyItem.value)
+        assertEquals(false, started().hasAnyItem.value)
     }
 
     @Test
@@ -92,7 +99,7 @@ class TodayViewModelTest {
         items.value = listOf(item(daysOut = 365))
         val vm = started()
 
-        assertTrue(vm.hasAnyItem.value)
+        assertEquals(true, vm.hasAnyItem.value)
         assertTrue("a distant date should not be urgent", vm.rescue.value.isEmpty)
     }
 
@@ -101,7 +108,7 @@ class TodayViewModelTest {
         items.value = listOf(item(daysOut = 1))
         val vm = started()
 
-        assertTrue(vm.hasAnyItem.value)
+        assertEquals(true, vm.hasAnyItem.value)
         assertFalse(vm.rescue.value.isEmpty)
     }
 }

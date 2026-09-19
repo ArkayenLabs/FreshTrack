@@ -22,6 +22,7 @@
 | DI | `di/KoinModules.kt` (Koin) |
 | Preferences | `data/preferences/` — every file is `EncryptedSharedPreferences` opened via `encryptedPreferences()`; `OnboardingPreferences` holds the guest flag |
 | Notifications | `data/notification/` — WorkManager + NotificationHelper |
+| Widget | `widget/` — Glance, `SizeMode.Exact`; `WidgetContent` is the pure, tested part. Header (icon, name, Add), urgency-dotted rows that deep-link to their item (`MainActivity.EXTRA_OPEN_ITEM` / `EXTRA_NAVIGATE_TO` → `LaunchTarget` in `Navigation.kt`), "Coming up" fills spare rows, app palette in light and dark, system corner radius, picker preview cut from a real render |
 | Auth | Firebase Auth (Email/Password + Google Sign-In) via `presentation/viewmodel/AuthViewModel.kt` |
 | Sync | `data/sync/` — `OutboxPusher`, `RemoteChangeApplier`, `SyncRun`, `SyncWorker`, `WireFormat`; `data/remote/firestore/FirestoreRemoteStore`. Inert until `isPremium` is set — see `sync-design.md` |
 | Session | `data/session/UserSession.kt` — current uid and active kitchen |
@@ -60,6 +61,18 @@ existing rows survive and still mean the same thing.
   one transaction via `ItemRepositoryImpl.record`.
 - **Category and location are different things.** "Dairy" is what it is;
   "Fridge" is where it is.
+- **Item ids are minted by the repository, never by a screen.** `ItemRepositoryImpl.add`
+  assigns the id and ignores whatever the caller passed. The Add screen passes
+  `""`, and an empty string is a valid primary key: from the GoodBefore
+  migration until 19 Sep 2026 every manually added item overwrote the one
+  before it. `ItemRepositoryImplTest` has the test that catches it.
+- **Empty is a screen, not a placeholder.** Today, Kitchen and Progress each
+  have a first-run/empty state that says what to do next and takes the person
+  there (`WaysToAdd` for the three ways food gets in); a filter that matches
+  nothing is a different screen from an empty kitchen; and "not loaded yet"
+  is a third state (`null`) that renders nothing, so the empty screen never
+  flashes over real content. While the kitchen is empty there is one Add
+  path, in the body, and no FAB.
 - **Deletes are soft.** Set `isDeleted`; a hard delete cannot propagate to another
   device. Only the queries under "Sync" in `ItemDao` may see tombstones.
 - **Free tier is a feature gate, not a quantity cap.** No item limits — capping

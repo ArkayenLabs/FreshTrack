@@ -14,7 +14,21 @@
     <string name="app_tagline">Know what to use first.</string>
 
     <string name="app_logo_description">GoodBefore logo</string>
-    <string name="widget_description">See what is expiring soon</string>
+    <string name="widget_description">What needs using first, at a glance, and one tap to add more.</string>
+    <string name="widget_add">Add food</string>
+    <string name="widget_all_clear">Nothing needs using</string>
+    <string name="widget_next_up">Next: %1$s, %2$s</string>
+    <string name="widget_coming_up">Coming up</string>
+    <string name="widget_empty_title">Nothing in your kitchen yet</string>
+    <string name="widget_empty_body">Tap + to add what is in the fridge.</string>
+    <plurals name="widget_need_using">
+        <item quantity="one">needs using this week</item>
+        <item quantity="other">need using this week</item>
+    </plurals>
+    <plurals name="widget_more">
+        <item quantity="one">and %1$d more</item>
+        <item quantity="other">and %1$d more</item>
+    </plurals>
 
     <string name="export_subject">GoodBefore inventory export</string>
     <string name="export_file_prefix">GoodBefore_Export</string>
@@ -63,8 +77,15 @@
     <string name="today_headline_overdue_and_due">%1$d past its date, %2$d due today</string>
 
     <string name="today_see_kitchen">See everything in the kitchen</string>
-    <string name="today_empty_title">Nothing needs using yet</string>
+    <string name="today_empty_title">Nothing needs using</string>
     <string name="today_empty_body">Everything in your kitchen has more than a week left.</string>
+    <string name="today_first_title">Start with what is in the fridge</string>
+    <string name="today_first_body">Add a few things and Today shows you what to use first, before it goes off.</string>
+    <string name="today_coming_up">Coming up</string>
+    <plurals name="today_see_kitchen_count">
+        <item quantity="one">See the %1$d item in the kitchen</item>
+        <item quantity="other">See all %1$d items in the kitchen</item>
+    </plurals>
 
     <string name="today_action_use">Use</string>
     <string name="today_action_use_one">Use one</string>
@@ -164,8 +185,15 @@
         <item quantity="one">You used %1$d%% of the %2$d item you finished with.</item>
         <item quantity="other">You used %1$d%% of the %2$d items you finished with.</item>
     </plurals>
-    <string name="impact_empty_title">No impact to show yet</string>
-    <string name="impact_empty_body">Mark an item as used or discarded and your progress will appear here.</string>
+    <string name="impact_empty_title">Nothing counted yet</string>
+    <string name="impact_empty_body">Every time you mark something as used or thrown away, it lands here.</string>
+    <string name="impact_days_waste_free">Days waste-free</string>
+    <string name="impact_how_title">How it counts</string>
+    <string name="impact_how_used">Use something before it goes off and it counts as used.</string>
+    <string name="impact_how_wasted">Throw something away and it counts as wasted, and the waste-free days start again.</string>
+    <string name="impact_how_ledger">Nothing here can be edited away. Deleting an item does not change what you already did.</string>
+    <string name="impact_go_today">Open Today</string>
+    <string name="impact_go_add">Add food first</string>
 
     <!-- Reminder permission. -->
     <string name="reminders_title">Stay notified</string>
@@ -192,11 +220,22 @@
     <string name="kitchen_sort_name">Name (A-Z)</string>
     <string name="kitchen_sort_added">Recently added</string>
     <string name="kitchen_add_product">Add product</string>
+    <string name="ways_scan_title">Scan a barcode</string>
+    <string name="ways_scan_body">Name and category come off the packet.</string>
+    <string name="ways_receipt_title">Photograph a receipt</string>
+    <string name="ways_receipt_body">A whole shop in one go.</string>
+    <string name="ways_type_title">Type it in</string>
+    <string name="ways_type_body">Leftovers, loose veg, anything without a barcode.</string>
     <string name="kitchen_loading">Loading products\u2026</string>
     <string name="kitchen_delete_title">Delete product?</string>
     <string name="kitchen_delete_body">Are you sure you want to delete this product? This action cannot be undone.</string>
-    <string name="kitchen_empty_title">No products found</string>
-    <string name="kitchen_empty_body">Add your first product to start tracking</string>
+    <string name="kitchen_empty_title">Your kitchen is empty</string>
+    <string name="kitchen_empty_body">Three ways to fill it. Everything stays on this phone.</string>
+    <string name="kitchen_filter_empty_title">Nothing here</string>
+    <string name="kitchen_filter_empty_category">Nothing in %1$s right now.</string>
+    <string name="kitchen_filter_empty_expiring">Nothing expiring this week.</string>
+    <string name="kitchen_filter_empty_expired">Nothing has gone past its date.</string>
+    <string name="kitchen_show_everything">Show everything</string>
 
     <!-- History. -->
     <string name="history_title">History</string>
@@ -406,7 +445,6 @@
     <string name="notification_mark_used">Mark as used</string>
     <string name="notification_view_items">View items</string>
     <string name="notification_channel_summary">Daily summary</string>
-    <string name="widget_nothing_soon">Nothing needs using up in the next week.</string>
     <plurals name="notification_summary_tracked">
         <item quantity="one">\u2022 %1$d product tracked</item>
         <item quantity="other">\u2022 %1$d products tracked</item>

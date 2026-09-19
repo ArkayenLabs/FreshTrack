@@ -1,6 +1,16 @@
 package com.example.freshtrack.presentation.screen.today
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,12 +48,17 @@ import androidx.compose.ui.unit.dp
 import com.example.freshtrack.R
 import com.example.freshtrack.data.preferences.OnboardingPreferences
 import com.example.freshtrack.presentation.component.NotificationPermissionHandler
+import com.example.freshtrack.presentation.component.WaysToAdd
+import com.example.freshtrack.domain.model.Item
 import com.example.freshtrack.domain.rescue.RescueEntry
 import com.example.freshtrack.domain.rescue.RescueList
 import com.example.freshtrack.domain.rescue.RescueReason
+import com.example.freshtrack.presentation.theme.Arrive
 import com.example.freshtrack.presentation.theme.GoodBefore
+import com.example.freshtrack.presentation.theme.Motion
 import com.example.freshtrack.presentation.viewmodel.TodayViewModel
 import org.koin.androidx.compose.koinViewModel
+import java.time.LocalDate
 import org.koin.compose.koinInject
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -63,12 +78,15 @@ fun TodayScreen(
     onNavigateToItemDetails: (String) -> Unit,
     onNavigateToKitchen: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToScanner: () -> Unit = {},
+    onNavigateToReceipt: () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     onboardingPreferences: OnboardingPreferences = koinInject(),
     viewModel: TodayViewModel = koinViewModel()
 ) {
     val rescue by viewModel.rescue.collectAsState()
     val hasAnyItem by viewModel.hasAnyItem.collectAsState()
+    val comingUp by viewModel.comingUp.collectAsState()
     val undoPrompt by viewModel.undoPrompt.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     // Read here rather than inside the effect: stringResource is a
@@ -92,7 +110,7 @@ fun TodayScreen(
     // back round again.
     var askAboutReminders by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(hasAnyItem) {
-        if (hasAnyItem && !onboardingPreferences.hasAskedAboutReminders()) {
+        if (hasAnyItem == true && !onboardingPreferences.hasAskedAboutReminders()) {
             onboardingPreferences.setAskedAboutReminders()
             askAboutReminders = true
         }
@@ -130,18 +148,45 @@ fun TodayScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNavigateToAddItem,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.action_add)) }
-            )
+            // The first-run screen lays out the ways in itself; a button on
+            // top of them would be a second answer to the same question.
+            AnimatedVisibility(
+                visible = hasAnyItem == true,
+                enter = scaleIn(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                exit = scaleOut(tween(Motion.EXIT_MS)) + fadeOut(tween(Motion.EXIT_MS))
+            ) {
+                ExtendedFloatingActionButton(
+                    onClick = onNavigateToAddItem,
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.action_add)) }
+                )
+            }
         }
     ) { padding ->
+        // Nothing yet: Room has not answered. A blank beat is better than the
+        // wrong screen arriving with a flourish and being replaced.
+        if (hasAnyItem == null) {
+            Box(Modifier.fillMaxSize().padding(padding))
+            return@Scaffold
+        }
+        if (hasAnyItem == false) {
+            FirstRun(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                onScanBarcode = onNavigateToScanner,
+                onScanReceipt = onNavigateToReceipt,
+                onTypeIn = onNavigateToAddItem
+            )
+            return@Scaffold
+        }
         if (rescue.isEmpty) {
             NothingToRescue(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
+                comingUp = comingUp,
+                onOpenItem = onNavigateToItemDetails,
                 onNavigateToKitchen = onNavigateToKitchen
             )
             return@Scaffold
@@ -353,37 +398,126 @@ private fun accentFor(reason: RescueReason.Primary): Color {
 }
 
 /**
- * The empty state credits the user rather than selling them something. Nothing
- * expiring is the goal, not a gap to fill.
+ * Nobody has added anything yet, and this is the landing tab, so this is
+ * the first screen of the app. It says what the app does in one line and
+ * offers the three ways in, each going straight into its flow.
+ */
+@Composable
+private fun FirstRun(
+    modifier: Modifier = Modifier,
+    onScanBarcode: () -> Unit,
+    onScanReceipt: () -> Unit,
+    onTypeIn: () -> Unit
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Arrive(index = 0) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = stringResource(R.string.today_first_title),
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = stringResource(R.string.today_first_body),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        WaysToAdd(
+            onScanBarcode = onScanBarcode,
+            onScanReceipt = onScanReceipt,
+            onTypeIn = onTypeIn,
+            firstIndex = 1
+        )
+    }
+}
+
+/**
+ * Nothing is close to its date. That is the goal, so the screen credits the
+ * user in one line and then shows what is coming up next, because a kitchen
+ * with food in it is not "empty" and should not look it.
  */
 @Composable
 private fun NothingToRescue(
     modifier: Modifier = Modifier,
+    comingUp: TodayViewModel.ComingUp,
+    onOpenItem: (String) -> Unit,
     onNavigateToKitchen: () -> Unit
 ) {
-    Box(modifier = modifier.padding(32.dp), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    val today = remember { LocalDate.now() }
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Arrive(index = 0) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(
+                    Icons.Outlined.CheckCircle,
+                    contentDescription = null,
+                    modifier = Modifier.padding(top = 4.dp).size(28.dp),
+                    tint = GoodBefore.urgency.safe
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.today_empty_title), style = MaterialTheme.typography.headlineSmall)
+                    Text(
+                        stringResource(R.string.today_empty_body),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        if (comingUp.next.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Arrive(index = 1) {
+                    Text(
+                        stringResource(R.string.today_coming_up),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                comingUp.next.forEachIndexed { index, item ->
+                    Arrive(index = index + 2) { ComingUpRow(item, today) { onOpenItem(item.id) } }
+                }
+            }
+        }
+        Arrive(index = comingUp.next.size + 2) {
+            TextButton(onClick = onNavigateToKitchen) {
+                Text(pluralStringResource(R.plurals.today_see_kitchen_count, comingUp.total, comingUp.total))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ComingUpRow(item: Item, today: LocalDate, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
+    val days = item.daysUntilExpiry(today).toInt()
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressable(press)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(interactionSource = press, indication = LocalIndication.current, onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                Icons.Outlined.CheckCircle,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = GoodBefore.urgency.safe
-            )
+            Text(item.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), maxLines = 1)
             Text(
-                text = stringResource(R.string.today_empty_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = stringResource(R.string.today_empty_body),
+                pluralStringResource(R.plurals.today_due_in_days, days, days),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            TextButton(onClick = onNavigateToKitchen) {
-                Text(stringResource(R.string.today_see_kitchen))
-            }
         }
     }
 }

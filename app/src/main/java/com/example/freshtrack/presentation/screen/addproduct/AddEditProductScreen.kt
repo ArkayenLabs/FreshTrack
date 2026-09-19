@@ -111,9 +111,14 @@ fun AddEditProductScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            // Sticky Bottom Action Bar
+            // Sticky Bottom Action Bar. A plain Surface in the bottomBar slot
+            // pads nothing for the system navigation, unlike BottomAppBar,
+            // so on a phone with three buttons the save button sat half
+            // behind them.
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars),
                 tonalElevation = 3.dp,
                 shadowElevation = 8.dp
             ) {

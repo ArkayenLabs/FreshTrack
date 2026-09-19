@@ -1,9 +1,11 @@
 package com.example.freshtrack.presentation.theme
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -11,9 +13,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -35,6 +39,8 @@ object Motion {
     const val ENTER_MS = 300
     const val EXIT_MS = 200
     const val CROSSFADE_MS = 180
+    /** Gap between one arriving item and the next. */
+    const val STAGGER_MS = 45
 
     /** How far a screen travels while it fades: a nudge, not a slide. */
     private const val ENTER_OFFSET = 0.12f
@@ -88,4 +94,28 @@ fun Modifier.pressable(interactionSource: MutableInteractionSource? = null): Mod
         label = "press"
     )
     graphicsLayer { scaleX = scale; scaleY = scale }
+}
+
+/**
+ * Content arriving on a screen for the first time: it fades in and settles
+ * up by a small amount, and a list of things arrives one after another
+ * rather than all at once, so the eye is led down the page. The stagger is
+ * short enough that the fifth item is in place before anyone is waiting
+ * for it. Runs once per composition; recomposition does not replay it.
+ */
+@Composable
+fun Arrive(
+    modifier: Modifier = Modifier,
+    index: Int = 0,
+    content: @Composable () -> Unit
+) {
+    val state = remember { MutableTransitionState(false).apply { targetState = true } }
+    val delay = index * Motion.STAGGER_MS
+    AnimatedVisibility(
+        visibleState = state,
+        modifier = modifier,
+        enter = fadeIn(tween(Motion.ENTER_MS, delayMillis = delay, easing = Motion.EmphasizedDecelerate)) +
+            slideInVertically(tween(Motion.ENTER_MS, delayMillis = delay, easing = Motion.EmphasizedDecelerate)) { it / 6 },
+        exit = fadeOut(tween(Motion.EXIT_MS, easing = Motion.EmphasizedAccelerate))
+    ) { content() }
 }
