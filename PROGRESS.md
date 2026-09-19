@@ -520,6 +520,18 @@ account picker opened on the debug build (fingerprint registered), which
 isolates the release failure to the missing fingerprints. 284 unit, lint
 0/128. **v1.1.1's bundle predates this — rebuild before uploading.**
 
+**Research, 19 Sep 2026.** The owner ran `docs/research-brief.md` through
+an external research AI; the verbatim result is `docs/research-2026-09-19.md`
+and what we make of it is `docs/research-assessment.md`, which now holds the
+build order and supersedes the "Sequence" paragraph of `docs/strategy.md`
+where they differ. Short form: it agrees with the strategy (household first,
+then data-compounding retention, then Rescue Plan as the first AI); adds
+Freeze, a US/UK date-label coach, three-item activation, a review prompt
+after a rescue, and an eight-metric scorecard, all small; rejects an AI chat
+tab, fridge-photo inventory, planner/recipes, marketplace, caps, lifetime.
+The list below is unchanged for items 1–5 (release and billing); the
+product items after them are re-sequenced per the assessment.
+
 **Next, in order:**
 
 1. ~~**Confirm Google Sign-In on the sideloaded release APK.**~~ Verified by
@@ -551,12 +563,21 @@ isolates the release failure to the missing fingerprints. 284 unit, lint
    card turn into "Back up now".
 6. **Retire** `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements`,
    topic `play-billing`.
+6a. **v1.2, per `docs/research-assessment.md`:** eight-metric events with
+   the analytics opt-in asked after the first rescue; Play In-App Review
+   after a rescue, locally gated; the three-item line on Today; the US/UK
+   date-label coach on overdue best-before items; Freeze as a Today action
+   using `DateKind.FROZEN`; then `PREMIUM_ON_SALE` with a 30-day trial on
+   first Premium intent once item 5 is proven.
 7. **Connected suite** re-run in full.
 8. **iOS docs**: `/pantries` → `/kitchens`, `planAccess` → `isPremium`.
 9. **Data Safety + privacy policy**: RevenueCat, opt-in analytics.
 10. Design, third layer — receipt review, scanner, launcher icon, login logo.
 11. Locations sync (`Migration(3, 4)`, `entityKind` on outbox).
-12. Household (`docs/strategy.md` says it is the first thing after billing).
+12. Household (`docs/strategy.md` and the research agree: first thing
+    after billing) → household activity in History → Sunday Statement →
+    shareable card → Waste Hotspots → prices and the money ledger → learned
+    household timing → Rescue Plan (on-device first) → Quick Add.
 13. Dead code: `AdvanceNoticeDaysDialog`.
 14. Unverified surfaces: widget, notification action, CSV picker, receipt
     camera, release-variant instrumentation.

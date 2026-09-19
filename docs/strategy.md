@@ -1,5 +1,10 @@
 # GoodBefore — Product Strategy
 
+> 19 Sep 2026: an external research pass on this strategy is in
+> `research-2026-09-19.md`; `research-assessment.md` reconciles the two and
+> now holds the build order. This document is the reasoning behind the four
+> systems; the sequence at the end is superseded where they differ.
+
 *18 Sep 2026. Supersedes the "Strategic Research & Roadmap" section that lived
 in `summary.md` from July 2026; that section is kept there only as history.*
 
