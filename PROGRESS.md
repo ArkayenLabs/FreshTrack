@@ -5,6 +5,9 @@ No code here — see the linked documents for detail.
 
 **Related documents**
 - `CLAUDE.md` — architecture, conventions, constraints
+- `docs/strategy.md` — product strategy; `docs/research-assessment.md` sets
+  the build order, `docs/research-2026-09-19.md` is the research it judges
+- `docs/store-listing.md` — the live Play listing text and what it claims
 - `summary.md` — strategic research (background, not a task list)
 - `checklist.md` — original product roadmap
 - `checklist-phase2-readiness.md` — the audit that drove most of this work
@@ -13,6 +16,14 @@ No code here — see the linked documents for detail.
 ---
 
 ## Where we are
+
+**v1.1.1 (versionCode 6) is live on Google Play since 26 Sep 2026** with a
+written listing, five screenshots and a feature graphic. Nothing is
+purchasable yet: `PREMIUM_ON_SALE` is false, so Premium, the sign-in
+prompts and Backup & Sync are all hidden, and the listing claims none of
+them. The newest state is the first entry under "Pick up here" — the
+narrative below it is the history of how the app got here and is kept for
+the traps it records, not as a status report.
 
 Phase 1 retention work is done. The Phase 2 readiness audit is closed except for
 known gaps listed below.
@@ -220,6 +231,94 @@ APK (only the debug build has been installed).
 
 ## Pick up here
 
+**Secret audit, 26 Sep 2026, before the first push in a week.** Clean, and
+worth recording so the next person does not repeat it.
+
+- **All 160 commits** were grepped for key-shaped strings: `AIza…`, `ya29.`,
+  PEM private-key headers, `"private_key":`, `goog_`/`appl_`/`sk_live`/
+  `sk_test`, `ghp_`/`github_pat_`, `xox?-`, `AKIA…`, and bare 64-hex. No
+  match in any commit. No path matching `google-services`, `keystore`,
+  `.jks`, `local.properties`, `.env`, `.p8`, `.p12`, `.pem`,
+  `serviceAccount` or `mapping.txt` has ever existed in history either.
+- **Tracked files** hold no literal key. Every hit for `apiKey`/`secret`/
+  `password` is a parameter name, a Compose field, or `defineSecret` naming a
+  secret it does not contain. The function tests use `"Bearer s3cret"`.
+- **The four files that do carry secrets** are all present in the working
+  tree, all untracked, all ignored: `app/google-services.json`,
+  `keystore.properties`, `upload-keystore.jks`, `local.properties`.
+- **`.gitignore` was widened** from those four names to the classes they
+  belong to - certificates and key material (`*.p8 *.p12 *.pem *.pfx *.cer
+  *.crt *.der *.key`), service-account JSON, `.env` files, `secrets.
+  properties`, `upload-keystore*`, `mapping.txt` - with a comment saying
+  where each secret lives instead. Verified afterwards that no tracked file
+  became ignored.
+- **`C:\Users\balaj\...`** in this file was replaced with a relative
+  description. A local absolute path on a public repository publishes the
+  machine's user name for nothing.
+
+**The repository is public** (`ArkayenLabs/FreshTrack`, and the name still
+says FreshTrack). Two consequences that are decisions, not findings, and are
+the owner's to make:
+
+- `docs/strategy.md`, `docs/research-*.md` and this file publish the pricing
+  plan, the roadmap and the reasoning behind both. A competitor reading them
+  is the trade for a repository anyone can learn from.
+- The **known gaps** section below describes unfixed behaviour in a live app,
+  including the cross-account claim edge case. That text was already public
+  before today. The right answer is to fix it rather than to hide it, but if
+  the repository should be private, it should become private before the list
+  grows.
+
+
+**Published 26 Sep 2026: v1.1.1 (versionCode 6) is live on Google Play.**
+The first release that is both correct and presentable — v1.1.0's two
+crashes are fixed, and the empty-item-id bug that was silently overwriting
+every manually added item never reached a user in a build they could get
+past the Add screen.
+
+- **Uploaded:** the evening bundle built 19 Sep from `d631cdf`, unchanged —
+  `app-release.aab`, 59.9 MB, versionCode 6, versionName 1.1.1, signed with
+  the upload key `92:0D:A5:8A…`. `mapping.txt` attached to the release as
+  the deobfuscation file, so Play's crash reports and Crashlytics both show
+  real class names. Play's own release name, `6 (1.1.1)`, kept — it is an
+  internal label and is never shown to anyone.
+- **Release notes** in both listed languages, en-US and en-GB; the text is
+  in `docs/store-listing.md`.
+- **Listing rewritten**, not just filled in: app name
+  `GoodBefore: Expiration Tracker` for the US default and
+  `GoodBefore Food Expiry Tracker` for en-GB (through Manage translations —
+  a custom store listing is for targeting a country, not for wording), short
+  description at 76 of 80 characters, full description written intent-first
+  around "food expiration tracker" / "expiry tracker". Five screenshots
+  built from real captures in the app's own palette and fonts, ordered
+  Today → receipt → three ways in → kitchen → progress, plus a 1024x500
+  feature graphic. Everything is in `docs/store-listing.md`; the generators
+  are in `playstore-listing-ss/`.
+- **Data safety** declares the optional analytics and crash logs, matching
+  the consent dialog: collected only after the person opts in, never sold,
+  no names, prices, dates or barcodes in any event.
+- **Why the download is 59.9 MB when 1.0 was about 20:** ML Kit's *bundled*
+  text recognition model, added with the receipt and printed-date scanning.
+  The unbundled variant downloads the model through Play Services on first
+  use and takes roughly 30 MB off the install — item 21, worth doing before
+  the listing starts drawing real traffic.
+- **Unchanged by the launch:** nothing is purchasable. `PREMIUM_ON_SALE` is
+  false, so the paywall, the Settings sign-in banner and the backup card are
+  all hidden or inert, Firestore is written by nothing, and the listing makes
+  no Premium claim. The store review prompt, the analytics consent ask and
+  the eight usage events are live, which means the first real numbers from
+  real users start arriving now — the question they answer first is whether
+  people finish a receipt import, because that is what item 4's copy and
+  the whole capture story rest on.
+- **`main` is 16 commits ahead of `origin/main` and has never been pushed.**
+  The published bundle exists only in the local tree and in Play. Push
+  before anything else.
+
+Last measured figures, at `d631cdf`, not re-run since: **289** JVM unit
+tests, lint **0 errors / 133 warnings**, **45** functions tests
+(`npm run test:functions`), **61** rules tests.
+
+
 **State at the end of 19 Sep 2026 — see the two entries below; the v1.1.1
 bundle handed over in the morning is superseded.**
 
@@ -344,7 +443,7 @@ users too. If not, the fingerprint in Firebase does not match the key that
 signed the APK — check with `keytool -printcert -jarfile app-release.apk`.
 
 **Decision, 18 Sep 2026: billing moves to RevenueCat on both platforms.** iOS
-(`C:\Users\balaj\Downloads\GoodBefore-ios`, docs 01–07) already chose
+(the `GoodBefore-ios` upgrade pack, docs 01–07) already chose
 RevenueCat over StoreKit 2, and one cross-store entitlement per Firebase uid
 is what RevenueCat is for. Consequences, none started yet: the Play-native
 client (`PlayBillingClient`, `PremiumClaim`) and functions (`verifyPurchase`,
@@ -722,6 +821,39 @@ Loose ends found during the sweep, none of them urgent:
   `bundleRelease` is the artefact that matches distribution and is not gated.
 
 ## Next
+
+**After the launch, in order — set 26 Sep 2026.** The code track beyond this
+is `docs/research-assessment.md` § Build order; what follows is what the
+launch itself changed about the front of it.
+
+1. **Push `main`.** 16 commits, including the published bundle's tree, exist
+   nowhere but this machine.
+2. **Owner: RevenueCat and Play Console** (item 4 below). Product `premium`
+   with base plans `monthly` and `annual` and a trial offer on both, RTDN
+   pointed at RevenueCat's topic, service account granted, entitlement
+   `premium` and offering `default` in RevenueCat, a licence tester, and the
+   public `goog_` key into `gradle.properties`.
+3. **Prove one real purchase**, on an internal-testing build with
+   `PREMIUM_ON_SALE` flipped and the 30-day trial wired to the first Premium
+   intent (versionCode 7). Success is not the SDK saying purchased: it is
+   `entitlements/{uid}` and the kitchen flag rewritten by
+   `revenueCatWebhook`, sync waking up, and a restore on a second device.
+   Only then does the Plus paragraph go into the listing.
+4. **Retire the Play-native functions** — `verifyPurchase`,
+   `onPlayNotification`, `reconcileEntitlements` (item 6). They are dead
+   weight the moment RevenueCat is the only writer, and two writers for one
+   flag is the kind of thing that is discovered during an outage.
+5. **Unbundle ML Kit text recognition** (item 21). Roughly 30 MB off a
+   59.9 MB install, with the model fetched through Play Services on first
+   use. Worth doing before the listing has traffic to lose, and it needs the
+   "model not ready yet" path built and tested offline.
+6. **Read the first real numbers before building anything from the roadmap.**
+   The eight events and the consent ask shipped in this release, so within a
+   couple of weeks there is an answer to the only question that changes the
+   plan: do people finish a receipt import, and does `first_item` reach
+   `third_item`. Household (v1.3) is next either way; receipt completion
+   decides whether AI receipt repair moves up or stays last.
+
 
 - [x] ~~**Run it on a device.**~~ Done — see the verified list above. The
       cutover executes: database created and seeded, DI graph resolves, and the

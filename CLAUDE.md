@@ -1,6 +1,6 @@
 # FreshTrack — Project Context for AI
 
-> Read this before touching any code. **Current status and what is left is in `PROGRESS.md`** — start there. Product strategy is in `docs/strategy.md` (`summary.md` is history); sync design in `sync-design.md`.
+> Read this before touching any code. **Current status and what is left is in `PROGRESS.md`** — start there. Product strategy is in `docs/strategy.md` and the build order in `docs/research-assessment.md` (`summary.md` is history); sync design in `sync-design.md`; the live store listing in `docs/store-listing.md`.
 
 ---
 
@@ -26,7 +26,7 @@
 | Auth | Firebase Auth (Email/Password + Google Sign-In) via `presentation/viewmodel/AuthViewModel.kt` |
 | Sync | `data/sync/` — `OutboxPusher`, `RemoteChangeApplier`, `SyncRun`, `SyncWorker`, `WireFormat`; `data/remote/firestore/FirestoreRemoteStore`. Inert until `isPremium` is set — see `sync-design.md` |
 | Session | `data/session/UserSession.kt` — current uid and active kitchen |
-| Billing (server) | `functions/` — Cloud Functions, the only writer of `isPremium` and `entitlements/{uid}`. `revenueCatWebhook` (built 19 Sep 2026, not yet deployed) is the one that stays: RevenueCat calls it, it reads the customer back from RevenueCat and rewrites the two documents. `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements` are the Play-native ones still deployed; retired once a purchase is proven through RevenueCat. Tests: `npm run test:functions` |
+| Billing (server) | `functions/` — Cloud Functions, the only writer of `isPremium` and `entitlements/{uid}`. `revenueCatWebhook` (deployed and verified against a RevenueCat test event, 19 Sep 2026; no real purchase through it yet) is the one that stays: RevenueCat calls it, it reads the customer back from RevenueCat and rewrites the two documents. `verifyPurchase`, `onPlayNotification`, `reconcileEntitlements` are the Play-native ones still deployed; retired once a purchase is proven through RevenueCat. Tests: `npm run test:functions` |
 | Billing (client) | `data/billing/` — `PremiumStore` (interface) over `RevenueCatStore` (RevenueCat SDK, which carries Play Billing), `EntitlementRemote` (reads `entitlements/{uid}`); `presentation/screen/premium/PremiumScreen.kt`. `PREMIUM_ON_SALE = false` hides all of it until a purchase is proven. The SDK's app user id is the Firebase uid, kept in step by an auth listener. The client never decides it is premium: after a purchase it polls the server's copy until the webhook has landed. Public SDK key is `REVENUECAT_GOOGLE_KEY` in `gradle.properties` → `BuildConfig` |
 
 **DB version: 3** (`goodbefore_database`). The previous `freshtrack_database`
@@ -158,12 +158,15 @@ Settings "Sign Out" clears guest flag AND Firebase session, returns to Login.
 **See `PROGRESS.md`** — it is the single source of truth for what is done, what is
 next, and what is knowingly incomplete. Do not reconstruct status from git log.
 
-Short version: Backup & Sync built and proven on the emulators; rules and
-the Play-native billing functions deployed; billing is moving to RevenueCat
-(both platforms) and nothing is purchasable yet, so sync stays inert in
-production. Two crash fixes (R8 on Add, encrypted prefs after reinstall) and
-the sign-in rework are committed and waiting on a v1.1.1 upload. Product
-strategy is in `docs/strategy.md`.
+Short version: **v1.1.1 is live on Google Play (26 Sep 2026)** — the two
+crash fixes, the item-id fix, the empty states, the rebuilt widget, the usage
+events and en-GB are all in the hands of users. Nothing is purchasable:
+`PREMIUM_ON_SALE` is false, so sync stays inert and the listing claims no
+Premium. `revenueCatWebhook` is deployed and answers a test event; a real
+purchase is the next thing to prove. Product strategy is in
+`docs/strategy.md`, the build order in `docs/research-assessment.md`, and
+what the store currently promises in `docs/store-listing.md` — a claim in
+the app that contradicts that file is a bug in one of the two.
 
 ---
 
@@ -188,6 +191,15 @@ target while it is not a launch market.
 - All Room migrations must be additive — never drop columns used in DAOs.
 - Koin for DI. Do not use Hilt.
 - `EncryptedSharedPreferences` for all preference files, opened only through `encryptedPreferences()` in `data/preferences/`, and every such file listed in both backup-rules XMLs. A file the keystore cannot open is deleted and recreated; a missed exclusion crash-looped the app after a reinstall (18 Sep 2026).
+- **This repository is public, so every tracked file is published.** Four
+  files carry real secrets and none has ever been committed (whole history
+  audited 26 Sep 2026): `app/google-services.json`, `keystore.properties`,
+  `upload-keystore.jks`, `local.properties`. Server secrets are Firebase
+  `defineSecret` values set with `firebase functions:secrets:set` and are
+  never written to a file. RevenueCat's `goog_` key in `gradle.properties` is
+  the public SDK key and is meant to be readable; the `sk_` secret key and
+  the v1 API key must never be in a tracked file. `.gitignore` has the rules
+  and says why.
 - `ExportSchema = true` on `@Database`. Schema JSON auto-exported.
 - Build tool: Gradle with Kotlin DSL (`build.gradle.kts`).
 - Min SDK: check `app/build.gradle.kts`. Target: latest stable.
@@ -213,6 +225,8 @@ target while it is not a launch market.
   next composable — the resource compiler strips it. Spacing goes in the layout
   or inside one sentence with placeholders.
 - Do not swallow a sign-in failure; every auth failure reaches `AuthError`.
+- Do not commit a key, certificate, service account or password, and do not
+  `git add -f` past `.gitignore` to do it. The repository is public.
 
 ## graphify
 

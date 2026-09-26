@@ -72,7 +72,47 @@ ui-debug.log
 # === Misc ===
 *.apk
 *.aab
+mapping.txt
+
+# ==========================================
+# SECRETS — THIS REPOSITORY IS PUBLIC
+# ==========================================
+# Nothing below has ever been committed (history checked in full, 26 Sep
+# 2026: 160 commits, no key-shaped string anywhere). The rules exist so that
+# it stays that way. If a file has to live in the working tree to build or
+# deploy, it belongs here, not in a commit.
+#
+# What is deliberately kept out and where it comes from instead:
+#   google-services.json  Firebase config — a fresh clone supplies its own
+#   keystore.properties   store/key passwords, read by app/build.gradle.kts
+#   upload-keystore.jks   the upload signing key; losing it loses the app
+#   local.properties      the SDK path, which is machine-specific
+#   functions secrets     Firebase `defineSecret`, set with
+#                         `firebase functions:secrets:set`, never in a file
+#
+# Signing keys and certificates
 *.keystore
 *.jks
+*.p8
+*.p12
+*.pfx
+*.pem
+*.cer
+*.crt
+*.der
+*.key
 keystore.properties
+upload-keystore*
+
+# Service accounts and environment files
+*serviceAccount*.json
+*service-account*.json
+*-firebase-adminsdk-*.json
+.env
+.env.*
+!.env.example
+secrets.properties
+
+# Store assets: large, regenerable, and not the app. The listing *text* is
+# tracked at docs/store-listing.md.
 playstore-listing-ss/

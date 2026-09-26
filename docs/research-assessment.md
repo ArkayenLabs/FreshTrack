@@ -81,11 +81,17 @@ Two tracks. The owner's track is console and content; the code track is
 what gets built in the app, in order. Nothing on the code track waits for
 the owner's track except where marked.
 
-**Owner, now:** upload the evening v1.1.1 bundle; rename the listing to
-GoodBefore; RevenueCat/Play Console (item 4 in `PROGRESS.md`); write the
-listing with the Play ASO skill once it exists (intent-first: "food expiry
-tracker", "expiration" for US, "expiry" for UK); start recording the
-receipt-scan and date-scan clips.
+**Owner track — done 26 Sep 2026:** the evening v1.1.1 bundle is uploaded and
+live, the listing is renamed to GoodBefore and written intent-first ("food
+expiration tracker" for the US default, "expiry" for en-GB) with five
+screenshots and a feature graphic, and `mapping.txt` is attached. The text is
+in `docs/store-listing.md`. It was written by hand rather than with a Play
+ASO skill, which still does not exist; the prompt that would generate one is
+outside the repo.
+
+**Owner track — still open:** RevenueCat and Play Console (item 4 in
+`PROGRESS.md`), and the receipt-scan and date-scan clips, which need a real
+packet and a real phone rather than the emulator.
 
 **Code, release after v1.1.1 (call it v1.2):**
 
