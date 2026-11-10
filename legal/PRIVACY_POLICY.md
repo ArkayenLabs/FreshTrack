@@ -1,117 +1,113 @@
-# Privacy Policy for FreshTrack
+<!--
+  Published at https://www.arkayenlabs.com/privacy/freshtrack (the URL keeps the
+  app's earlier name; Play Console and the app link to it). The website renders
+  its own copy in src/pages/privacy/FreshTrack.tsx: change both together.
+  Written from the code as of v1.1.1 / 1.2 (10 November 2026). Re-check it when
+  PREMIUM_ON_SALE, sign-in or cloud sync changes. Not legal advice; a review by a
+  lawyer familiar with India's DPDP Act is still worth doing.
+-->
 
-**This is a template prepared from the app's actual behaviour. Have it reviewed by a qualified lawyer familiar with India's DPDP Act before you publish it.**
+# Privacy Policy for GoodBefore
 
-**Effective date:** [EFFECTIVE DATE]
-**Last updated:** [EFFECTIVE DATE]
+**Effective and last updated:** 10 November 2026
 
-FreshTrack ("the app", "we", "us", "our") is a food expiry tracker published by Arkayen Labs. This policy explains what we collect, why, and the choices you have. We wrote it in plain language on purpose.
+GoodBefore ("the app", "we", "us") is a food expiration tracker published by Arkayen Labs, run by Balaji Thukuntala as a sole proprietor. GoodBefore was published earlier as FreshTrack, and this policy covers the app under both names. It explains what the app collects, why, and the choices you have.
 
-## 1. Our approach in one line
+## 1. In short
 
-FreshTrack is offline-first. Your food inventory lives on your device. It does not leave your phone unless you sign in and choose our optional cloud backup. If you use the app without an account, we collect no personal data about you at all.
+- You do not need an account, and GoodBefore does not ask you to create one.
+- Your food list is stored on your phone. It is not uploaded to our servers.
+- Receipts and printed dates are read on your phone. When you scan a barcode, the barcode number is sent to Open Food Facts to look up the product name.
+- Usage statistics and crash reports are off unless you turn them on.
+- We do not sell your data, and the app has no advertising.
 
-## 2. What we collect, and only when
+## 2. What stays on your phone
 
-We collect different things depending on how you use the app.
+Your items and everything about them (names, categories, dates, quantities, notes, status and history), your progress counts and your settings are stored on your phone. We do not receive them.
 
-### a. If you use FreshTrack without an account (guest)
-Nothing is collected by us. Your items, categories, expiry dates, notes, photos, quantities, history, and impact statistics are stored only on your device. They are never sent to us or anyone else.
+**Android backup.** If Android's backup to your Google Account is turned on, Android may include GoodBefore's food list in that backup, which Google stores under its own terms. GoodBefore's settings files are excluded from backups. You can turn Android backup off in your phone's settings.
 
-### b. If you create an account
-Accounts are optional and only needed for cloud features. When you sign in with email or Google, we collect:
-- Your email address
-- Your display name, if you provide one
-- A user identifier assigned by Firebase Authentication
+**Export and import.** You can export your list to a CSV file and import one. The file goes only where you choose to save or share it.
 
-We do not receive or store your password. Sign-in is handled by Google Firebase Authentication.
+## 3. Camera and photos
 
-### c. If you subscribe to a premium cloud plan
-Your food inventory (item names, categories, expiry dates, quantities, notes, and status) is stored in our cloud database so it can be backed up and synced across your devices, and shared with members of a household pantry if you use that feature. Photos are not uploaded; they stay on the device that took them.
+The camera is used to scan barcodes, photograph a receipt, and read dates printed on packets. Barcodes and text are read on your phone using Google ML Kit's on-device models. A receipt photo is saved temporarily on your phone while it is read and is then deleted. Photos are not uploaded.
 
-### d. Analytics and crash reports (off by default, opt-in)
-Analytics and crash reporting are switched off when you install the app. We ask you once whether to enable them, and you can change your choice at any time in Settings > Privacy. Only if you turn them on do we collect:
-- App activity, such as which features you use and when
-- The broad category of an item involved in an action (for example "Dairy"), never the item's name
-- Crash logs and basic diagnostic information (device model, operating system version, app version) to help us fix problems
+Google's ML Kit library may send Google information about how these features perform, such as device type and error rates. It does not send your photos or the text read from them.
 
-This data is processed by Google Firebase Analytics and Firebase Crashlytics. It never includes the names of your food items, your notes, or scanned barcode numbers. If you never enable it, none of this is collected.
+## 4. Barcode lookups
 
-### e. Barcode lookups
-When you scan a barcode, the barcode number (and nothing else) is sent to OpenFoodFacts, a third-party open food database, to look up the product name and category. No personal information is sent with it.
+When you scan a barcode, the barcode number is sent to Open Food Facts (openfoodfacts.org), an open food database, to find the product's name, brand and category. Product images shown in the app are loaded from Open Food Facts. As with any internet request, their servers see your device's IP address. No account details or other personal information are sent. Open Food Facts handles these requests under its own privacy policy. Items you type in are not looked up.
 
-## 3. Why we use each type of data
+## 5. Usage statistics and crash reports (off unless you turn them on)
 
-- Account data: to create and secure your account and enable cloud features.
-- Inventory data in the cloud: only to back up and sync your own data, and to share a pantry if you choose to.
-- Analytics and crash data (if enabled): to understand which features are used and to find and fix bugs.
-- Barcode lookups: to save you typing product details.
+Both are switched off when you install the app. The app asks you once, and you can change your choice at any time in Settings. Only if you turn them on:
 
-We do not sell your personal data. We do not use it for advertising.
+- **Usage statistics**, through Google Firebase Analytics, record a small set of events: that an item was added and how (barcode, receipt or typed) with the number of items on your list at the time; that an item was dealt with (for example used or thrown away) and whether it was overdue; that an action was undone; that the app asked for a review; and, if a paid plan is offered, that its screens were opened. They never include item names, barcode numbers, notes, prices or dates. Firebase also records standard details such as an app instance identifier, device model, operating system and app version, and approximate country.
+- **Crash reports**, through Firebase Crashlytics, record what went wrong and basic device details (model, operating system and app version) so bugs can be fixed.
 
-## 4. Legal basis and your consent
+If you never turn them on, none of this is collected.
 
-Each purpose is handled separately, so you are not forced to accept everything at once:
-- Guest use requires no consent because no personal data is collected.
-- Creating an account is your choice and provides the data needed to run it.
-- Analytics is strictly opt-in and can be withdrawn at any time.
+## 6. Accounts
 
-## 5. Who we share data with
+GoodBefore does not currently offer sign-in. If you created an account in an earlier version of the app, when it was called FreshTrack, Google Firebase Authentication holds your email address, your display name if you gave one, and an account identifier. You can delete that account from the app's Settings while signed in, or by email (see section 12).
 
-We use the following processors, who handle data on our behalf:
-- **Google Firebase** (Authentication, Cloud Firestore, Analytics, Crashlytics), governed by Google's terms and privacy policy at https://firebase.google.com/support/privacy
-- **OpenFoodFacts** (openfoodfacts.org) for barcode product lookups, which receives only the barcode number
+Cloud backup and sync are not active. No food list is stored on our servers.
 
-We share your personal data with no one else, except where required by law.
+## 7. Purchases
 
-## 6. International transfer of data
+Paid plans are not on sale. The app includes RevenueCat's library for purchases through Google Play, and RevenueCat may receive an anonymous app identifier and basic device information when the app starts. If paid plans are offered later, Google Play will handle payment and we will never receive your card details. This policy will be updated before that happens.
 
-Google stores and processes data on servers that may be located outside India, including in the United States. Where this happens, Google's Standard Contractual Clauses and equivalent safeguards apply to that transfer. By using cloud features or enabling analytics, you understand that this transfer takes place.
+## 8. Google Play features
 
-## 7. How long we keep data
+The app uses Google Play's in-app review and in-app update features. Ratings and updates are handled by Google Play under Google's terms.
 
-- On-device data: kept until you delete the item, delete your account in-app, or uninstall the app.
-- Account and cloud inventory data: kept until you delete your account.
-- Deleted cloud items: marked as deleted immediately, and fully removed when you delete your account. A short-lived marker of a deletion may persist so the deletion can reach your other devices.
-- Crash logs: kept up to 90 days.
-- Analytics data (if enabled): retained per Firebase settings, and disassociated from your account when your account is deleted.
+## 9. Who processes data
 
-## 8. Your rights
+- **Google**: Firebase Analytics and Crashlytics (only if you turn them on), Firebase Authentication (only for accounts created in earlier versions), ML Kit, Android backup and Google Play. Google's privacy information for Firebase is at https://firebase.google.com/support/privacy.
+- **Open Food Facts**: barcode numbers, for product lookups.
+- **RevenueCat**: an anonymous app identifier, for purchases.
 
-Under India's Digital Personal Data Protection Act, and subject to it, you may:
-- **Access** the personal data we hold about you
-- **Correct** or update it
-- **Erase** it
-- **Nominate** another person to exercise these rights on your behalf, for example if you are unable to
+We share data with no one else, except where required by law. We do not sell personal data and do not use it for advertising.
 
-You can exercise the most common of these directly in the app: edit your profile, and delete your account and all associated data at any time via Settings > Delete Account. You may also delete your account by visiting https://www.arkayenlabs.com/privacy/freshtrack/delete-account or by emailing us. For any other request, contact our Grievance Officer below.
+## 10. Where data is processed
 
-## 9. Grievance Officer
+Google and RevenueCat may process data on servers outside India, including in the United States. Where that happens, their standard contractual protections apply.
 
-As required by the DPDP Act, you can raise any privacy concern or request with:
+## 11. How long data is kept
+
+- **On your phone:** until you delete it or uninstall the app.
+- **Usage statistics:** under the retention settings of Firebase Analytics. They are not linked to your name or email.
+- **Crash reports:** up to 90 days.
+- **Accounts from earlier versions:** until you delete the account.
+
+## 12. Your rights
+
+Under India's Digital Personal Data Protection Act, and subject to it, you may ask to access, correct or erase personal data we hold about you, and nominate someone to exercise these rights for you. Most of your data never leaves your phone, so deleting items or uninstalling the app removes it. For anything else, including deleting an account created in an earlier version, email support@arkayenlabs.com. The steps are also at https://www.arkayenlabs.com/privacy/freshtrack/delete-account.
+
+## 13. Grievance Officer
 
 **Grievance Officer:** Balaji Thukuntala
 **Email:** support@arkayenlabs.com
 **On behalf of:** Arkayen Labs
 
-We aim to respond within the timeframe required by law.
+We aim to respond within the time required by law.
 
-## 10. Children
+## 14. Children
 
-FreshTrack is not directed at children under the age of 18. We do not knowingly collect personal data from children, and because analytics is off by default we do not profile them. If you believe a child has provided us personal data, contact us and we will delete it.
+GoodBefore is not directed at children under 18. We do not knowingly collect personal data from children, and because usage statistics are off by default, the app does not profile anyone who has not turned them on. If you believe a child has given us personal data, contact us and we will delete it.
 
-## 11. How we protect your data
+## 15. How your data is protected
 
-- Data stored on your device uses encrypted storage.
-- Cloud data is protected by access rules that restrict each user's data to that user and the members of any pantry they share.
-- We do not log the contents of network requests in released versions of the app.
+- The food list is kept in the app's private storage on your phone.
+- Settings are stored in encrypted storage on your phone.
+- Release versions of the app do not log the contents of network requests.
 
-## 12. Changes to this policy
+## 16. Changes to this policy
 
-If we change this policy, we will update the date above and, for material changes, notify you in the app. Continued use after a change means you accept the updated policy.
+If we change this policy, we will update the date above and, for material changes, tell you in the app. Continued use after a change means you accept the updated policy.
 
-## 13. Contact
+## 17. Contact
 
-Questions about this policy or your data:
 **Email:** support@arkayenlabs.com
 **Developer:** Arkayen Labs
