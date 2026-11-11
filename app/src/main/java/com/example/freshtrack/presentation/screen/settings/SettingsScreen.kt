@@ -394,7 +394,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_privacy_policy),
                     description = stringResource(R.string.settings_privacy_policy_body),
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.arkayenlabs.com/privacy/freshtrack"))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.arkayenlabs.com/privacy/goodbefore"))
                         context.startActivity(intent)
                     }
                 )

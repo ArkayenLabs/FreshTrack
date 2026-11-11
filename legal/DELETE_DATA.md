@@ -1,5 +1,5 @@
 <!--
-  Published at https://www.arkayenlabs.com/privacy/freshtrack/delete-account,
+  Published at https://www.arkayenlabs.com/privacy/goodbefore/delete-account,
   the deletion URL declared in Play Console. The website renders this file.
 -->
 
@@ -21,7 +21,7 @@ If Android's backup to your Google Account was turned on, a copy of the food lis
 
 ## Usage statistics and crash reports
 
-These are off unless you turned them on. To stop them, turn them off in the app's Settings. Data already collected is not linked to your name or email, is kept under the retention periods in the [Privacy Policy](https://www.arkayenlabs.com/privacy/freshtrack), and is then deleted.
+These are off unless you turned them on. To stop them, turn them off in the app's Settings. Data already collected is not linked to your name or email, is kept under the retention periods in the [Privacy Policy](https://www.arkayenlabs.com/privacy/goodbefore), and is then deleted.
 
 ## Accounts created in an earlier version
 

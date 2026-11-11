@@ -66,7 +66,7 @@ import com.example.freshtrack.R
 import com.example.freshtrack.presentation.viewmodel.AuthViewModel
 import org.koin.androidx.compose.koinViewModel
 
-private const val PRIVACY_POLICY_URL = "https://www.arkayenlabs.com/privacy/freshtrack"
+private const val PRIVACY_POLICY_URL = "https://www.arkayenlabs.com/privacy/goodbefore"
 
 /**
  * Create an account. Same shape as sign-in so the two read as one flow:

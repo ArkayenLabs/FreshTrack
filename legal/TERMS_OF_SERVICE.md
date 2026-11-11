@@ -1,7 +1,6 @@
 <!--
-  Published at https://www.arkayenlabs.com/terms/freshtrack (the URL keeps the
-  app's earlier name). The website renders its own copy in
-  src/pages/privacy/FreshTrackTerms.tsx: change both together. Not legal
+  Published at https://www.arkayenlabs.com/terms/goodbefore. The website renders its own copy in
+  src/pages/privacy/GoodBeforeTerms.tsx: change both together. Not legal
   advice; the food-safety, liability and governing-law sections are worth a
   lawyer's review.
 -->
@@ -79,4 +78,4 @@ We may update these Terms. We will update the date above and, for material chang
 
 **Email:** support@arkayenlabs.com
 **Developer:** Arkayen Labs
-**Privacy Policy:** https://www.arkayenlabs.com/privacy/freshtrack
+**Privacy Policy:** https://www.arkayenlabs.com/privacy/goodbefore

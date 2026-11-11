@@ -1,7 +1,6 @@
 <!--
-  Published at https://www.arkayenlabs.com/privacy/freshtrack (the URL keeps the
-  app's earlier name; Play Console and the app link to it). The website renders
-  its own copy in src/pages/privacy/FreshTrack.tsx: change both together.
+  Published at https://www.arkayenlabs.com/privacy/goodbefore. The website renders
+  its own copy in src/pages/privacy/GoodBefore.tsx: change both together.
   Written from the code as of v1.1.1 / 1.2 (10 November 2026). Re-check it when
   PREMIUM_ON_SALE, sign-in or cloud sync changes. Not legal advice; a review by a
   lawyer familiar with India's DPDP Act is still worth doing.
@@ -83,7 +82,7 @@ Google and RevenueCat may process data on servers outside India, including in th
 
 ## 12. Your rights
 
-Under India's Digital Personal Data Protection Act, and subject to it, you may ask to access, correct or erase personal data we hold about you, and nominate someone to exercise these rights for you. Most of your data never leaves your phone, so deleting items or uninstalling the app removes it. For anything else, including deleting an account created in an earlier version, email support@arkayenlabs.com. The steps are also at https://www.arkayenlabs.com/privacy/freshtrack/delete-account.
+Under India's Digital Personal Data Protection Act, and subject to it, you may ask to access, correct or erase personal data we hold about you, and nominate someone to exercise these rights for you. Most of your data never leaves your phone, so deleting items or uninstalling the app removes it. For anything else, including deleting an account created in an earlier version, email support@arkayenlabs.com. The steps are also at https://www.arkayenlabs.com/privacy/goodbefore/delete-account.
 
 ## 13. Grievance Officer
 

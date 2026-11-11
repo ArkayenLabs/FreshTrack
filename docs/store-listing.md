@@ -73,7 +73,7 @@ PRIVATE BY DEFAULT
 
 • No account needed.
 • Works fully offline.
-• Receipts and barcodes are read on the phone and never uploaded.
+• Receipts and printed dates are read on the phone. Photos are never uploaded.
 • Usage statistics are off unless you turn them on.
 • Export everything to CSV at any time.
 
